@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { useState, useEffect, useCallback } from "react";
@@ -68,7 +69,7 @@ export default function Dashboard() {
       }
       
       // If strategy exists in database, use it
-      if (strategyData) {
+      if (strategyData && !strategyError) {
         console.log("Strategy data from DB:", strategyData);
         
         const processedStrategy: StrategyData = {
