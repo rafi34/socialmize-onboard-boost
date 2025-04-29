@@ -28,9 +28,9 @@ export const ContentNicheStep = () => {
   const [isOtherSelected, setIsOtherSelected] = useState<boolean>(false);
 
   const handleNicheSelect = (niche: string) => {
-    if (niche === "other") {
+    if (niche === "Other") {
       setIsOtherSelected(true);
-      setSelectedNiche("other");
+      setSelectedNiche("Other");
     } else {
       setIsOtherSelected(false);
       setSelectedNiche(niche);
@@ -46,7 +46,7 @@ export const ContentNicheStep = () => {
     // If "Other" is selected, use the custom niche text
     if (isOtherSelected && customNiche.trim() !== "") {
       updateAnswer("niche_topic", customNiche.trim());
-    } else if (!isOtherSelected && selectedNiche && selectedNiche !== "other") {
+    } else if (!isOtherSelected && selectedNiche && selectedNiche !== "Other") {
       updateAnswer("niche_topic", selectedNiche);
     }
     nextStep();

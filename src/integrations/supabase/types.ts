@@ -77,6 +77,7 @@ export type Database = {
           creator_style: string | null
           existing_content: string | null
           id: string
+          niche_topic: string | null
           posting_frequency_goal: string | null
           shooting_preference: string | null
           shooting_schedule: string | null
@@ -90,6 +91,7 @@ export type Database = {
           creator_style?: string | null
           existing_content?: string | null
           id?: string
+          niche_topic?: string | null
           posting_frequency_goal?: string | null
           shooting_preference?: string | null
           shooting_schedule?: string | null
@@ -103,6 +105,7 @@ export type Database = {
           creator_style?: string | null
           existing_content?: string | null
           id?: string
+          niche_topic?: string | null
           posting_frequency_goal?: string | null
           shooting_preference?: string | null
           shooting_schedule?: string | null
