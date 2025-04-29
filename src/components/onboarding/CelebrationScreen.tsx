@@ -8,11 +8,13 @@ import { useState } from "react";
 import { Icons } from "@/components/Icons";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 export const CelebrationScreen = () => {
   const { completeOnboarding, isLoading, onboardingAnswers } = useOnboarding();
   const [showConfetti, setShowConfetti] = useState(true);
   const [generatingStrategy, setGeneratingStrategy] = useState(false);
+  const navigate = useNavigate();
 
   const handleComplete = async () => {
     try {
@@ -33,17 +35,31 @@ export const CelebrationScreen = () => {
           description: "We couldn't generate your content strategy. Please try again later.",
           variant: "destructive"
         });
+        
+        // Still navigate to dashboard even if strategy generation fails
+        navigate('/dashboard');
       } else {
         console.log("Strategy generated successfully:", generatedStrategy);
         
         // Store the strategy in local storage temporarily
         // In a real implementation, you would store this in the database
-        if (generatedStrategy.strategy) {
+        if (generatedStrategy?.strategy) {
           localStorage.setItem('userStrategy', JSON.stringify(generatedStrategy.strategy));
           toast({
             title: "Strategy ready!",
             description: "Your personalized content strategy has been created!",
           });
+          
+          // Navigate to dashboard with the new strategy
+          navigate('/dashboard');
+        } else {
+          console.error("Generated strategy has unexpected format:", generatedStrategy);
+          toast({
+            title: "Strategy generation incomplete",
+            description: "Your strategy was created but may be missing some details.",
+            variant: "warning"
+          });
+          navigate('/dashboard');
         }
       }
     } catch (error) {
@@ -53,6 +69,9 @@ export const CelebrationScreen = () => {
         description: "There was a problem completing your onboarding. Please try again.",
         variant: "destructive"
       });
+      
+      // Still navigate to dashboard even if there's an error
+      navigate('/dashboard');
     } finally {
       setGeneratingStrategy(false);
     }

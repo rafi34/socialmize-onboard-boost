@@ -50,6 +50,28 @@ OUTPUT:
     - End with a looping statement or CTA.
 
 Make the style motivational and practical, easy to shoot for the user based on their equipment and experience.
+
+IMPORTANT: Format your response as valid JSON with this structure:
+{
+  "experience_level": "Beginner/Intermediate/Advanced",
+  "content_types": ["Type 1", "Type 2", "etc"],
+  "weekly_calendar": {
+    "Monday": ["Content 1", "Content 2"],
+    "Tuesday": ["Content 3"],
+    ...and so on for each day of the week
+  },
+  "starter_scripts": [
+    {
+      "title": "Script Title 1",
+      "script": "Full script text with hook, context, conflict and CTA"
+    },
+    {
+      "title": "Script Title 2",
+      "script": "Full script text with hook, context, conflict and CTA"
+    },
+    ...and so on for all 5 scripts
+  ]
+}
 `;
 
     // Call OpenAI API
@@ -66,6 +88,7 @@ Make the style motivational and practical, easy to shoot for the user based on t
           { role: "user", content: prompt }
         ],
         temperature: 0.7,
+        response_format: { type: "json_object" }
       }),
     });
 
@@ -79,31 +102,34 @@ Make the style motivational and practical, easy to shoot for the user based on t
       );
     }
 
-    const generatedStrategy = openAIResponse.choices[0].message.content;
-    console.log("Generated strategy:", generatedStrategy);
-
-    // Try to parse the response as JSON
     let strategyData;
     try {
-      // Extract JSON from the response if it's wrapped in markdown code blocks
-      const jsonMatch = generatedStrategy.match(/```json\n([\s\S]*?)\n```/) || 
-                        generatedStrategy.match(/```\n([\s\S]*?)\n```/) ||
-                        [null, generatedStrategy];
+      const generatedStrategy = openAIResponse.choices[0].message.content;
+      console.log("Raw strategy from OpenAI:", generatedStrategy);
       
-      const jsonContent = jsonMatch[1] || generatedStrategy;
-      strategyData = JSON.parse(jsonContent);
+      // Parse the JSON response
+      strategyData = JSON.parse(generatedStrategy);
+      
+      // Validate the structure of the response
+      if (!strategyData.experience_level || !strategyData.content_types || 
+          !strategyData.weekly_calendar || !strategyData.starter_scripts) {
+        throw new Error("Strategy data is missing required fields");
+      }
+      
+      console.log("Successfully parsed strategy data");
     } catch (error) {
-      console.error("Failed to parse strategy as JSON:", error);
-      // Still return the raw text even if parsing failed
+      console.error("Failed to parse strategy data:", error);
       return new Response(
         JSON.stringify({ 
-          strategy: generatedStrategy, 
-          error: "Failed to parse as JSON, returning raw text" 
+          error: "Failed to parse strategy data", 
+          details: error.message,
+          raw_response: openAIResponse.choices[0].message.content
         }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Return the parsed strategy data
     return new Response(
       JSON.stringify({ strategy: strategyData }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
