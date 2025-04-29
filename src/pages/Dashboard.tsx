@@ -49,10 +49,10 @@ export default function Dashboard() {
         }
       }
       
-      // Try to fetch strategy from database
+      // Try to fetch strategy from database - explicitly include full_plan_text in the query
       const { data: strategyData, error: strategyError } = await supabase
         .from('strategy_profiles')
-        .select('*')
+        .select('*, full_plan_text')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -64,6 +64,8 @@ export default function Dashboard() {
       
       // If strategy exists in database, use it
       if (strategyData) {
+        console.log("Strategy data from DB:", strategyData); // Debug log
+        
         const processedStrategy: StrategyData = {
           experience_level: strategyData.experience_level,
           content_types: strategyData.content_types as string[],

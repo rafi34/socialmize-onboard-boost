@@ -20,12 +20,14 @@ interface FullStrategyModalProps {
 export const FullStrategyModal = ({ isOpen, onClose, fullPlanText }: FullStrategyModalProps) => {
   // Function to preserve line breaks in the text
   const formatPlanText = (text?: string | null) => {
-    if (!text) return <p className="text-muted-foreground">No strategy plan available.</p>;
+    if (!text || text.trim().length === 0) {
+      return <p className="text-muted-foreground">No strategy plan available.</p>;
+    }
 
     // Split by line break and map each line to a paragraph
     return text.split("\n").map((line, index) => (
       <p key={index} className={`${line.trim().length === 0 ? 'my-4' : 'my-2'}`}>
-        {line}
+        {line || "\u00A0"}
       </p>
     ));
   };
