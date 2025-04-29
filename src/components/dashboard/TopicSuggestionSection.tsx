@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,8 +36,9 @@ export const TopicSuggestionSection = ({ onSelectTopic }: TopicSuggestionSection
         console.error("Error fetching topics:", error);
         setTopics([]);
       } else if (data) {
-        // Ensure topic_ideas is an array
-        const topicIdeas = Array.isArray(data.topic_ideas) ? data.topic_ideas : [];
+        // Ensure topic_ideas is an array and convert all items to strings
+        const rawTopicIdeas = Array.isArray(data.topic_ideas) ? data.topic_ideas : [];
+        const topicIdeas = rawTopicIdeas.map(topic => String(topic));
         
         // If we have a niche topic, add it to the list
         if (data.niche_topic && typeof data.niche_topic === 'string' && !topicIdeas.includes(data.niche_topic)) {
@@ -60,11 +62,11 @@ export const TopicSuggestionSection = ({ onSelectTopic }: TopicSuggestionSection
             
             setTopics([...unusedTopics, ...someUsedTopics]);
           } else {
-            setTopics(topicIdeas as string[]);
+            setTopics(topicIdeas);
           }
         } catch (e) {
           console.error("Error fetching used topics:", e);
-          setTopics(topicIdeas as string[]);
+          setTopics(topicIdeas);
         }
       }
     } catch (error) {
