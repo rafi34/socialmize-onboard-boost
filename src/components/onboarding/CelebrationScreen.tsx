@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/onboarding/ProgressBar";
 import { XPDisplay } from "@/components/onboarding/XPDisplay";
@@ -40,14 +41,37 @@ export const CelebrationScreen = () => {
       } else {
         console.log("Strategy generated successfully:", generatedStrategy);
         
-        // Store the strategy in local storage temporarily
-        // In a real implementation, you would store this in the database
         if (generatedStrategy?.strategy) {
-          localStorage.setItem('userStrategy', JSON.stringify(generatedStrategy.strategy));
+          // Save the strategy to the database
+          const { error: saveError } = await supabase.from('strategy_profiles').insert({
+            experience_level: generatedStrategy.strategy.experience_level,
+            content_types: generatedStrategy.strategy.content_types,
+            weekly_calendar: generatedStrategy.strategy.weekly_calendar,
+            first_five_scripts: generatedStrategy.strategy.starter_scripts
+          });
+          
+          if (saveError) {
+            console.error("Error saving strategy to database:", saveError);
+            // Still store in localStorage as backup
+            localStorage.setItem('userStrategy', JSON.stringify(generatedStrategy.strategy));
+          }
+          
           toast({
             title: "Strategy ready!",
             description: "Your personalized content strategy has been created!",
           });
+          
+          // Create initial progress tracking entry
+          const { error: progressError } = await supabase.from('progress_tracking').insert({
+            current_xp: 100,
+            current_level: 1,
+            streak_days: 1,
+            last_activity_date: new Date().toISOString()
+          });
+          
+          if (progressError) {
+            console.error("Error creating progress tracking:", progressError);
+          }
           
           // Navigate to dashboard with the new strategy
           navigate('/dashboard');

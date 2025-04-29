@@ -1,9 +1,10 @@
-
 import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 interface StrategyData {
   experience_level?: string;
@@ -12,24 +13,92 @@ interface StrategyData {
   starter_scripts?: { title: string; script: string }[];
 }
 
+interface ProgressData {
+  current_xp: number;
+  current_level: number;
+  streak_days: number;
+  last_activity_date: string;
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [strategy, setStrategy] = useState<StrategyData | null>(null);
+  const [progress, setProgress] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // In a real implementation, you would fetch this from the database
-    // For now, we're using localStorage as a temporary solution
-    const storedStrategy = localStorage.getItem('userStrategy');
-    if (storedStrategy) {
+    if (!user) return;
+    
+    const fetchUserData = async () => {
+      setLoading(true);
+      
       try {
-        setStrategy(JSON.parse(storedStrategy));
+        // Try to fetch strategy from database
+        const { data: strategyData, error: strategyError } = await supabase
+          .from('strategy_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (strategyError) {
+          console.error("Error fetching strategy:", strategyError);
+        }
+        
+        // If strategy exists in database, use it
+        if (strategyData) {
+          setStrategy({
+            experience_level: strategyData.experience_level,
+            content_types: strategyData.content_types,
+            weekly_calendar: strategyData.weekly_calendar,
+            starter_scripts: strategyData.first_five_scripts
+          });
+        } else {
+          // Otherwise, try to use localStorage as fallback
+          const storedStrategy = localStorage.getItem('userStrategy');
+          if (storedStrategy) {
+            try {
+              setStrategy(JSON.parse(storedStrategy));
+            } catch (error) {
+              console.error("Error parsing strategy from localStorage:", error);
+            }
+          }
+        }
+        
+        // Fetch user progress
+        const { data: progressData, error: progressError } = await supabase
+          .from('progress_tracking')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+          
+        if (progressError) {
+          console.error("Error fetching progress:", progressError);
+        } else if (progressData) {
+          setProgress({
+            current_xp: progressData.current_xp,
+            current_level: progressData.current_level,
+            streak_days: progressData.streak_days,
+            last_activity_date: progressData.last_activity_date
+          });
+        }
       } catch (error) {
-        console.error("Error parsing strategy:", error);
+        console.error("Error fetching user data:", error);
+        toast({
+          title: "Error loading data",
+          description: "There was a problem loading your dashboard data.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
-  }, []);
+    };
+    
+    fetchUserData();
+  }, [user]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -170,16 +239,16 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between">
                       <span>Level</span>
                       <span className="bg-socialmize-light-purple px-3 py-1 rounded-full text-socialmize-purple font-medium">
-                        Level 1
+                        Level {progress?.current_level || 1}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span>XP</span>
-                      <span>100 XP</span>
+                      <span>{progress?.current_xp || 100} XP</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span>Badges</span>
-                      <span>1</span>
+                      <span>Streak Days</span>
+                      <span>{progress?.streak_days || 1}</span>
                     </div>
                   </div>
                 </CardContent>

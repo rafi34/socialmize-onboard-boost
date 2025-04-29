@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      community_posts: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          likes: number | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          likes?: number | null
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          likes?: number | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       onboarding_answers: {
         Row: {
           content_format_preference: string | null
@@ -75,6 +105,105 @@ export type Database = {
           onboarding_complete?: boolean
           profile_progress?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      progress_tracking: {
+        Row: {
+          created_at: string
+          current_level: number | null
+          current_xp: number | null
+          id: string
+          last_activity_date: string | null
+          streak_days: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_level?: number | null
+          current_xp?: number | null
+          id?: string
+          last_activity_date?: string | null
+          streak_days?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_level?: number | null
+          current_xp?: number | null
+          id?: string
+          last_activity_date?: string | null
+          streak_days?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      reminders: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          message: string | null
+          reminder_time: string
+          reminder_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          message?: string | null
+          reminder_time: string
+          reminder_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          message?: string | null
+          reminder_time?: string
+          reminder_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      strategy_profiles: {
+        Row: {
+          content_types: Json | null
+          created_at: string
+          experience_level: string | null
+          first_five_scripts: Json | null
+          id: string
+          updated_at: string
+          user_id: string
+          weekly_calendar: Json | null
+        }
+        Insert: {
+          content_types?: Json | null
+          created_at?: string
+          experience_level?: string | null
+          first_five_scripts?: Json | null
+          id?: string
+          updated_at?: string
+          user_id: string
+          weekly_calendar?: Json | null
+        }
+        Update: {
+          content_types?: Json | null
+          created_at?: string
+          experience_level?: string | null
+          first_five_scripts?: Json | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+          weekly_calendar?: Json | null
         }
         Relationships: []
       }
