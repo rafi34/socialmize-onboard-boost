@@ -35,9 +35,11 @@ export const TopicSuggestionSection = ({ onSelectTopic }: TopicSuggestionSection
         console.error("Error fetching topics:", error);
         setTopics([]);
       } else if (data) {
-        const topicIdeas = data.topic_ideas || [];
+        // Ensure topic_ideas is an array
+        const topicIdeas = Array.isArray(data.topic_ideas) ? data.topic_ideas : [];
+        
         // If we have a niche topic, add it to the list
-        if (data.niche_topic && !topicIdeas.includes(data.niche_topic)) {
+        if (data.niche_topic && typeof data.niche_topic === 'string' && !topicIdeas.includes(data.niche_topic)) {
           topicIdeas.unshift(data.niche_topic);
         }
         
@@ -51,18 +53,18 @@ export const TopicSuggestionSection = ({ onSelectTopic }: TopicSuggestionSection
           if (usedTopics) {
             const usedTopicsList = usedTopics.map(item => item.topic);
             // Filter out used topics but keep a few of them (max 3)
-            const unusedTopics = topicIdeas.filter(topic => !usedTopicsList.includes(topic));
+            const unusedTopics = topicIdeas.filter((topic: string) => !usedTopicsList.includes(topic));
             const someUsedTopics = topicIdeas
-              .filter(topic => usedTopicsList.includes(topic))
+              .filter((topic: string) => usedTopicsList.includes(topic))
               .slice(0, 3);
             
             setTopics([...unusedTopics, ...someUsedTopics]);
           } else {
-            setTopics(topicIdeas);
+            setTopics(topicIdeas as string[]);
           }
         } catch (e) {
           console.error("Error fetching used topics:", e);
-          setTopics(topicIdeas);
+          setTopics(topicIdeas as string[]);
         }
       }
     } catch (error) {
