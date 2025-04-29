@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
+        console.log('Auth state changed:', event, currentSession?.user?.email);
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
@@ -37,10 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             description: "You've successfully signed in.",
           });
 
-          // No need to use fetchUser here, as the user state is being set above
-          setTimeout(() => {
-            navigate('/');
-          }, 0);
+          // No need to navigate immediately, let the app handle routing based on onboarding status
         }
 
         if (event === 'SIGNED_OUT') {
@@ -49,6 +47,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             title: "Signed out",
             description: "You've been signed out successfully.",
           });
+          
+          // Navigate to auth page on sign out
+          navigate('/auth');
         }
 
         setLoading(false);
@@ -57,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Then check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      console.log('Initial session check:', currentSession?.user?.email);
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       setLoading(false);
@@ -74,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         throw error;
       }
+      // Let the auth state listener handle the redirection
     } catch (error: any) {
       console.error('Error signing in:', error.message);
       toast({
@@ -86,7 +89,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUpWithEmail = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          emailRedirectTo: window.location.origin
+        }
+      });
       
       if (error) {
         throw error;
@@ -111,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: window.location.origin
         },
       });
       
@@ -134,7 +143,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         throw error;
       }
-      navigate('/auth');
     } catch (error: any) {
       console.error('Error signing out:', error.message);
       toast({

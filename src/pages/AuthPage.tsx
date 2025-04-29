@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Icons } from "@/components/Icons";
+import { toast } from "@/components/ui/use-toast";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -20,6 +22,7 @@ export default function AuthPage() {
     const checkUserStatus = async () => {
       if (user) {
         try {
+          console.log("Checking onboarding status for user:", user.email);
           const { data, error } = await supabase
             .from('profiles')
             .select('onboarding_complete')
@@ -28,9 +31,12 @@ export default function AuthPage() {
 
           if (error) {
             console.error('Error fetching onboarding status:', error);
+            // If we can't determine onboarding status, default to onboarding
+            navigate('/', { replace: true });
             return;
           }
 
+          console.log("Onboarding status:", data.onboarding_complete);
           // Redirect based on onboarding status
           if (data.onboarding_complete) {
             navigate('/dashboard', { replace: true });
@@ -39,6 +45,8 @@ export default function AuthPage() {
           }
         } catch (error) {
           console.error('Error checking user status:', error);
+          // If any error occurs, default to onboarding
+          navigate('/', { replace: true });
         }
       }
     };

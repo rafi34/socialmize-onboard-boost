@@ -18,6 +18,7 @@ export const OnboardingRoute = ({ children }: OnboardingRouteProps) => {
       if (!user) return;
 
       try {
+        console.log("Checking onboarding status in OnboardingRoute for user:", user.email);
         const { data, error } = await supabase
           .from('profiles')
           .select('onboarding_complete')
@@ -26,11 +27,16 @@ export const OnboardingRoute = ({ children }: OnboardingRouteProps) => {
 
         if (error) {
           console.error('Error fetching onboarding status:', error);
+          // If there's an error, we assume not onboarded to be safe
+          setIsOnboarded(false);
         } else {
+          console.log("OnboardingRoute - Onboarding status:", data.onboarding_complete);
           setIsOnboarded(data.onboarding_complete);
         }
       } catch (error) {
         console.error('Error in checkOnboardingStatus:', error);
+        // If there's an error, we assume not onboarded to be safe
+        setIsOnboarded(false);
       } finally {
         setCheckingStatus(false);
       }
@@ -54,14 +60,17 @@ export const OnboardingRoute = ({ children }: OnboardingRouteProps) => {
 
   // If not authenticated, redirect to auth page
   if (!user) {
+    console.log("User not authenticated, redirecting to /auth");
     return <Navigate to="/auth" replace />;
   }
 
   // If onboarded, redirect to dashboard
   if (isOnboarded) {
+    console.log("User is already onboarded, redirecting to /dashboard");
     return <Navigate to="/dashboard" replace />;
   }
 
   // If not onboarded and checked, show onboarding
+  console.log("Showing onboarding for user:", user.email);
   return <>{children}</>;
 };
