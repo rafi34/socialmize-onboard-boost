@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { GeneratedScript } from "@/types/dashboard";
 
 export type ContentType = 'duet' | 'meme' | 'carousel' | 'voiceover' | 'talking_head';
 
@@ -13,7 +14,7 @@ export interface GenerateContentParams {
 
 export function useContentGenerator() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [generatedContent, setGeneratedContent] = useState<any>(null);
+  const [generatedContent, setGeneratedContent] = useState<GeneratedScript[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const generateContent = async ({
@@ -45,12 +46,16 @@ export function useContentGenerator() {
         throw new Error(error.message || "Failed to generate content");
       }
 
-      setGeneratedContent(data);
+      if (!data.success) {
+        throw new Error(data.error || "Failed to generate content");
+      }
+
+      setGeneratedContent(data.results);
       toast({
         title: "Content Generated",
-        description: `Your ${type} content has been successfully generated!`,
+        description: `Your ${type.replace('_', ' ')} content has been successfully generated!`,
       });
-      return data;
+      return data.results;
     } catch (err: any) {
       const errorMessage = err.message || "An unexpected error occurred";
       setError(errorMessage);

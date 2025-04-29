@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { useState, useEffect, useCallback } from "react";
@@ -64,7 +65,7 @@ export default function Dashboard() {
       
       // If strategy exists in database, use it
       if (strategyData) {
-        console.log("Strategy data from DB:", strategyData); // Debug log
+        console.log("Strategy data from DB:", strategyData);
         
         const processedStrategy: StrategyData = {
           experience_level: strategyData.experience_level,
@@ -133,18 +134,21 @@ export default function Dashboard() {
         setReminder(reminderData as ReminderData);
       }
       
-      // Fetch generated scripts
-      const { data: scriptsData, error: scriptsError } = await supabase
-        .from('generated_scripts')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-          
-      if (scriptsError) {
-        console.error("Error fetching scripts:", scriptsError);
-      } else if (scriptsData) {
-        setScripts(scriptsData as GeneratedScript[]);
+      try {
+        // Try to fetch generated scripts, but handle gracefully if table doesn't exist yet
+        const { data: scriptsData, error: scriptsError } = await supabase
+          .rpc('get_generated_scripts', { user_id_param: user.id })
+          .limit(5);
+            
+        if (scriptsError) {
+          console.error("Error fetching scripts:", scriptsError);
+        } else if (scriptsData) {
+          setScripts(scriptsData as GeneratedScript[]);
+        }
+      } catch (error) {
+        console.error("Error fetching generated scripts:", error);
+        // Silently handle this error as the table might not exist yet
+        setScripts(null);
       }
       
     } catch (error) {
@@ -186,7 +190,7 @@ export default function Dashboard() {
           {/* Weekly Calendar Grid */}
           <WeeklyCalendarGrid strategy={strategy} loading={loading} />
           
-          {/* Content Generator Section - New component replacing the old GenerateContentSection */}
+          {/* Content Generator Section */}
           <ContentGeneratorSection 
             strategy={strategy} 
             loading={loading} 
