@@ -1,7 +1,9 @@
 
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StrategyData } from "@/types/dashboard";
+import { FullStrategyModal } from "./FullStrategyModal";
 
 interface StrategyOverviewCardProps {
   strategy: StrategyData | null;
@@ -9,6 +11,8 @@ interface StrategyOverviewCardProps {
 }
 
 export const StrategyOverviewCard = ({ strategy, loading }: StrategyOverviewCardProps) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   if (loading) {
     return (
       <Card className="mb-6">
@@ -90,9 +94,16 @@ export const StrategyOverviewCard = ({ strategy, loading }: StrategyOverviewCard
         </div>
         
         <div className="pt-2 flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1">View Full Plan</Button>
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => setIsModalOpen(true)}>View Full Plan</Button>
           <Button variant="outline" size="sm" className="flex-1">Regenerate</Button>
         </div>
+
+        {/* Full Strategy Modal */}
+        <FullStrategyModal 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+          fullPlanText={strategy.full_plan_text} 
+        />
       </CardContent>
     </Card>
   );

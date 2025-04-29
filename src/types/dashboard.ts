@@ -7,6 +7,7 @@ export interface StrategyData {
   posting_frequency?: string;
   creator_style?: string;
   content_breakdown?: Record<string, number>;
+  full_plan_text?: string;
 }
 
 export interface ProgressData {
