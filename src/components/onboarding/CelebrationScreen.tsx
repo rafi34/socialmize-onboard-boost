@@ -9,14 +9,25 @@ import { Icons } from "@/components/Icons";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const CelebrationScreen = () => {
   const { completeOnboarding, isLoading, onboardingAnswers } = useOnboarding();
+  const { user } = useAuth();
   const [showConfetti, setShowConfetti] = useState(true);
   const [generatingStrategy, setGeneratingStrategy] = useState(false);
   const navigate = useNavigate();
 
   const handleComplete = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication error",
+        description: "You must be logged in to complete onboarding.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     try {
       setGeneratingStrategy(true);
       
@@ -44,6 +55,7 @@ export const CelebrationScreen = () => {
         if (generatedStrategy?.strategy) {
           // Save the strategy to the database
           const { error: saveError } = await supabase.from('strategy_profiles').insert({
+            user_id: user.id,
             experience_level: generatedStrategy.strategy.experience_level,
             content_types: generatedStrategy.strategy.content_types,
             weekly_calendar: generatedStrategy.strategy.weekly_calendar,
@@ -63,6 +75,7 @@ export const CelebrationScreen = () => {
           
           // Create initial progress tracking entry
           const { error: progressError } = await supabase.from('progress_tracking').insert({
+            user_id: user.id,
             current_xp: 100,
             current_level: 1,
             streak_days: 1,
