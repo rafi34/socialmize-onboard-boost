@@ -212,6 +212,8 @@ export type Database = {
           first_five_scripts: Json | null
           full_plan_text: string | null
           id: string
+          niche_topic: string | null
+          topic_ideas: Json | null
           updated_at: string
           user_id: string
           weekly_calendar: Json | null
@@ -223,6 +225,8 @@ export type Database = {
           first_five_scripts?: Json | null
           full_plan_text?: string | null
           id?: string
+          niche_topic?: string | null
+          topic_ideas?: Json | null
           updated_at?: string
           user_id: string
           weekly_calendar?: Json | null
@@ -234,9 +238,35 @@ export type Database = {
           first_five_scripts?: Json | null
           full_plan_text?: string | null
           id?: string
+          niche_topic?: string | null
+          topic_ideas?: Json | null
           updated_at?: string
           user_id?: string
           weekly_calendar?: Json | null
+        }
+        Relationships: []
+      }
+      used_topics: {
+        Row: {
+          content_type: string
+          id: string
+          topic: string
+          used_at: string
+          user_id: string
+        }
+        Insert: {
+          content_type: string
+          id?: string
+          topic: string
+          used_at?: string
+          user_id: string
+        }
+        Update: {
+          content_type?: string
+          id?: string
+          topic?: string
+          used_at?: string
+          user_id?: string
         }
         Relationships: []
       }

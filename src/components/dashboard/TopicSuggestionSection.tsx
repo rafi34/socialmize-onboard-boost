@@ -41,22 +41,27 @@ export const TopicSuggestionSection = ({ onSelectTopic }: TopicSuggestionSection
           topicIdeas.unshift(data.niche_topic);
         }
         
-        // Get used topics to filter them out
-        const { data: usedTopics, error: usedError } = await supabase
-          .from('used_topics')
-          .select('topic')
-          .eq('user_id', user.id);
-          
-        if (!usedError && usedTopics) {
-          const usedTopicsList = usedTopics.map(item => item.topic);
-          // Filter out used topics but keep a few of them (max 3)
-          const unusedTopics = topicIdeas.filter(topic => !usedTopicsList.includes(topic));
-          const someUsedTopics = topicIdeas
-            .filter(topic => usedTopicsList.includes(topic))
-            .slice(0, 3);
-          
-          setTopics([...unusedTopics, ...someUsedTopics]);
-        } else {
+        try {
+          // Get used topics to filter them out
+          const { data: usedTopics } = await supabase
+            .from('used_topics')
+            .select('topic')
+            .eq('user_id', user.id);
+            
+          if (usedTopics) {
+            const usedTopicsList = usedTopics.map(item => item.topic);
+            // Filter out used topics but keep a few of them (max 3)
+            const unusedTopics = topicIdeas.filter(topic => !usedTopicsList.includes(topic));
+            const someUsedTopics = topicIdeas
+              .filter(topic => usedTopicsList.includes(topic))
+              .slice(0, 3);
+            
+            setTopics([...unusedTopics, ...someUsedTopics]);
+          } else {
+            setTopics(topicIdeas);
+          }
+        } catch (e) {
+          console.error("Error fetching used topics:", e);
           setTopics(topicIdeas);
         }
       }
