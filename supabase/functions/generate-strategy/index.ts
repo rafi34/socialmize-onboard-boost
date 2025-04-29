@@ -42,7 +42,7 @@ serve(async (req) => {
         headers: {
           'Authorization': `Bearer ${openaiApiKey}`,
           'Content-Type': 'application/json',
-          'OpenAI-Beta': 'assistants=v1',
+          'OpenAI-Beta': 'assistants=v2', // Updated to v2
         },
         body: JSON.stringify({}),
       });
@@ -67,7 +67,7 @@ serve(async (req) => {
       headers: {
         'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v1',
+        'OpenAI-Beta': 'assistants=v2', // Updated to v2
       },
       body: JSON.stringify({
         role: 'user',
@@ -88,7 +88,7 @@ serve(async (req) => {
       headers: {
         'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v1',
+        'OpenAI-Beta': 'assistants=v2', // Updated to v2
       },
       body: JSON.stringify({
         assistant_id: assistantId,
@@ -118,7 +118,7 @@ serve(async (req) => {
         headers: {
           'Authorization': `Bearer ${openaiApiKey}`,
           'Content-Type': 'application/json',
-          'OpenAI-Beta': 'assistants=v1',
+          'OpenAI-Beta': 'assistants=v2', // Updated to v2
         },
       });
 
@@ -151,7 +151,7 @@ serve(async (req) => {
       headers: {
         'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v1',
+        'OpenAI-Beta': 'assistants=v2', // Updated to v2
       },
     });
 

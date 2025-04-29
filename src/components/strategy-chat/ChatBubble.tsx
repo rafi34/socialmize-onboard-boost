@@ -15,7 +15,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ role, message, isLoading
   const formattedMessage = message.split('\n').map((line, i) => (
     <React.Fragment key={i}>
       {line}
-      <br />
+      {i < message.split('\n').length - 1 && <br />}
     </React.Fragment>
   ));
   
