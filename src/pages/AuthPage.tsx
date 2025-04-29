@@ -1,6 +1,7 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +13,40 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuth();
+  const { user, signInWithEmail, signUpWithEmail, signInWithGoogle, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('onboarding_complete')
+            .eq('id', user.id)
+            .single();
+
+          if (error) {
+            console.error('Error fetching onboarding status:', error);
+            return;
+          }
+
+          // Redirect based on onboarding status
+          if (data.onboarding_complete) {
+            navigate('/dashboard', { replace: true });
+          } else {
+            navigate('/', { replace: true });
+          }
+        } catch (error) {
+          console.error('Error checking user status:', error);
+        }
+      }
+    };
+
+    if (!loading) {
+      checkUserStatus();
+    }
+  }, [user, loading, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +67,15 @@ export default function AuthPage() {
     await signInWithGoogle();
     setIsLoading(false);
   };
+
+  // Show loading while checking authentication
+  if (loading || user) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-socialmize-purple"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="container flex h-screen w-screen flex-col items-center justify-center">

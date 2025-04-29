@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { OnboardingRoute } from "@/components/OnboardingRoute";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import AuthPage from "./pages/AuthPage";
@@ -25,9 +26,9 @@ const App = () => (
             <Route 
               path="/" 
               element={
-                <ProtectedRoute>
+                <OnboardingRoute>
                   <Index />
-                </ProtectedRoute>
+                </OnboardingRoute>
               } 
             />
             <Route 
