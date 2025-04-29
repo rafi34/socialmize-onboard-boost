@@ -27,6 +27,28 @@ serve(async (req) => {
 
     console.log("Generating strategy for user with answers:", onboardingAnswers);
 
+    // Map posting frequency goals to human-readable format
+    const postingFrequencyMap: Record<string, string> = {
+      'multiple_daily': 'Multiple times daily',
+      'once_daily': 'Once daily',
+      'few_weekly': '3-5x per week',
+      'once_weekly': 'Once weekly',
+      'few_monthly': 'Few times monthly'
+    };
+
+    // Map creator styles to human-readable format
+    const creatorStyleMap: Record<string, string> = {
+      'bold_energetic': 'Bold & Energetic',
+      'calm_motivational': 'Calm & Motivational',
+      'funny_relatable': 'Funny & Relatable',
+      'inspirational_wise': 'Inspirational & Wise',
+      'raw_authentic': 'Raw & Authentic'
+    };
+
+    // Get human-readable posting frequency and creator style
+    const postingFrequency = postingFrequencyMap[onboardingAnswers.posting_frequency_goal] || '3-5x per week';
+    const creatorStyle = creatorStyleMap[onboardingAnswers.creator_style] || 'Authentic';
+
     // Create a more detailed prompt for OpenAI to ensure uniqueness
     const prompt = `
 You are a content strategist specializing in short-form social media growth. Your job is to create personalized content strategies and first 5 content scripts for users based on their creator profile.
@@ -122,6 +144,10 @@ IMPORTANT: Format your response as valid JSON with this structure:
       // Parse the JSON response
       strategyData = JSON.parse(generatedStrategy);
       
+      // Add the human-readable posting frequency and creator style
+      strategyData.posting_frequency = postingFrequency;
+      strategyData.creator_style = creatorStyle;
+      
       // Validate the structure of the response
       if (!strategyData.experience_level || !strategyData.content_types || 
           !strategyData.weekly_calendar || !strategyData.starter_scripts ||
@@ -150,7 +176,9 @@ IMPORTANT: Format your response as valid JSON with this structure:
             first_five_scripts: strategyData.starter_scripts,
             full_plan_text: strategyData.full_plan_text,
             niche_topic: onboardingAnswers.niche_topic,
-            topic_ideas: strategyData.topic_ideas
+            topic_ideas: strategyData.topic_ideas,
+            posting_frequency: postingFrequency,
+            creator_style: creatorStyle
           }),
         }
       ).then(res => {

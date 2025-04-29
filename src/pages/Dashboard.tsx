@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { useState, useEffect, useCallback } from "react";
@@ -58,7 +57,7 @@ export default function Dashboard() {
       // Try to fetch strategy from database
       const { data: strategyData, error: strategyError } = await supabase
         .from('strategy_profiles')
-        .select('id, user_id, experience_level, content_types, weekly_calendar, first_five_scripts, full_plan_text, niche_topic, topic_ideas')
+        .select('id, user_id, experience_level, content_types, weekly_calendar, first_five_scripts, full_plan_text, niche_topic, topic_ideas, posting_frequency, creator_style')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -77,8 +76,9 @@ export default function Dashboard() {
           content_types: strategyData.content_types as string[],
           weekly_calendar: strategyData.weekly_calendar as Record<string, string[]>,
           starter_scripts: strategyData.first_five_scripts as { title: string; script: string }[],
-          posting_frequency: "3x per week", // This would come from the DB in a real app
-          creator_style: "Authentic & Educational", // This would come from the DB in a real app
+          // Use the dynamic values from DB or provide fallbacks if not available
+          posting_frequency: strategyData.posting_frequency || "3-5x per week",
+          creator_style: strategyData.creator_style || "Authentic",
           content_breakdown: {
             "Duet": 2,
             "Meme": 1,
