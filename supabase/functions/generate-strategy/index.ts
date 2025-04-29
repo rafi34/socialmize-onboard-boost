@@ -38,6 +38,7 @@ USER INPUTS:
 - Posting Frequency: ${onboardingAnswers.posting_frequency_goal || "Not specified"}
 - Existing Content: ${onboardingAnswers.existing_content !== null ? String(onboardingAnswers.existing_content) : "Not specified"}
 - Shooting Preference: ${onboardingAnswers.shooting_preference || "Not specified"}
+- Content Niche/Topic: ${onboardingAnswers.niche_topic || "Not specified"}
 
 OUTPUT:
 1. Define their Experience Level (Beginner / Intermediate / Advanced) based on inputs.
@@ -49,6 +50,7 @@ OUTPUT:
     - Friendly conversational tone.
     - End with a looping statement or CTA.
 5. Create a full plan text that outlines the entire strategy in a human-readable format.
+6. Generate a list of 20 content topic ideas specifically for their niche or topic area.
 
 Make the style motivational and practical, easy to shoot for the user based on their equipment and experience.
 
@@ -72,7 +74,12 @@ IMPORTANT: Format your response as valid JSON with this structure:
     },
     ...and so on for all 5 scripts
   ],
-  "full_plan_text": "Complete human-readable strategy plan with all details..."
+  "full_plan_text": "Complete human-readable strategy plan with all details...",
+  "topic_ideas": [
+    "Topic idea 1",
+    "Topic idea 2",
+    ...and so on for all 20 topic ideas
+  ]
 }
 `;
 
@@ -114,7 +121,8 @@ IMPORTANT: Format your response as valid JSON with this structure:
       
       // Validate the structure of the response
       if (!strategyData.experience_level || !strategyData.content_types || 
-          !strategyData.weekly_calendar || !strategyData.starter_scripts) {
+          !strategyData.weekly_calendar || !strategyData.starter_scripts ||
+          !strategyData.topic_ideas) {
         throw new Error("Strategy data is missing required fields");
       }
       
@@ -137,7 +145,9 @@ IMPORTANT: Format your response as valid JSON with this structure:
             content_types: strategyData.content_types,
             weekly_calendar: strategyData.weekly_calendar,
             first_five_scripts: strategyData.starter_scripts,
-            full_plan_text: strategyData.full_plan_text
+            full_plan_text: strategyData.full_plan_text,
+            niche_topic: onboardingAnswers.niche_topic,
+            topic_ideas: strategyData.topic_ideas
           }),
         }
       ).then(res => {

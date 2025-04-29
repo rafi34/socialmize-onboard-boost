@@ -41,6 +41,7 @@ export interface OnboardingAnswers {
   shooting_preference: ShootingPreference | null;
   shooting_schedule?: Date | null;
   shooting_reminder?: boolean | null;
+  niche_topic?: string | null;
   onboarding_complete: boolean;
   profile_progress: number;
 }
@@ -107,13 +108,20 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   },
   {
     id: 6,
-    title: "Shooting Mode",
-    description: "How do you film your content?",
-    progress: 80,
+    title: "Content Niche",
+    description: "What do you create content about?", 
+    progress: 75,
     xpGain: 15,
   },
   {
     id: 7,
+    title: "Shooting Mode",
+    description: "How do you film your content?",
+    progress: 90,
+    xpGain: 15,
+  },
+  {
+    id: 8,
     title: "You're an OG Creator!",
     description: "Ready for your first viral moment",
     progress: 100,

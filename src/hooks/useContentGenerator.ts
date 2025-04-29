@@ -10,6 +10,7 @@ export interface GenerateContentParams {
   type: ContentType;
   additional_input?: string;
   creator_style?: string;
+  topic?: string;
 }
 
 export function useContentGenerator() {
@@ -20,7 +21,8 @@ export function useContentGenerator() {
   const generateContent = async ({
     type,
     additional_input = "",
-    creator_style
+    creator_style = "",
+    topic = ""
   }: GenerateContentParams) => {
     setIsGenerating(true);
     setError(null);
@@ -38,7 +40,8 @@ export function useContentGenerator() {
           user_id: userId,
           type,
           additional_input,
-          creator_style
+          creator_style,
+          topic
         }
       });
 

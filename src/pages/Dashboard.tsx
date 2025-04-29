@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { useState, useEffect, useCallback } from "react";
@@ -14,6 +15,7 @@ import { ReminderCard } from "@/components/dashboard/ReminderCard";
 import { LevelProgressCard } from "@/components/dashboard/LevelProgressCard";
 import { ScriptsSection } from "@/components/dashboard/ScriptsSection";
 import { Navigate } from "react-router-dom";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -52,7 +54,7 @@ export default function Dashboard() {
       // Try to fetch strategy from database
       const { data: strategyData, error: strategyError } = await supabase
         .from('strategy_profiles')
-        .select('id, user_id, experience_level, content_types, weekly_calendar, first_five_scripts, full_plan_text')
+        .select('id, user_id, experience_level, content_types, weekly_calendar, first_five_scripts, full_plan_text, niche_topic, topic_ideas')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -79,7 +81,9 @@ export default function Dashboard() {
             "Carousel": 2,
             "Voiceover": 1
           },
-          full_plan_text: strategyData.full_plan_text
+          full_plan_text: strategyData.full_plan_text,
+          niche_topic: strategyData.niche_topic,
+          topic_ideas: strategyData.topic_ideas as string[]
         };
         setStrategy(processedStrategy);
       } else {
@@ -220,5 +224,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
