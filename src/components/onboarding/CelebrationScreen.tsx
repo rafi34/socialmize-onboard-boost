@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/onboarding/ProgressBar";
 import { XPDisplay } from "@/components/onboarding/XPDisplay";
@@ -57,7 +56,7 @@ export const CelebrationScreen = () => {
           toast({
             title: "Strategy generation incomplete",
             description: "Your strategy was created but may be missing some details.",
-            variant: "warning"
+            variant: "default"
           });
           navigate('/dashboard');
         }
