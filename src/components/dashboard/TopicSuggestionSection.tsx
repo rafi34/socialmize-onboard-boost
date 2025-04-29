@@ -37,8 +37,14 @@ export const TopicSuggestionSection = ({ onSelectTopic }: TopicSuggestionSection
         setTopics([]);
       } else if (data) {
         // Ensure topic_ideas is an array and convert all items to strings
-        const rawTopicIdeas = Array.isArray(data.topic_ideas) ? data.topic_ideas : [];
-        const topicIdeas = rawTopicIdeas.map(topic => String(topic));
+        const topicIdeas: string[] = [];
+        
+        if (Array.isArray(data.topic_ideas)) {
+          // Convert all items to strings
+          data.topic_ideas.forEach((topic: any) => {
+            topicIdeas.push(String(topic));
+          });
+        }
         
         // If we have a niche topic, add it to the list
         if (data.niche_topic && typeof data.niche_topic === 'string' && !topicIdeas.includes(data.niche_topic)) {
