@@ -6,6 +6,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { StrategyData } from "@/types/dashboard";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DayContentProps } from "react-day-picker";
 
 interface WeeklyCalendarGridProps {
   strategy: StrategyData | null;
@@ -83,24 +84,24 @@ export const WeeklyCalendarGrid = ({ strategy, loading }: WeeklyCalendarGridProp
         </div>
         
         <Calendar
-          mode="default"
+          mode="single"
           selected={date}
           onSelect={(newDate) => newDate && setDate(newDate)}
           className="border rounded-md"
           components={{
-            DayContent: ({ day, date }) => {
-              const dayStr = format(date, 'EEEE').toLowerCase();
-              const { content } = getContentStatusForDay(dayStr);
+            DayContent: (props: DayContentProps) => {
+              const dateStr = props.date ? format(props.date, 'EEEE').toLowerCase() : '';
+              const { content } = getContentStatusForDay(dateStr);
               
               return (
                 <div 
-                  className={getDayClassName(dayStr)}
+                  className={getDayClassName(dateStr)}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDayClick(dayStr);
+                    handleDayClick(dateStr);
                   }}
                 >
-                  <div>{day}</div>
+                  <div>{props.date ? format(props.date, 'd') : ''}</div>
                   {content.length > 0 && (
                     <div className="mt-1">
                       {content.slice(0, 1).map((item, i) => (
