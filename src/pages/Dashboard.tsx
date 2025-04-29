@@ -7,7 +7,7 @@ import { StrategyData, ProgressData, ReminderData, GeneratedScript } from "@/typ
 import { CreatorSummaryHeader } from "@/components/dashboard/CreatorSummaryHeader";
 import { StrategyOverviewCard } from "@/components/dashboard/StrategyOverviewCard";
 import { WeeklyCalendarGrid } from "@/components/dashboard/WeeklyCalendarGrid";
-import { GenerateContentSection } from "@/components/dashboard/GenerateContentSection";
+import { ContentGeneratorSection } from "@/components/dashboard/ContentGeneratorSection";
 import { TodaysMissionCard } from "@/components/dashboard/TodaysMissionCard";
 import { ScriptPreviewsSection } from "@/components/dashboard/ScriptPreviewsSection";
 import { ReminderCard } from "@/components/dashboard/ReminderCard";
@@ -133,26 +133,19 @@ export default function Dashboard() {
         setReminder(reminderData as ReminderData);
       }
       
-      // In a real app, we would fetch generated scripts here
-      // For now, using mock data
-      setScripts([
-        {
-          id: '1',
-          title: 'The AI Revolution',
-          hook: "Want to earn passive income with AI? Here is what I learned...",
-          content: 'Full script content here...',
-          format_type: 'Carousel',
-          created_at: new Date().toISOString()
-        },
-        {
-          id: '2',
-          title: 'Morning Routine',
-          hook: "My 5-minute morning routine that changed everything...",
-          content: 'Full script content here...',
-          format_type: 'Talking Head',
-          created_at: new Date().toISOString()
-        },
-      ]);
+      // Fetch generated scripts
+      const { data: scriptsData, error: scriptsError } = await supabase
+        .from('generated_scripts')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+          
+      if (scriptsError) {
+        console.error("Error fetching scripts:", scriptsError);
+      } else if (scriptsData) {
+        setScripts(scriptsData as GeneratedScript[]);
+      }
       
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -193,13 +186,17 @@ export default function Dashboard() {
           {/* Weekly Calendar Grid */}
           <WeeklyCalendarGrid strategy={strategy} loading={loading} />
           
-          {/* Generate Content Section */}
-          <GenerateContentSection strategy={strategy} loading={loading} />
+          {/* Content Generator Section - New component replacing the old GenerateContentSection */}
+          <ContentGeneratorSection 
+            strategy={strategy} 
+            loading={loading} 
+            refetchScripts={fetchUserData} 
+          />
           
           {/* Today's Mission Card */}
           <TodaysMissionCard strategy={strategy} loading={loading} />
           
-          {/* Scripts Section - Reusing from existing components */}
+          {/* Scripts Section - For starter scripts */}
           <Card className="mb-6">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Your Starter Scripts</CardTitle>
@@ -209,7 +206,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
           
-          {/* Script Previews Section */}
+          {/* Script Previews Section - For generated scripts */}
           <ScriptPreviewsSection scripts={scripts} loading={loading} />
           
           {/* Reminder Card - Only shown if a reminder exists */}

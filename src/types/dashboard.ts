@@ -29,9 +29,10 @@ export interface ReminderData {
 
 export interface GeneratedScript {
   id: string;
+  user_id?: string;
   title: string;
-  hook: string;
   content: string;
   format_type: string;
   created_at: string;
+  hook?: string;
 }
