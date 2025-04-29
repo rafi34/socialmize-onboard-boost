@@ -1,17 +1,44 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { StrategyData } from "@/types/dashboard";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface StrategySectionProps {
   strategy: StrategyData | null;
   loading: boolean;
+  onRegenerateClick?: () => void;
 }
 
-export const StrategySection = ({ strategy, loading }: StrategySectionProps) => {
+export const StrategySection = ({ strategy, loading, onRegenerateClick }: StrategySectionProps) => {
+  const [loadingMessages, setLoadingMessages] = useState<string[]>([
+    "Creating your personalized content strategy...",
+    "Analyzing your creator profile...",
+    "Crafting content recommendations based on your style...",
+    "Building your optimal posting schedule...",
+    "Generating your first script ideas..."
+  ]);
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
+
+  // Rotate through loading messages
+  useEffect(() => {
+    if (loading) {
+      const interval = setInterval(() => {
+        setCurrentMessageIndex(prev => (prev + 1) % loadingMessages.length);
+      }, 3500);
+      return () => clearInterval(interval);
+    }
+  }, [loading, loadingMessages.length]);
+
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
+      <div className="flex flex-col items-center justify-center py-12 space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-socialmize-purple"></div>
+        <p className="text-center text-lg font-medium">{loadingMessages[currentMessageIndex]}</p>
+        <p className="text-sm text-muted-foreground text-center">
+          This might take a moment as we're creating a custom strategy for you
+        </p>
       </div>
     );
   }
@@ -20,7 +47,13 @@ export const StrategySection = ({ strategy, loading }: StrategySectionProps) => 
     return (
       <div className="text-center py-12">
         <h3 className="text-xl font-medium mb-2">Strategy Not Generated Yet</h3>
-        <p className="text-muted-foreground">Please complete the onboarding process to generate your strategy.</p>
+        <p className="text-muted-foreground mb-6">We couldn't generate your strategy. Please try again.</p>
+        {onRegenerateClick && (
+          <Button onClick={onRegenerateClick} className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Generate Strategy
+          </Button>
+        )}
       </div>
     );
   }

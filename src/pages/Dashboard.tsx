@@ -16,6 +16,7 @@ import { LevelProgressCard } from "@/components/dashboard/LevelProgressCard";
 import { ScriptsSection } from "@/components/dashboard/ScriptsSection";
 import { Navigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -25,6 +26,9 @@ export default function Dashboard() {
   const [scripts, setScripts] = useState<GeneratedScript[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
+  const [showContent, setShowContent] = useState(false);
+  const [isGeneratingStrategy, setIsGeneratingStrategy] = useState(false);
+  const [waitingMessage, setWaitingMessage] = useState("");
 
   const fetchUserData = useCallback(async () => {
     if (!user) return;
@@ -86,8 +90,26 @@ export default function Dashboard() {
           topic_ideas: strategyData.topic_ideas as string[]
         };
         setStrategy(processedStrategy);
+        setIsGeneratingStrategy(false);
       } else {
-        // Otherwise, try to use localStorage as fallback
+        // If no strategy found, check if we need to generate it
+        const { data: onboardingData, error: onboardingError } = await supabase
+          .from('onboarding_answers')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+          
+        if (onboardingError) {
+          console.error("Error fetching onboarding data:", onboardingError);
+        }
+        
+        if (onboardingData) {
+          // We have onboarding data but no strategy - initiate generation
+          setIsGeneratingStrategy(true);
+          generateStrategy(onboardingData);
+        }
+        
+        // Check localStorage as fallback
         const storedStrategy = localStorage.getItem('userStrategy');
         if (storedStrategy) {
           try {
@@ -161,8 +183,82 @@ export default function Dashboard() {
       });
     } finally {
       setLoading(false);
+      
+      // Set a timeout to show content after 15s even if strategy is still generating
+      if (isGeneratingStrategy) {
+        setTimeout(() => {
+          setShowContent(true);
+        }, 15000);
+      } else {
+        setShowContent(true);
+      }
     }
   }, [user]);
+
+  // Generate waiting message from OpenAI
+  const generateWaitingMessage = useCallback(async () => {
+    try {
+      if (!user) return;
+      
+      const { data, error } = await supabase.functions.invoke("generate-waiting-message", {
+        body: { userId: user.id }
+      });
+      
+      if (error) {
+        console.error("Error generating waiting message:", error);
+        return;
+      }
+      
+      if (data?.message) {
+        setWaitingMessage(data.message);
+      }
+    } catch (error) {
+      console.error("Error generating waiting message:", error);
+    }
+  }, [user]);
+
+  // Generate strategy function
+  const generateStrategy = async (onboardingData: any) => {
+    try {
+      if (!user) return;
+      
+      // Generate custom waiting message while we wait
+      generateWaitingMessage();
+      
+      const { data, error } = await supabase.functions.invoke("generate-strategy", {
+        body: { onboardingAnswers: onboardingData }
+      });
+      
+      if (error) {
+        console.error("Error generating strategy:", error);
+        toast({
+          title: "Strategy Generation Failed",
+          description: "We couldn't generate your content strategy. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      if (data?.strategy) {
+        // Strategy generated successfully, fetch the data
+        fetchUserData();
+        toast({
+          title: "Strategy Generated",
+          description: "Your personalized content strategy is ready!",
+        });
+      }
+    } catch (error) {
+      console.error("Error generating strategy:", error);
+      toast({
+        title: "Strategy Generation Failed",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingStrategy(false);
+      setShowContent(true);
+    }
+  };
 
   useEffect(() => {
     fetchUserData();
@@ -171,6 +267,29 @@ export default function Dashboard() {
   // Redirect if onboarding is not complete
   if (profileComplete === false) {
     return <Navigate to="/" replace />;
+  }
+
+  // Show loading screen if we're generating strategy and haven't timed out yet
+  if (isGeneratingStrategy && !showContent) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
+        <Navbar />
+        <main className="flex-grow flex flex-col items-center justify-center p-6">
+          <div className="w-full max-w-md text-center space-y-6">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-socialmize-purple mx-auto"></div>
+            <h1 className="text-2xl font-bold">Generating Your Content Strategy</h1>
+            
+            {waitingMessage ? (
+              <p className="text-lg">{waitingMessage}</p>
+            ) : (
+              <p className="text-lg">Our AI is analyzing your profile to create a personalized content strategy...</p>
+            )}
+            
+            <p className="text-sm text-muted-foreground">This takes about 15-30 seconds. You'll be redirected automatically when it's ready.</p>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   return (
