@@ -211,11 +211,13 @@ export type Database = {
         Row: {
           content_types: Json | null
           created_at: string
+          creator_style: string | null
           experience_level: string | null
           first_five_scripts: Json | null
           full_plan_text: string | null
           id: string
           niche_topic: string | null
+          posting_frequency: string | null
           topic_ideas: Json | null
           updated_at: string
           user_id: string
@@ -224,11 +226,13 @@ export type Database = {
         Insert: {
           content_types?: Json | null
           created_at?: string
+          creator_style?: string | null
           experience_level?: string | null
           first_five_scripts?: Json | null
           full_plan_text?: string | null
           id?: string
           niche_topic?: string | null
+          posting_frequency?: string | null
           topic_ideas?: Json | null
           updated_at?: string
           user_id: string
@@ -237,11 +241,13 @@ export type Database = {
         Update: {
           content_types?: Json | null
           created_at?: string
+          creator_style?: string | null
           experience_level?: string | null
           first_five_scripts?: Json | null
           full_plan_text?: string | null
           id?: string
           niche_topic?: string | null
+          posting_frequency?: string | null
           topic_ideas?: Json | null
           updated_at?: string
           user_id?: string
