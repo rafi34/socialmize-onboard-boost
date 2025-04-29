@@ -9,7 +9,75 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      onboarding_answers: {
+        Row: {
+          content_format_preference: string | null
+          created_at: string
+          creator_mission: string | null
+          creator_style: string | null
+          existing_content: string | null
+          id: string
+          posting_frequency_goal: string | null
+          shooting_preference: string | null
+          shooting_schedule: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content_format_preference?: string | null
+          created_at?: string
+          creator_mission?: string | null
+          creator_style?: string | null
+          existing_content?: string | null
+          id?: string
+          posting_frequency_goal?: string | null
+          shooting_preference?: string | null
+          shooting_schedule?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content_format_preference?: string | null
+          created_at?: string
+          creator_mission?: string | null
+          creator_style?: string | null
+          existing_content?: string | null
+          id?: string
+          posting_frequency_goal?: string | null
+          shooting_preference?: string | null
+          shooting_schedule?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          onboarding_complete: boolean
+          profile_progress: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id: string
+          onboarding_complete?: boolean
+          profile_progress?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          onboarding_complete?: boolean
+          profile_progress?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

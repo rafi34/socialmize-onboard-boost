@@ -1,7 +1,10 @@
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { OnboardingAnswers, UserProgress, ONBOARDING_STEPS } from "@/types/onboarding";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface OnboardingContextType {
   currentStep: number;
@@ -12,7 +15,8 @@ interface OnboardingContextType {
   previousStep: () => void;
   updateAnswer: <K extends keyof OnboardingAnswers>(key: K, value: OnboardingAnswers[K]) => void;
   gainXP: (amount: number) => void;
-  completeOnboarding: () => void;
+  completeOnboarding: () => Promise<void>;
+  isLoading: boolean;
 }
 
 const initialOnboardingAnswers: OnboardingAnswers = {
@@ -42,7 +46,72 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [currentStep, setCurrentStep] = useState(0);
   const [onboardingAnswers, setOnboardingAnswers] = useState<OnboardingAnswers>(initialOnboardingAnswers);
   const [userProgress, setUserProgress] = useState<UserProgress>(initialUserProgress);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Load existing onboarding answers if available
+  useEffect(() => {
+    if (user) {
+      fetchOnboardingAnswers();
+    }
+  }, [user]);
+
+  const fetchOnboardingAnswers = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('onboarding_complete, profile_progress')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+      } else if (profile) {
+        // Update onboarding status from profile
+        setOnboardingAnswers(prev => ({
+          ...prev,
+          onboarding_complete: profile.onboarding_complete,
+          profile_progress: profile.profile_progress
+        }));
+
+        // If onboarding is already complete, redirect to dashboard
+        if (profile.onboarding_complete) {
+          navigate('/dashboard');
+        }
+      }
+
+      const { data: answers, error: answersError } = await supabase
+        .from('onboarding_answers')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (answersError && answersError.code !== 'PGRST116') { // PGRST116 is "no rows returned" which is fine
+        console.error('Error fetching onboarding answers:', answersError);
+      } else if (answers) {
+        // Update answers from database
+        setOnboardingAnswers(prev => ({
+          ...prev,
+          creator_mission: answers.creator_mission,
+          creator_style: answers.creator_style,
+          content_format_preference: answers.content_format_preference,
+          posting_frequency_goal: answers.posting_frequency_goal,
+          existing_content: answers.existing_content,
+          shooting_preference: answers.shooting_preference,
+          shooting_schedule: answers.shooting_schedule
+        }));
+      }
+    } catch (error) {
+      console.error('Error in fetchOnboardingAnswers:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const nextStep = () => {
     if (currentStep < ONBOARDING_STEPS.length - 1) {
@@ -56,11 +125,33 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         profile_progress: progress
       }));
 
+      // Save progress to database
+      if (user) {
+        updateProfileProgress(progress);
+      }
+
       // Award XP
       const xpGain = ONBOARDING_STEPS[nextStepValue].xpGain;
       if (xpGain > 0) {
         gainXP(xpGain);
       }
+    }
+  };
+
+  const updateProfileProgress = async (progress: number) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ profile_progress: progress })
+        .eq('id', user.id);
+        
+      if (error) {
+        console.error('Error updating profile progress:', error);
+      }
+    } catch (error) {
+      console.error('Error in updateProfileProgress:', error);
     }
   };
 
@@ -111,22 +202,109 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  const completeOnboarding = () => {
-    setOnboardingAnswers(prev => ({
-      ...prev,
-      onboarding_complete: true,
-      profile_progress: 100
-    }));
+  const completeOnboarding = async () => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    
+    try {
+      // Update profile to mark onboarding as complete
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          onboarding_complete: true,
+          profile_progress: 100
+        })
+        .eq('id', user.id);
+        
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+        throw profileError;
+      }
+      
+      // Save or update onboarding answers
+      const { data: existingAnswers, error: checkError } = await supabase
+        .from('onboarding_answers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+        
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "no rows returned" which is fine
+        console.error('Error checking existing answers:', checkError);
+        throw checkError;
+      }
+      
+      // Either update or insert based on whether answers already exist
+      let error;
+      if (existingAnswers) {
+        const { error: updateError } = await supabase
+          .from('onboarding_answers')
+          .update({
+            creator_mission: onboardingAnswers.creator_mission,
+            creator_style: onboardingAnswers.creator_style,
+            content_format_preference: onboardingAnswers.content_format_preference,
+            posting_frequency_goal: onboardingAnswers.posting_frequency_goal,
+            existing_content: onboardingAnswers.existing_content,
+            shooting_preference: onboardingAnswers.shooting_preference,
+            shooting_schedule: onboardingAnswers.shooting_schedule,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingAnswers.id);
+          
+        error = updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('onboarding_answers')
+          .insert({
+            user_id: user.id,
+            creator_mission: onboardingAnswers.creator_mission,
+            creator_style: onboardingAnswers.creator_style,
+            content_format_preference: onboardingAnswers.content_format_preference,
+            posting_frequency_goal: onboardingAnswers.posting_frequency_goal,
+            existing_content: onboardingAnswers.existing_content,
+            shooting_preference: onboardingAnswers.shooting_preference,
+            shooting_schedule: onboardingAnswers.shooting_schedule
+          });
+          
+        error = insertError;
+      }
+      
+      if (error) {
+        console.error('Error saving onboarding answers:', error);
+        throw error;
+      }
 
-    // Award OG Creator badge
-    setUserProgress(prev => ({
-      ...prev,
-      badges: [...prev.badges, "og_creator"]
-    }));
+      // Update local state
+      setOnboardingAnswers(prev => ({
+        ...prev,
+        onboarding_complete: true,
+        profile_progress: 100
+      }));
 
-    // In a real app, we would save all data to the database here
-    console.log("Onboarding complete! Answers:", onboardingAnswers);
-    console.log("User progress:", userProgress);
+      // Award OG Creator badge
+      setUserProgress(prev => ({
+        ...prev,
+        badges: [...prev.badges, "og_creator"]
+      }));
+
+      // Navigate to dashboard on completion
+      navigate('/dashboard');
+      
+      toast({
+        title: "Onboarding Complete!",
+        description: "Welcome to SocialMize! You're ready to start creating viral content.",
+      });
+      
+    } catch (error) {
+      console.error('Error in completeOnboarding:', error);
+      toast({
+        title: "Error Completing Onboarding",
+        description: "There was a problem saving your information. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -140,7 +318,8 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         previousStep,
         updateAnswer,
         gainXP,
-        completeOnboarding
+        completeOnboarding,
+        isLoading
       }}
     >
       {children}

@@ -1,65 +1,57 @@
 
-import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/onboarding/ProgressBar";
 import { XPDisplay } from "@/components/onboarding/XPDisplay";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { Confetti } from "@/components/onboarding/Confetti";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Icons } from "@/components/Icons";
 
 export const CelebrationScreen = () => {
-  const { completeOnboarding, userProgress } = useOnboarding();
-  const navigate = useNavigate();
+  const { completeOnboarding, isLoading } = useOnboarding();
+  const [showConfetti, setShowConfetti] = useState(true);
 
-  useEffect(() => {
-    completeOnboarding();
-  }, [completeOnboarding]);
-
-  const handleContinue = () => {
-    navigate("/dashboard");
+  const handleComplete = async () => {
+    await completeOnboarding();
   };
 
   return (
-    <div className="onboarding-card text-center relative">
-      <Confetti particleCount={100} />
+    <div className="onboarding-card text-center">
+      {showConfetti && <Confetti onComplete={() => setShowConfetti(false)} />}
       
       <XPDisplay />
       
-      <div className="my-8 animate-scale-in">
-        <div className="inline-block bg-gradient-to-r from-socialmize-purple to-socialmize-blue p-3 rounded-full mb-4">
-          <div className="bg-white rounded-full p-4 flex items-center justify-center">
-            <div className="text-4xl">👑</div>
-          </div>
+      <div className="mt-8 mb-10">
+        <div className="badge-unlock mb-4">
+          <div className="badge-icon text-4xl">🏆</div>
+          <div className="badge-label text-sm font-medium text-socialmize-purple">OG Creator Badge Unlocked!</div>
         </div>
         
-        <h1 className="text-3xl font-bold mb-2">
-          You're Officially an OG Creator!
-        </h1>
-        
-        <div className="font-medium text-xl text-socialmize-purple mb-2">
-          +100 XP Earned
-        </div>
-        
-        <div className="text-lg mb-6">
-          Your customized content strategy is ready!
-        </div>
+        <h1 className="text-3xl font-bold mb-3">You're an OG Creator!</h1>
+        <p className="text-lg">Ready for your first viral moment?</p>
       </div>
       
-      <div className="bg-socialmize-light-purple rounded-xl p-4 mb-6">
-        <div className="text-lg font-semibold mb-2">🏆 OG Creator Badge Unlocked</div>
-        <div className="text-sm">
-          You've just joined the founding members of SocialMize!
-          Your customized scripts are now ready.
-        </div>
+      <div className="mb-8">
+        <p className="text-muted-foreground mb-6">
+          Your personalized strategy and first 5 content scripts are ready
+        </p>
+        
+        <Button 
+          onClick={handleComplete}
+          className="bg-socialmize-purple hover:bg-socialmize-dark-purple text-white font-semibold text-lg py-6 px-8 rounded-xl w-full"
+          size="lg"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            "Let's Build Your First Viral Moment"
+          )}
+        </Button>
       </div>
-      
-      <Button 
-        onClick={handleContinue}
-        className="bg-socialmize-purple hover:bg-socialmize-dark-purple text-white font-semibold text-lg py-6 px-8 rounded-xl"
-        size="lg"
-      >
-        Let's Build Your First Viral Moment
-      </Button>
       
       <ProgressBar />
     </div>
