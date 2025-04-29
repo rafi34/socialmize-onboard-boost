@@ -39,6 +39,36 @@ export type Database = {
         }
         Relationships: []
       }
+      generated_scripts: {
+        Row: {
+          content: string
+          created_at: string
+          format_type: string
+          hook: string | null
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          format_type: string
+          hook?: string | null
+          id?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          format_type?: string
+          hook?: string | null
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       onboarding_answers: {
         Row: {
           content_format_preference: string | null
@@ -215,7 +245,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_generated_scripts: {
+        Args: { user_id_param: string }
+        Returns: {
+          content: string
+          created_at: string
+          format_type: string
+          hook: string | null
+          id: string
+          title: string
+          user_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

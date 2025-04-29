@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { useState, useEffect, useCallback } from "react";
@@ -135,10 +134,9 @@ export default function Dashboard() {
       }
       
       try {
-        // Try to fetch generated scripts, but handle gracefully if table doesn't exist yet
+        // Use our new RPC function to fetch generated scripts
         const { data: scriptsData, error: scriptsError } = await supabase
-          .rpc('get_generated_scripts', { user_id_param: user.id })
-          .limit(5);
+          .rpc('get_generated_scripts', { user_id_param: user.id });
             
         if (scriptsError) {
           console.error("Error fetching scripts:", scriptsError);
@@ -147,7 +145,6 @@ export default function Dashboard() {
         }
       } catch (error) {
         console.error("Error fetching generated scripts:", error);
-        // Silently handle this error as the table might not exist yet
         setScripts(null);
       }
       
