@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { OnboardingAnswers, UserProgress, ONBOARDING_STEPS, CreatorMission, CreatorStyle, ContentFormat, PostingFrequency, ShootingPreference } from "@/types/onboarding";
@@ -29,7 +28,8 @@ const initialOnboardingAnswers: OnboardingAnswers = {
   shooting_schedule: null,
   shooting_reminder: null,
   onboarding_complete: false,
-  profile_progress: 0
+  profile_progress: 0,
+  niche_topic: null
 };
 
 const initialUserProgress: UserProgress = {
@@ -104,7 +104,8 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           existing_content: answers.existing_content === 'true' ? true : 
                            answers.existing_content === 'false' ? false : null,
           shooting_preference: answers.shooting_preference as ShootingPreference | null,
-          shooting_schedule: answers.shooting_schedule ? new Date(answers.shooting_schedule) : null
+          shooting_schedule: answers.shooting_schedule ? new Date(answers.shooting_schedule) : null,
+          niche_topic: answers.niche_topic || null
         }));
       }
     } catch (error) {
@@ -257,6 +258,7 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             existing_content: existingContent,
             shooting_preference: onboardingAnswers.shooting_preference,
             shooting_schedule: shootingSchedule,
+            niche_topic: onboardingAnswers.niche_topic,
             updated_at: new Date().toISOString()
           })
           .eq('id', existingAnswers.id);
@@ -273,7 +275,8 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             posting_frequency_goal: onboardingAnswers.posting_frequency_goal,
             existing_content: existingContent,
             shooting_preference: onboardingAnswers.shooting_preference,
-            shooting_schedule: shootingSchedule
+            shooting_schedule: shootingSchedule,
+            niche_topic: onboardingAnswers.niche_topic
           });
           
         error = insertError;

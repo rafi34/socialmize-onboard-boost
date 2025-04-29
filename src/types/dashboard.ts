@@ -1,4 +1,3 @@
-
 // Strategy and planning types
 export interface StrategyData {
   experience_level: string;
