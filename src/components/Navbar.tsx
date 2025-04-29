@@ -11,6 +11,45 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Link } from "react-router-dom";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  navigationMenuTriggerStyle,
+} from "@/components/ui/navigation-menu";
+import { cn } from "@/lib/utils";
+import { ChevronDown } from "lucide-react";
+import React from "react";
+
+// Create ListItem component for the navigation dropdown
+const ListItem = React.forwardRef<
+  React.ElementRef<"a">,
+  React.ComponentPropsWithoutRef<"a">
+>(({ className, title, children, ...props }, ref) => {
+  return (
+    <li>
+      <NavigationMenuLink asChild>
+        <a
+          ref={ref}
+          className={cn(
+            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+            className
+          )}
+          {...props}
+        >
+          <div className="text-sm font-medium leading-none">{title}</div>
+          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+            {children}
+          </p>
+        </a>
+      </NavigationMenuLink>
+    </li>
+  );
+});
+ListItem.displayName = "ListItem";
 
 export function Navbar() {
   const { user, signOut } = useAuth();
@@ -21,17 +60,50 @@ export function Navbar() {
   };
 
   return (
-    <header className="bg-background border-b">
+    <header className="bg-background border-b sticky top-0 z-50 backdrop-blur-lg bg-background/80 shadow-sm">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-6">
           <Link to="/" className="font-bold text-xl bg-gradient-to-r from-socialmize-purple to-socialmize-blue bg-clip-text text-transparent">
             SocialMize
           </Link>
-          <nav className="hidden md:flex gap-6">
-            <Link to="/dashboard" className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary">
-              Dashboard
-            </Link>
-          </nav>
+          
+          {user && (
+            <NavigationMenu className="hidden md:flex">
+              <NavigationMenuList>
+                <NavigationMenuItem>
+                  <Link to="/dashboard" className={navigationMenuTriggerStyle()}>
+                    Dashboard
+                  </Link>
+                </NavigationMenuItem>
+                
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger>Strategy</NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                      <ListItem
+                        href="/strategy-chat"
+                        title="Strategy Chat"
+                      >
+                        Chat with AI to develop your content strategy
+                      </ListItem>
+                      <ListItem
+                        href="/review-ideas"
+                        title="Content Ideas"
+                      >
+                        Review generated content ideas and implementation plan
+                      </ListItem>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+                
+                <NavigationMenuItem>
+                  <Link to="/settings" className={navigationMenuTriggerStyle()}>
+                    Settings
+                  </Link>
+                </NavigationMenuItem>
+              </NavigationMenuList>
+            </NavigationMenu>
+          )}
         </div>
 
         {user && (
@@ -57,6 +129,19 @@ export function Navbar() {
                     </p>
                   </div>
                 </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard">Dashboard</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/strategy-chat">Strategy Chat</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/review-ideas">Content Ideas</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/settings">Settings</Link>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut()}>
                   Log out

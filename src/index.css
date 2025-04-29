@@ -37,6 +37,15 @@
     --ring: 215 20.2% 65.1%;
  
     --radius: 0.5rem;
+    
+    --sidebar-width: 240px;
+    --sidebar-width-collapsed: 48px;
+    --sidebar-background: 240 10% 3.9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 240 4.9% 83.9%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 0 0% 98%;
   }
  
   .dark {
@@ -137,4 +146,22 @@
 
 .premium-header {
   @apply bg-gradient-to-r from-card to-background border-b border-border/40 shadow-sm;
+}
+
+/* Navigation styles */
+.nav-link {
+  @apply px-3 py-2 text-sm font-medium rounded-md transition-colors;
+  @apply text-gray-700 hover:bg-gray-100 hover:text-gray-900;
+  @apply dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100;
+}
+
+.nav-link.active {
+  @apply bg-socialmize-purple/10 text-socialmize-purple;
+  @apply dark:bg-socialmize-purple/20 dark:text-socialmize-light-purple;
+}
+
+/* Glassmorphism effects */
+.glass-panel {
+  @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border border-white/20 dark:border-gray-800/20;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
 }

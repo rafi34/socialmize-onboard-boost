@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { OnboardingRoute } from "@/components/OnboardingRoute";
+import { Navbar } from "@/components/Navbar";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
@@ -16,6 +17,15 @@ import StrategyChat from "./pages/StrategyChat";
 import ReviewIdeas from "./pages/ReviewIdeas";
 
 const queryClient = new QueryClient();
+
+const AppLayout = ({ children }: { children: React.ReactNode }) => (
+  <div className="flex flex-col min-h-screen">
+    <Navbar />
+    <div className="flex-1">
+      {children}
+    </div>
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -33,7 +43,9 @@ const App = () => (
               path="/" 
               element={
                 <OnboardingRoute>
-                  <Index />
+                  <AppLayout>
+                    <Index />
+                  </AppLayout>
                 </OnboardingRoute>
               } 
             />
@@ -43,7 +55,9 @@ const App = () => (
               path="/dashboard" 
               element={
                 <ProtectedRoute>
-                  <Dashboard />
+                  <AppLayout>
+                    <Dashboard />
+                  </AppLayout>
                 </ProtectedRoute>
               } 
             />
@@ -53,7 +67,9 @@ const App = () => (
               path="/settings" 
               element={
                 <ProtectedRoute>
-                  <Settings />
+                  <AppLayout>
+                    <Settings />
+                  </AppLayout>
                 </ProtectedRoute>
               } 
             />
@@ -63,7 +79,9 @@ const App = () => (
               path="/strategy-chat" 
               element={
                 <ProtectedRoute>
-                  <StrategyChat />
+                  <AppLayout>
+                    <StrategyChat />
+                  </AppLayout>
                 </ProtectedRoute>
               } 
             />
@@ -73,13 +91,19 @@ const App = () => (
               path="/review-ideas" 
               element={
                 <ProtectedRoute>
-                  <ReviewIdeas />
+                  <AppLayout>
+                    <ReviewIdeas />
+                  </AppLayout>
                 </ProtectedRoute>
               } 
             />
             
             {/* Catch-all not found route */}
-            <Route path="*" element={<NotFound />} />
+            <Route path="*" element={
+              <AppLayout>
+                <NotFound />
+              </AppLayout>
+            } />
           </Routes>
         </AuthProvider>
       </BrowserRouter>
