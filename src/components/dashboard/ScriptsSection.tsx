@@ -1,6 +1,10 @@
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { StrategyData } from "@/types/dashboard";
+import { Button } from "@/components/ui/button";
+import { Copy, CheckCircle } from "lucide-react";
+import { toast } from "@/components/ui/use-toast";
 
 interface ScriptsSectionProps {
   strategy: StrategyData | null;
@@ -8,6 +12,29 @@ interface ScriptsSectionProps {
 }
 
 export const ScriptsSection = ({ strategy, loading }: ScriptsSectionProps) => {
+  const [copiedScript, setCopiedScript] = useState<number | null>(null);
+
+  const copyToClipboard = (text: string, index: number) => {
+    navigator.clipboard.writeText(text).then(
+      () => {
+        setCopiedScript(index);
+        toast({
+          title: "Script copied!",
+          description: "The script has been copied to your clipboard.",
+        });
+        // Reset the copied state after 2 seconds
+        setTimeout(() => setCopiedScript(null), 2000);
+      },
+      () => {
+        toast({
+          title: "Copy failed",
+          description: "Failed to copy to clipboard. Please try again.",
+          variant: "destructive",
+        });
+      }
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -38,6 +65,25 @@ export const ScriptsSection = ({ strategy, loading }: ScriptsSectionProps) => {
               {script.script}
             </div>
           </CardContent>
+          <CardFooter>
+            <Button 
+              variant="outline" 
+              className="ml-auto flex gap-2 items-center"
+              onClick={() => copyToClipboard(script.script, index)}
+            >
+              {copiedScript === index ? (
+                <>
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  <span>Copy Script</span>
+                </>
+              )}
+            </Button>
+          </CardFooter>
         </Card>
       ))}
     </div>
