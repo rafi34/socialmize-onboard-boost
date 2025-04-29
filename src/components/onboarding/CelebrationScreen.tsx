@@ -59,7 +59,8 @@ export const CelebrationScreen = () => {
             experience_level: generatedStrategy.strategy.experience_level,
             content_types: generatedStrategy.strategy.content_types,
             weekly_calendar: generatedStrategy.strategy.weekly_calendar,
-            first_five_scripts: generatedStrategy.strategy.starter_scripts
+            first_five_scripts: generatedStrategy.strategy.starter_scripts,
+            full_plan_text: generatedStrategy.strategy.full_plan_text
           });
           
           if (saveError) {
@@ -154,4 +155,4 @@ export const CelebrationScreen = () => {
       <ProgressBar />
     </div>
   );
-};
+}
