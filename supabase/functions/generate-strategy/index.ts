@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -26,7 +27,7 @@ serve(async (req) => {
 
     console.log("Generating strategy for user with answers:", onboardingAnswers);
 
-    // Create the prompt for OpenAI
+    // Create a more detailed prompt for OpenAI to ensure uniqueness
     const prompt = `
 You are a content strategist specializing in short-form social media growth. Your job is to create personalized content strategies and first 5 content scripts for users based on their creator profile.
 
@@ -38,11 +39,12 @@ USER INPUTS:
 - Existing Content: ${onboardingAnswers.existing_content !== null ? String(onboardingAnswers.existing_content) : "Not specified"}
 - Shooting Preference: ${onboardingAnswers.shooting_preference || "Not specified"}
 - Content Niche/Topic: ${onboardingAnswers.niche_topic || "Not specified"}
+- User ID (use this to ensure strategy is unique): ${onboardingAnswers.user_id || "Not specified"}
 
 OUTPUT:
 1. Define their Experience Level (Beginner / Intermediate / Advanced) based on inputs.
-2. Suggest the best content types they should post each week (7-14 types).
-3. Create a Weekly Calendar plan based on their posting pace.
+2. Suggest specific and unique content types they should post each week (7-14 types) that directly relate to their niche and style.
+3. Create a detailed Weekly Calendar plan with specific content ideas (not just "Content 1", "Content 2") for each day based on their posting pace.
 4. Write 5 Starter Content Scripts with:
     - A strong viral hook (use the best hooks that grab attention immediately).
     - Context + Conflict storytelling.
@@ -51,15 +53,17 @@ OUTPUT:
 5. Create a full plan text that outlines the entire strategy in a human-readable format.
 6. Generate a list of 20 content topic ideas specifically for their niche or topic area.
 
+IMPORTANT: Make the plan completely unique and personalized to this specific user's profile. Include their specific niche and style in all aspects of the strategy. No generic plans.
+
 Make the style motivational and practical, easy to shoot for the user based on their equipment and experience.
 
 IMPORTANT: Format your response as valid JSON with this structure:
 {
   "experience_level": "Beginner/Intermediate/Advanced",
-  "content_types": ["Type 1", "Type 2", "etc"],
+  "content_types": ["Specific Type 1 related to their niche", "Specific Type 2", "etc"],
   "weekly_calendar": {
-    "Monday": ["Content 1", "Content 2"],
-    "Tuesday": ["Content 3"],
+    "Monday": ["Specific Content Idea 1", "Specific Content Idea 2"],
+    "Tuesday": ["Specific Content Idea 3"],
     ...and so on for each day of the week
   },
   "starter_scripts": [
@@ -75,14 +79,14 @@ IMPORTANT: Format your response as valid JSON with this structure:
   ],
   "full_plan_text": "Complete human-readable strategy plan with all details...",
   "topic_ideas": [
-    "Topic idea 1",
-    "Topic idea 2",
+    "Specific Topic idea 1 related to their niche",
+    "Specific Topic idea 2 related to their niche",
     ...and so on for all 20 topic ideas
   ]
 }
 `;
 
-    // Call OpenAI API
+    // Call OpenAI API with increased temperature for more creativity and uniqueness
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -92,10 +96,10 @@ IMPORTANT: Format your response as valid JSON with this structure:
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: "You are a content strategist specializing in short-form social media growth." },
+          { role: "system", content: "You are a content strategist specializing in short-form social media growth. Create completely unique and personalized strategies." },
           { role: "user", content: prompt }
         ],
-        temperature: 0.7,
+        temperature: 0.8,
         response_format: { type: "json_object" }
       }),
     });

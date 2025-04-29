@@ -42,7 +42,7 @@ serve(async (req) => {
           },
           { 
             role: "user", 
-            content: "Write a short, encouraging message for a social media creator who is waiting for their AI-powered content strategy to be generated. Make it sound motivating but not cheesy. Keep it under 30 words and focus on the excitement of getting personalized content recommendations soon." 
+            content: `Write a short, encouraging message for a creator with ID ${userId} who is waiting for their AI-powered content strategy to be generated. Make it sound motivating but not cheesy. Keep it under 30 words and focus on the excitement of getting personalized content recommendations soon.` 
           }
         ],
         temperature: 0.7,
