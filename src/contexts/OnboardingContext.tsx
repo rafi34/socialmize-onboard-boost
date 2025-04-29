@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
-import { OnboardingAnswers, UserProgress, ONBOARDING_STEPS } from "@/types/onboarding";
+import { OnboardingAnswers, UserProgress, ONBOARDING_STEPS, CreatorMission, CreatorStyle, ContentFormat, PostingFrequency, ShootingPreference } from "@/types/onboarding";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -97,13 +97,14 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         // Update answers from database
         setOnboardingAnswers(prev => ({
           ...prev,
-          creator_mission: answers.creator_mission,
-          creator_style: answers.creator_style,
-          content_format_preference: answers.content_format_preference,
-          posting_frequency_goal: answers.posting_frequency_goal,
-          existing_content: answers.existing_content,
-          shooting_preference: answers.shooting_preference,
-          shooting_schedule: answers.shooting_schedule
+          creator_mission: answers.creator_mission as CreatorMission | null,
+          creator_style: answers.creator_style as CreatorStyle | null,
+          content_format_preference: answers.content_format_preference as ContentFormat | null,
+          posting_frequency_goal: answers.posting_frequency_goal as PostingFrequency | null,
+          existing_content: answers.existing_content === 'true' ? true : 
+                           answers.existing_content === 'false' ? false : null,
+          shooting_preference: answers.shooting_preference as ShootingPreference | null,
+          shooting_schedule: answers.shooting_schedule ? new Date(answers.shooting_schedule) : null
         }));
       }
     } catch (error) {
@@ -234,6 +235,15 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         throw checkError;
       }
       
+      // Convert boolean and Date to appropriate string format for Supabase
+      const existingContent = onboardingAnswers.existing_content !== null 
+        ? String(onboardingAnswers.existing_content) 
+        : null;
+        
+      const shootingSchedule = onboardingAnswers.shooting_schedule 
+        ? onboardingAnswers.shooting_schedule.toISOString() 
+        : null;
+      
       // Either update or insert based on whether answers already exist
       let error;
       if (existingAnswers) {
@@ -244,9 +254,9 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             creator_style: onboardingAnswers.creator_style,
             content_format_preference: onboardingAnswers.content_format_preference,
             posting_frequency_goal: onboardingAnswers.posting_frequency_goal,
-            existing_content: onboardingAnswers.existing_content,
+            existing_content: existingContent,
             shooting_preference: onboardingAnswers.shooting_preference,
-            shooting_schedule: onboardingAnswers.shooting_schedule,
+            shooting_schedule: shootingSchedule,
             updated_at: new Date().toISOString()
           })
           .eq('id', existingAnswers.id);
@@ -261,9 +271,9 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             creator_style: onboardingAnswers.creator_style,
             content_format_preference: onboardingAnswers.content_format_preference,
             posting_frequency_goal: onboardingAnswers.posting_frequency_goal,
-            existing_content: onboardingAnswers.existing_content,
+            existing_content: existingContent,
             shooting_preference: onboardingAnswers.shooting_preference,
-            shooting_schedule: onboardingAnswers.shooting_schedule
+            shooting_schedule: shootingSchedule
           });
           
         error = insertError;

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 interface ConfettiProps {
   particleCount?: number;
+  onComplete?: () => void;
 }
 
 interface Particle {
@@ -15,7 +16,7 @@ interface Particle {
   angle: number;
 }
 
-export const Confetti: React.FC<ConfettiProps> = ({ particleCount = 50 }) => {
+export const Confetti: React.FC<ConfettiProps> = ({ particleCount = 50, onComplete }) => {
   const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {
@@ -43,10 +44,13 @@ export const Confetti: React.FC<ConfettiProps> = ({ particleCount = 50 }) => {
     // Clean up after animation completes
     const timer = setTimeout(() => {
       setParticles([]);
+      if (onComplete) {
+        onComplete();
+      }
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [particleCount]);
+  }, [particleCount, onComplete]);
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-50">
