@@ -23,34 +23,37 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ role, message, isLoading
     <div
       className={cn(
         "flex w-full",
-        role === "user" ? "justify-end" : "justify-start"
+        role === "user" ? "justify-end" : "justify-start",
+        "my-2" // Added vertical spacing between messages
       )}
     >
       <div
         className={cn(
           "flex max-w-[80%] sm:max-w-[70%]",
           role === "user" ? "flex-row-reverse" : "flex-row",
-          "items-start gap-2"
+          "items-start gap-3" // Increased gap for better spacing
         )}
       >
         {role === "assistant" && (
-          <Avatar className="mt-0.5 h-8 w-8 border bg-primary">
+          <Avatar className="mt-0.5 h-9 w-9 border border-primary/10 bg-gradient-to-br from-socialmize-purple to-socialmize-dark-purple shadow-sm">
             <AvatarFallback className="text-primary-foreground">
-              <Bot size={16} />
+              <Bot size={18} />
             </AvatarFallback>
           </Avatar>
         )}
         
         <div
           className={cn(
-            "rounded-lg px-4 py-2 text-sm",
+            "rounded-2xl px-4 py-3 text-sm shadow-sm", // Increased padding and rounded corners
             role === "user"
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-foreground",
+              ? "bg-gradient-to-br from-socialmize-purple to-socialmize-dark-purple text-white"
+              : "bg-card border border-border/40 text-foreground",
             isLoading && "animate-pulse"
           )}
         >
-          {formattedMessage}
+          <div className="leading-relaxed">
+            {formattedMessage}
+          </div>
           {isLoading && (
             <span className="inline-block ml-1">
               <span className="dot-typing"></span>

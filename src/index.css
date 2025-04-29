@@ -120,3 +120,21 @@
     box-shadow: 9984px 0 0 0 currentColor, 9999px 0 0 0 currentColor, 10014px 0 0 0 currentColor;
   }
 }
+
+/* Premium styling additions */
+.chat-container {
+  @apply backdrop-blur-sm bg-background/80;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+}
+
+.premium-input {
+  @apply border-0 focus-visible:ring-1 focus-visible:ring-socialmize-purple/50 bg-background shadow-sm;
+}
+
+.premium-card {
+  @apply bg-gradient-to-br from-white to-gray-50 shadow-md;
+}
+
+.premium-header {
+  @apply bg-gradient-to-r from-card to-background border-b border-border/40 shadow-sm;
+}

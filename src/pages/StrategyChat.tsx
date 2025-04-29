@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -9,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ChatBubble } from "@/components/strategy-chat/ChatBubble";
 import { ConfettiExplosion } from "@/components/strategy-chat/ConfettiExplosion";
 import { CompletionModal } from "@/components/strategy-chat/CompletionModal";
+import { Send } from "lucide-react";
 
 interface ChatMessage {
   id: string;
@@ -258,45 +258,51 @@ const StrategyChat = () => {
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <div className="border-b p-4 bg-card">
-        <h1 className="text-2xl font-bold">Strategy Onboarding</h1>
-        <p className="text-muted-foreground">Let's get deeper so we can build your best-ever content plan.</p>
+      <div className="premium-header p-6">
+        <h1 className="text-3xl font-bold bg-gradient-to-br from-socialmize-dark-purple to-socialmize-purple bg-clip-text text-transparent">Strategy Onboarding</h1>
+        <p className="text-muted-foreground mt-1">Let's get deeper so we can build your best-ever content plan.</p>
       </div>
       
       {/* Chat area */}
-      <div className="flex-1 overflow-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <ChatBubble
-            key={message.id}
-            role={message.role}
-            message={message.message}
-            isLoading={isLoading && message.id.includes('temp-assistant')}
-          />
-        ))}
-        <div ref={messagesEndRef} />
+      <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4 chat-container">
+        <div className="max-w-3xl mx-auto">
+          {messages.map((message) => (
+            <ChatBubble
+              key={message.id}
+              role={message.role}
+              message={message.message}
+              isLoading={isLoading && message.id.includes('temp-assistant')}
+            />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
       
       {/* Input area */}
-      <div className="border-t p-4 bg-background flex gap-2">
-        <Textarea
-          value={inputMessage}
-          onChange={(e) => setInputMessage(e.target.value)}
-          placeholder="Type your message..."
-          className="resize-none"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSendMessage();
-            }
-          }}
-          disabled={isLoading}
-        />
-        <Button 
-          onClick={handleSendMessage}
-          disabled={isLoading || !inputMessage.trim()}
-        >
-          Send
-        </Button>
+      <div className="border-t border-border/40 p-4 md:p-6 bg-gradient-to-t from-background/80 to-background">
+        <div className="max-w-3xl mx-auto flex gap-3">
+          <Textarea
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            placeholder="Type your message..."
+            className="resize-none premium-input"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            disabled={isLoading}
+          />
+          <Button 
+            onClick={handleSendMessage}
+            disabled={isLoading || !inputMessage.trim()}
+            className="bg-gradient-to-br from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity"
+            size="icon"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       
       {/* Confetti effect on completion */}
