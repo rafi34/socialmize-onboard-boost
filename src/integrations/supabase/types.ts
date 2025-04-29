@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          role: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          role: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          role?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       community_posts: {
         Row: {
           content: string
@@ -35,6 +62,30 @@ export type Database = {
           likes?: number | null
           type?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      content_ideas: {
+        Row: {
+          generated_at: string | null
+          id: string
+          idea: string
+          selected: boolean | null
+          user_id: string
+        }
+        Insert: {
+          generated_at?: string | null
+          id?: string
+          idea: string
+          selected?: boolean | null
+          user_id: string
+        }
+        Update: {
+          generated_at?: string | null
+          id?: string
+          idea?: string
+          selected?: boolean | null
           user_id?: string
         }
         Relationships: []
@@ -203,6 +254,27 @@ export type Database = {
           reminder_time?: string
           reminder_type?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      strategy_onboarding_answers: {
+        Row: {
+          created_at: string | null
+          data: Json
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          data: Json
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json
+          id?: string
           user_id?: string
         }
         Relationships: []

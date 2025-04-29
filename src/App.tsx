@@ -12,6 +12,8 @@ import Dashboard from "./pages/Dashboard";
 import Settings from "./pages/Settings";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
+import StrategyChat from "./pages/StrategyChat";
+import ReviewIdeas from "./pages/ReviewIdeas";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +54,26 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Settings />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Strategy Chat - only for authenticated users */}
+            <Route 
+              path="/strategy-chat" 
+              element={
+                <ProtectedRoute>
+                  <StrategyChat />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Review Content Ideas - only for authenticated users */}
+            <Route 
+              path="/review-ideas" 
+              element={
+                <ProtectedRoute>
+                  <ReviewIdeas />
                 </ProtectedRoute>
               } 
             />

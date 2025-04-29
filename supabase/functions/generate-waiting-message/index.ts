@@ -1,8 +1,5 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,66 +13,32 @@ serve(async (req) => {
   }
 
   try {
-    // Get the request body
-    const { userId } = await req.json();
-    
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: "User ID is required" }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Array of encouraging waiting messages
+    const waitingMessages = [
+      "I'm crafting a thoughtful response for you...",
+      "Working on your content strategy...",
+      "Analyzing your creator style to give you the best advice...",
+      "Building personalized recommendations just for you...",
+      "Thinking about the perfect content approach for your goals...",
+      "Creating magic behind the scenes, just a moment...",
+      "Your content strategy is being crafted with care...",
+      "Exploring the best ideas for your creator journey...",
+      "Taking a moment to develop the perfect response...",
+      "Almost there! Putting the final touches on your answer..."
+    ];
 
-    // Create a fun, encouraging message about waiting for the AI
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { 
-            role: "system", 
-            content: "You are a social media expert who writes encouraging, motivational messages. Keep your messages short (30 words or less), upbeat, and conversational." 
-          },
-          { 
-            role: "user", 
-            content: `Write a short, encouraging message for a creator with ID ${userId} who is waiting for their AI-powered content strategy to be generated. Make it sound motivating but not cheesy. Keep it under 30 words and focus on the excitement of getting personalized content recommendations soon.` 
-          }
-        ],
-        temperature: 0.7,
-      }),
+    // Select a random message from the array
+    const randomIndex = Math.floor(Math.random() * waitingMessages.length);
+    const message = waitingMessages[randomIndex];
+
+    return new Response(JSON.stringify({ message }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
-
-    const data = await response.json();
-    
-    if (!data.choices || !data.choices[0]) {
-      console.error("Invalid OpenAI response:", data);
-      return new Response(
-        JSON.stringify({ message: "Almost there! Your personalized content strategy is being crafted..." }),
-        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const message = data.choices[0].message.content.trim();
-    
-    // Return the generated message
-    return new Response(
-      JSON.stringify({ message }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
   } catch (error) {
-    console.error("Error generating waiting message:", error);
-    
-    // Return a fallback message
-    return new Response(
-      JSON.stringify({ 
-        message: "Almost there! Your personalized content strategy is being crafted...",
-        error: error.message 
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.error('Error in generate-waiting-message function:', error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });

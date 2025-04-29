@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -126,5 +125,55 @@
   
   .confetti-particle {
     @apply absolute rounded-full w-2 h-2 animate-confetti;
+  }
+}
+
+/* Chat typing animation */
+.dot-typing {
+  position: relative;
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-bottom: 2px;
+  margin-left: 2px;
+  background-color: currentColor;
+  border-radius: 50%;
+}
+
+.dot-typing::before, 
+.dot-typing::after {
+  content: '';
+  position: absolute;
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  background-color: currentColor;
+  border-radius: 50%;
+  opacity: 0.8;
+}
+
+.dot-typing::before {
+  left: -8px;
+  animation: dot-typing 1s infinite ease-in-out;
+  animation-delay: -0.3s;
+}
+
+.dot-typing::after {
+  left: 8px;
+  animation: dot-typing 1s infinite ease-in-out;
+  animation-delay: -0.1s;
+}
+
+.dot-typing {
+  animation: dot-typing 1s infinite ease-in-out;
+  animation-delay: -0.2s;
+}
+
+@keyframes dot-typing {
+  0%, 60%, 100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-4px);
   }
 }
