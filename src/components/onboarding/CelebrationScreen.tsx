@@ -6,13 +6,56 @@ import { useOnboarding } from "@/contexts/OnboardingContext";
 import { Confetti } from "@/components/onboarding/Confetti";
 import { useState } from "react";
 import { Icons } from "@/components/Icons";
+import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export const CelebrationScreen = () => {
-  const { completeOnboarding, isLoading } = useOnboarding();
+  const { completeOnboarding, isLoading, onboardingAnswers } = useOnboarding();
   const [showConfetti, setShowConfetti] = useState(true);
+  const [generatingStrategy, setGeneratingStrategy] = useState(false);
 
   const handleComplete = async () => {
-    await completeOnboarding();
+    try {
+      setGeneratingStrategy(true);
+      
+      // First, save the onboarding data
+      await completeOnboarding();
+      
+      // Then generate the user's strategy with OpenAI
+      const { data: generatedStrategy, error } = await supabase.functions.invoke('generate-strategy', {
+        body: { onboardingAnswers }
+      });
+      
+      if (error) {
+        console.error("Error generating strategy:", error);
+        toast({
+          title: "Strategy generation failed",
+          description: "We couldn't generate your content strategy. Please try again later.",
+          variant: "destructive"
+        });
+      } else {
+        console.log("Strategy generated successfully:", generatedStrategy);
+        
+        // Store the strategy in local storage temporarily
+        // In a real implementation, you would store this in the database
+        if (generatedStrategy.strategy) {
+          localStorage.setItem('userStrategy', JSON.stringify(generatedStrategy.strategy));
+          toast({
+            title: "Strategy ready!",
+            description: "Your personalized content strategy has been created!",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error in handleComplete:", error);
+      toast({
+        title: "Error completing onboarding",
+        description: "There was a problem completing your onboarding. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setGeneratingStrategy(false);
+    }
   };
 
   return (
@@ -40,12 +83,12 @@ export const CelebrationScreen = () => {
           onClick={handleComplete}
           className="bg-socialmize-purple hover:bg-socialmize-dark-purple text-white font-semibold text-lg py-6 px-8 rounded-xl w-full"
           size="lg"
-          disabled={isLoading}
+          disabled={isLoading || generatingStrategy}
         >
-          {isLoading ? (
+          {isLoading || generatingStrategy ? (
             <>
               <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-              Processing...
+              {isLoading ? "Processing..." : "Creating Your Strategy..."}
             </>
           ) : (
             "Let's Build Your First Viral Moment"

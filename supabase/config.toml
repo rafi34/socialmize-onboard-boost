@@ -1,1 +1,40 @@
+
 project_id = "psauygzfbxvefnetudem"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+
+[db]
+port = 54322
+
+[studio]
+port = 54323
+
+[inbucket]
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+
+[auth.email]
+enabled = true
+double_confirm_changes = false
+template_create_user = """
+{% if user_data.invited_by %}
+{{ user_data.name_of_inviter }} has invited you to join their app!
+{% else %}
+Welcome to SocialMize!
+{% endif %}
+"""
+
+[functions]
+enabled = true
+[functions.generate-strategy]
+verify_jwt = true
