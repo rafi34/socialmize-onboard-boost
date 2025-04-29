@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { useState, useEffect } from "react";
@@ -137,7 +138,7 @@ export default function Dashboard() {
           {
             id: '1',
             title: 'The AI Revolution',
-            hook: 'Want to earn passive income with AI? Here's what I learned...',
+            hook: "Want to earn passive income with AI? Here is what I learned...",
             content: 'Full script content here...',
             format_type: 'Carousel',
             created_at: new Date().toISOString()
@@ -145,7 +146,7 @@ export default function Dashboard() {
           {
             id: '2',
             title: 'Morning Routine',
-            hook: 'My 5-minute morning routine that changed everything...',
+            hook: "My 5-minute morning routine that changed everything...",
             content: 'Full script content here...',
             format_type: 'Talking Head',
             created_at: new Date().toISOString()
