@@ -180,6 +180,7 @@ export type Database = {
           created_at: string
           experience_level: string | null
           first_five_scripts: Json | null
+          full_plan_text: string | null
           id: string
           updated_at: string
           user_id: string
@@ -190,6 +191,7 @@ export type Database = {
           created_at?: string
           experience_level?: string | null
           first_five_scripts?: Json | null
+          full_plan_text?: string | null
           id?: string
           updated_at?: string
           user_id: string
@@ -200,6 +202,7 @@ export type Database = {
           created_at?: string
           experience_level?: string | null
           first_five_scripts?: Json | null
+          full_plan_text?: string | null
           id?: string
           updated_at?: string
           user_id?: string

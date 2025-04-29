@@ -49,10 +49,10 @@ export default function Dashboard() {
         }
       }
       
-      // Try to fetch strategy from database - explicitly include full_plan_text in the query
+      // Try to fetch strategy from database
       const { data: strategyData, error: strategyError } = await supabase
         .from('strategy_profiles')
-        .select('*, full_plan_text')
+        .select('id, user_id, experience_level, content_types, weekly_calendar, first_five_scripts, full_plan_text')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -79,7 +79,7 @@ export default function Dashboard() {
             "Carousel": 2,
             "Voiceover": 1
           },
-          full_plan_text: strategyData.full_plan_text as string
+          full_plan_text: strategyData.full_plan_text
         };
         setStrategy(processedStrategy);
       } else {
