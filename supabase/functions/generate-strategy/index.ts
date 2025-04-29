@@ -48,6 +48,7 @@ OUTPUT:
     - Context + Conflict storytelling.
     - Friendly conversational tone.
     - End with a looping statement or CTA.
+5. Create a full plan text that outlines the entire strategy in a human-readable format.
 
 Make the style motivational and practical, easy to shoot for the user based on their equipment and experience.
 
@@ -70,7 +71,8 @@ IMPORTANT: Format your response as valid JSON with this structure:
       "script": "Full script text with hook, context, conflict and CTA"
     },
     ...and so on for all 5 scripts
-  ]
+  ],
+  "full_plan_text": "Complete human-readable strategy plan with all details..."
 }
 `;
 
@@ -117,11 +119,44 @@ IMPORTANT: Format your response as valid JSON with this structure:
       }
       
       console.log("Successfully parsed strategy data");
+      
+      // Store the strategy in the database
+      const { error: upsertError } = await fetch(
+        `${Deno.env.get('SUPABASE_URL')}/rest/v1/strategy_profiles`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': Deno.env.get('SUPABASE_ANON_KEY') || '',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify({
+            user_id: onboardingAnswers.user_id,
+            experience_level: strategyData.experience_level,
+            content_types: strategyData.content_types,
+            weekly_calendar: strategyData.weekly_calendar,
+            first_five_scripts: strategyData.starter_scripts,
+            full_plan_text: strategyData.full_plan_text
+          }),
+        }
+      ).then(res => {
+        if (!res.ok) {
+          return res.json().then(err => ({ error: err }));
+        }
+        return { error: null };
+      });
+
+      if (upsertError) {
+        console.error("Error storing strategy:", upsertError);
+        throw new Error("Failed to store strategy data");
+      }
+      
     } catch (error) {
-      console.error("Failed to parse strategy data:", error);
+      console.error("Failed to parse or store strategy data:", error);
       return new Response(
         JSON.stringify({ 
-          error: "Failed to parse strategy data", 
+          error: "Failed to parse or store strategy data", 
           details: error.message,
           raw_response: openAIResponse.choices[0].message.content
         }),

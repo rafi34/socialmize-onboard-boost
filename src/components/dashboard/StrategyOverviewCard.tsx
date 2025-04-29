@@ -4,14 +4,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { StrategyData } from "@/types/dashboard";
 import { FullStrategyModal } from "./FullStrategyModal";
+import { RegeneratePlanModal } from "./RegeneratePlanModal";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface StrategyOverviewCardProps {
   strategy: StrategyData | null;
   loading: boolean;
+  refetchStrategy?: () => void;
 }
 
-export const StrategyOverviewCard = ({ strategy, loading }: StrategyOverviewCardProps) => {
+export const StrategyOverviewCard = ({ strategy, loading, refetchStrategy }: StrategyOverviewCardProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRegenerateModalOpen, setIsRegenerateModalOpen] = useState(false);
+  const { user } = useAuth();
 
   if (loading) {
     return (
@@ -95,7 +100,7 @@ export const StrategyOverviewCard = ({ strategy, loading }: StrategyOverviewCard
         
         <div className="pt-2 flex gap-2">
           <Button variant="outline" size="sm" className="flex-1" onClick={() => setIsModalOpen(true)}>View Full Plan</Button>
-          <Button variant="outline" size="sm" className="flex-1">Regenerate</Button>
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => setIsRegenerateModalOpen(true)}>Regenerate</Button>
         </div>
 
         {/* Full Strategy Modal */}
@@ -104,6 +109,16 @@ export const StrategyOverviewCard = ({ strategy, loading }: StrategyOverviewCard
           onClose={() => setIsModalOpen(false)} 
           fullPlanText={strategy.full_plan_text} 
         />
+        
+        {/* Regenerate Plan Modal */}
+        {user && (
+          <RegeneratePlanModal
+            isOpen={isRegenerateModalOpen}
+            onClose={() => setIsRegenerateModalOpen(false)}
+            userId={user.id}
+            onSuccess={refetchStrategy}
+          />
+        )}
       </CardContent>
     </Card>
   );
