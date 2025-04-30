@@ -18,13 +18,19 @@ import ReviewIdeas from "./pages/ReviewIdeas";
 
 const queryClient = new QueryClient();
 
-const AppLayout = ({ children }: { children: React.ReactNode }) => (
-  <div className="flex flex-col min-h-screen">
+const AppLayout = ({ children, className }: { children: React.ReactNode, className?: string }) => (
+  <div className={`flex flex-col min-h-screen ${className || ''}`}>
     <Navbar />
     <div className="flex-1">
       {children}
     </div>
   </div>
+);
+
+const PremiumAppLayout = ({ children }: { children: React.ReactNode }) => (
+  <AppLayout className="bg-gradient-to-br from-white to-gray-50">
+    {children}
+  </AppLayout>
 );
 
 const App = () => (
@@ -55,9 +61,9 @@ const App = () => (
               path="/dashboard" 
               element={
                 <ProtectedRoute>
-                  <AppLayout>
+                  <PremiumAppLayout>
                     <Dashboard />
-                  </AppLayout>
+                  </PremiumAppLayout>
                 </ProtectedRoute>
               } 
             />
@@ -79,9 +85,9 @@ const App = () => (
               path="/strategy-chat" 
               element={
                 <ProtectedRoute>
-                  <AppLayout>
+                  <PremiumAppLayout>
                     <StrategyChat />
-                  </AppLayout>
+                  </PremiumAppLayout>
                 </ProtectedRoute>
               } 
             />
@@ -91,9 +97,9 @@ const App = () => (
               path="/review-ideas" 
               element={
                 <ProtectedRoute>
-                  <AppLayout>
+                  <PremiumAppLayout>
                     <ReviewIdeas />
-                  </AppLayout>
+                  </PremiumAppLayout>
                 </ProtectedRoute>
               } 
             />

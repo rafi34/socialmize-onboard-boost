@@ -7,7 +7,8 @@ import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 
 interface ContentIdea {
   id: string;
@@ -141,40 +142,52 @@ const ReviewIdeas = () => {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="container mx-auto py-10 px-4">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2">Review Content Ideas</h1>
-        <p className="text-muted-foreground mb-6">
-          Select up to 10 content ideas that resonate with you. These will be used to generate your personalized content plan.
-        </p>
-        
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-sm">
-            <span className={selectedCount >= 5 ? "text-primary font-medium" : "text-muted-foreground"}>
-              Selected: {selectedCount}/10
-            </span>
+        <div className="glass-panel mb-8 p-6 rounded-xl">
+          <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple bg-clip-text text-transparent">Your Personalized Content Plan</h1>
+          <p className="text-muted-foreground">
+            Here are content ideas based on your strategy. Select up to 10 that best represent your brand's voice.
           </p>
+        </div>
+        
+        <div className="mb-6 glass-panel rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col w-full">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">
+                Selected: {selectedCount}/10
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {selectedCount === 10 ? "Maximum selected" : `${10 - selectedCount} more available`}
+              </span>
+            </div>
+            <Progress value={selectedCount * 10} className="h-2 bg-gray-200" />
+          </div>
           
-          <Button onClick={handleGenerateScripts} disabled={selectedCount === 0 || saving}>
+          <Button 
+            onClick={handleGenerateScripts} 
+            disabled={selectedCount === 0 || saving}
+            className="min-w-[200px] bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity"
+          >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Generate My Content Plan
+            Generate My Content
           </Button>
         </div>
         
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-8 w-8 animate-spin text-socialmize-purple" />
           </div>
         ) : (
           <div className="space-y-4">
             {ideas.length === 0 ? (
-              <Card>
+              <Card className="premium-card">
                 <CardContent className="p-6">
                   <p className="text-center text-muted-foreground">
                     No content ideas found. Complete your strategy onboarding to generate ideas.
                   </p>
                   <div className="flex justify-center mt-4">
-                    <Button onClick={() => navigate('/strategy-chat')}>
+                    <Button onClick={() => navigate('/strategy-chat')} className="bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity">
                       Go to Strategy Chat
                     </Button>
                   </div>
@@ -182,20 +195,30 @@ const ReviewIdeas = () => {
               </Card>
             ) : (
               ideas.map((idea) => (
-                <Card key={idea.id} className={idea.selected ? "border-primary" : ""}>
+                <Card 
+                  key={idea.id} 
+                  className={`hover:border-socialmize-purple/40 transition-all duration-200 ${
+                    idea.selected ? "border-socialmize-purple bg-socialmize-purple/5" : "premium-card"
+                  }`}
+                >
                   <CardContent className="p-4 flex items-start gap-4">
-                    <Checkbox
-                      checked={idea.selected}
-                      onCheckedChange={() => toggleSelection(idea.id, idea.selected)}
-                      id={`idea-${idea.id}`}
-                      className="mt-1"
-                    />
+                    <div className="mt-1">
+                      <Checkbox
+                        checked={idea.selected}
+                        onCheckedChange={() => toggleSelection(idea.id, idea.selected)}
+                        id={`idea-${idea.id}`}
+                        className={idea.selected ? "text-socialmize-purple border-socialmize-purple" : ""}
+                      />
+                    </div>
                     <label
                       htmlFor={`idea-${idea.id}`}
-                      className="text-sm cursor-pointer flex-1"
+                      className="text-sm cursor-pointer flex-1 leading-relaxed"
                     >
                       {idea.idea}
                     </label>
+                    {idea.selected && (
+                      <CheckCircle className="h-5 w-5 text-socialmize-purple shrink-0" />
+                    )}
                   </CardContent>
                 </Card>
               ))
@@ -205,10 +228,14 @@ const ReviewIdeas = () => {
         
         <div className="mt-8 flex justify-between">
           <Button variant="outline" onClick={() => navigate('/strategy-chat')}>
-            Back to Chat
+            Back to Strategy
           </Button>
           
-          <Button onClick={handleGenerateScripts} disabled={selectedCount === 0 || saving}>
+          <Button 
+            onClick={handleGenerateScripts} 
+            disabled={selectedCount === 0 || saving}
+            className="bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity"
+          >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Generate My Content Plan
           </Button>

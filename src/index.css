@@ -165,3 +165,17 @@
   @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border border-white/20 dark:border-gray-800/20;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
 }
+
+/* Enhanced premium card styles */
+.selection-card {
+  @apply transition-all duration-200;
+}
+
+.selection-card:hover {
+  @apply transform -translate-y-1;
+}
+
+/* Enhanced progress bar */
+.progress-gradient {
+  @apply bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple;
+}
