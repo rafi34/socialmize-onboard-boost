@@ -36,7 +36,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ role, message, isLoading
       >
         {role === "assistant" ? (
           <Avatar className="mt-0.5 h-9 w-9 border border-primary/10 bg-gradient-to-br from-socialmize-purple to-socialmize-dark-purple shadow-md">
-            <AvatarImage src="/lovable-uploads/195faaef-b539-44ba-a94a-d2449f0cd0c3.png" alt="AI Assistant" />
+            <AvatarImage src="/lovable-uploads/195faaef-b539-44ba-a94a-d2449f0cd0c3.png" alt="AI Assistant" className="object-cover" />
             <AvatarFallback className="text-primary-foreground">
               <Bot size={18} />
             </AvatarFallback>
