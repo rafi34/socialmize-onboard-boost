@@ -43,11 +43,16 @@ export const RegeneratePlanModal = ({
         .from('onboarding_answers')
         .select('*')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
         
       if (onboardingError) {
         console.error("Error fetching onboarding data:", onboardingError);
         throw new Error('Failed to fetch onboarding data');
+      }
+      
+      if (!onboardingData) {
+        console.error("No onboarding data found for user");
+        throw new Error('No onboarding data found. Please complete onboarding first.');
       }
       
       console.log("Onboarding data fetched successfully:", onboardingData);
@@ -71,14 +76,14 @@ export const RegeneratePlanModal = ({
       
       console.log("Strategy plan generation response:", data);
       
-      if (data.error) {
+      if (data?.error) {
         throw new Error(data.error);
       }
       
-      if (data.mock) {
+      if (data?.mock) {
         toast({
           title: isFirstGeneration ? "Strategy plan generated (test mode)" : "Strategy plan regenerated (test mode)",
-          description: "Your content strategy has been updated in test mode. Setup the OpenAI assistant in Supabase secrets to enable full AI generation.",
+          description: "Your content strategy has been updated in test mode. Setup is using mock data since OpenAI Assistant configuration is incomplete.",
         });
       } else {
         toast({
