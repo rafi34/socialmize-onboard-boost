@@ -5,10 +5,10 @@ export const XPDisplay = () => {
   const { userProgress } = useOnboarding();
   
   // Calculate level based on XP (100 XP per level)
-  const level = Math.floor(userProgress.xp / 100) || 0;
+  const level = Math.floor(userProgress.xp / 100) + 1;
   
   // Calculate XP needed for next level
-  const nextLevelXp = (level + 1) * 100;
+  const nextLevelXp = level * 100;
   
   return (
     <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">

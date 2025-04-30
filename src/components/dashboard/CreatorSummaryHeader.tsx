@@ -2,7 +2,6 @@
 import { Progress } from "@/components/ui/progress";
 import { Flame } from "lucide-react";
 import { ProgressData } from "@/types/dashboard";
-import { XPDisplay } from "@/components/onboarding/XPDisplay";
 
 interface CreatorSummaryHeaderProps {
   user: any;
