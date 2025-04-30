@@ -21,6 +21,7 @@ interface RegeneratePlanModalProps {
   userId: string;
   onSuccess?: () => void;
   isFirstGeneration?: boolean;
+  onGenerationStart?: () => void;
 }
 
 export const RegeneratePlanModal = ({ 
@@ -28,7 +29,8 @@ export const RegeneratePlanModal = ({
   onClose, 
   userId,
   onSuccess,
-  isFirstGeneration = false
+  isFirstGeneration = false,
+  onGenerationStart
 }: RegeneratePlanModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -38,6 +40,18 @@ export const RegeneratePlanModal = ({
     setErrorMessage(null);
     
     try {
+      // Close the modal immediately to show loading state in parent component
+      if (onGenerationStart) {
+        onGenerationStart();
+        onClose();
+      }
+      
+      // Show toast to indicate generation has started
+      toast({
+        title: isFirstGeneration ? "Generating your strategy plan..." : "Regenerating your strategy plan...",
+        description: "This might take 15-30 seconds. Please wait while we craft your personalized content plan.",
+      });
+      
       // Get the user's onboarding answers to pass to the AI function
       const { data: onboardingData, error: onboardingError } = await supabase
         .from('onboarding_answers')
@@ -106,9 +120,6 @@ export const RegeneratePlanModal = ({
       });
     } finally {
       setIsLoading(false);
-      if (!errorMessage) {
-        onClose();
-      }
     }
   };
 
@@ -151,7 +162,6 @@ export const RegeneratePlanModal = ({
           <AlertDialogCancel asChild>
             <Button variant="outline">Cancel</Button>
           </AlertDialogCancel>
-          {/* Fix: Remove the AlertDialogAction wrapper and use a regular Button with onClick handler */}
           <Button 
             onClick={regenerateStrategy} 
             disabled={isLoading} 

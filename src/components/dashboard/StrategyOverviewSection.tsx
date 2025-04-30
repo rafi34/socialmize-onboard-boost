@@ -36,6 +36,7 @@ export const StrategyOverviewSection = ({
   const [loading, setLoading] = useState(true);
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [planConfirmed, setPlanConfirmed] = useState(false);
+  const [generatingPlan, setGeneratingPlan] = useState(false);
 
   const fetchStrategyPlan = async () => {
     if (!user) return;
@@ -93,6 +94,7 @@ export const StrategyOverviewSection = ({
       console.error("Error in fetchStrategyPlan:", error);
     } finally {
       setLoading(false);
+      setGeneratingPlan(false);
     }
   };
 
@@ -102,6 +104,11 @@ export const StrategyOverviewSection = ({
 
   const handleRegenerate = () => {
     setShowRegenerateModal(true);
+  };
+
+  const handleGenerationStart = () => {
+    setGeneratingPlan(true);
+    setShowRegenerateModal(false);
   };
 
   const handleConfirm = async () => {
@@ -154,7 +161,7 @@ export const StrategyOverviewSection = ({
   };
 
   // Loading state
-  if (loading) {
+  if (loading || generatingPlan) {
     return (
       <Card className="mb-6">
         <CardHeader>
@@ -163,7 +170,18 @@ export const StrategyOverviewSection = ({
         <CardContent>
           <div className="flex flex-col items-center justify-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-socialmize-purple mb-4"></div>
-            <p className="text-center text-muted-foreground">Your strategy plan is loading...</p>
+            <p className="text-center text-muted-foreground">
+              {generatingPlan 
+                ? "Generating your strategy plan... This may take up to 30 seconds." 
+                : "Your strategy plan is loading..."}
+            </p>
+            {generatingPlan && (
+              <div className="mt-4 max-w-md">
+                <p className="text-center text-sm text-muted-foreground">
+                  We're creating a personalized content strategy based on your creator profile. Our AI is analyzing your preferences and crafting a tailored plan just for you.
+                </p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -314,6 +332,7 @@ export const StrategyOverviewSection = ({
           userId={user.id}
           onSuccess={fetchStrategyPlan}
           isFirstGeneration={!strategy}
+          onGenerationStart={handleGenerationStart}
         />
       )}
     </>

@@ -1,3 +1,4 @@
+
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -281,7 +282,7 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold">Generating Your Content Strategy</h1>
             <p className="text-lg">{waitingMessage || "Our AI is analyzing your profile..."}</p>
             <p className="text-sm text-muted-foreground">
-              This takes about 15–30 seconds. You’ll be redirected automatically when it’s ready.
+              This takes about 15–30 seconds. You'll be redirected automatically when it's ready.
             </p>
           </div>
         </main>
