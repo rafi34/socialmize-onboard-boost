@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -41,45 +40,7 @@ serve(async (req) => {
 
     console.log(`Generating strategy plan for user ${userId} with assistant ${assistantId}`);
     
-    // For now, since we're troubleshooting and might not have the actual Assistant ID yet,
-    // we'll return a mock success response so the UI can proceed
-    
-    // Mock a successful response
-    console.log('Generating mock strategy plan for testing');
-    
-    // Check if we should try the real OpenAI call or return a mock response for testing
-    const useMockResponse = !assistantId.startsWith('asst_'); // If not a valid looking assistant ID
-    
-    if (useMockResponse) {
-      // Return a mock strategy plan for testing
-      const mockData = {
-        summary: "Your personalized content strategy plan is ready. Below you'll find a structured approach to grow your creator presence.",
-        phases: [
-          {
-            title: "Getting Started",
-            goal: "Build your foundation and establish your presence",
-            tactics: ["Create a content calendar", "Define your core topics", "Set up your creator profiles"]
-          }
-        ]
-      };
-      
-      // Save the mock data to both tables
-      await saveStrategyPlan(userId, assistantId, mockData.summary, mockData.phases);
-      
-      return new Response(JSON.stringify({
-        success: true,
-        message: 'Strategy plan generated and saved (mock response for testing)',
-        mock: true
-      }), {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-      });
-    }
-    
-    // Real implementation logic
+    // Always use the OpenAI API to generate a strategy plan
     // Create thread
     const threadResponse = await fetch('https://api.openai.com/v1/threads', {
       method: 'POST',
@@ -238,6 +199,9 @@ Format this as structured data so it can be displayed in my dashboard.`;
 
     // Process the message content to extract structured data
     const strategyPlan = processStrategyPlanFromText(messageContent);
+    
+    // Log the strategy plan to help with debugging
+    console.log('Processed strategy plan:', JSON.stringify(strategyPlan, null, 2));
     
     // Save to both strategy_plans and strategy_profiles tables
     await saveStrategyPlan(userId, assistantId, strategyPlan.summary, strategyPlan.phases);

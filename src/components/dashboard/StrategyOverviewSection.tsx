@@ -49,8 +49,9 @@ export const StrategyOverviewSection = ({
         .from('strategy_profiles')
         .select('id, user_id, summary, phases, first_five_scripts')
         .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       
       if (error) {
         console.error("Error fetching strategy plan:", error);
