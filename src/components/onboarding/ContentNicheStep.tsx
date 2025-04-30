@@ -1,12 +1,13 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useOnboarding } from "@/contexts/OnboardingContext";
 import { ProgressBar } from "@/components/onboarding/ProgressBar";
+import { XPDisplay } from "@/components/onboarding/XPDisplay";
+import { useOnboarding } from "@/contexts/OnboardingContext";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Check } from "lucide-react";
-import { XPDisplay } from "@/components/onboarding/XPDisplay";
+import { ONBOARDING_STEPS } from "@/types/onboarding";
 
 const NICHE_OPTIONS = [
   { id: "credit_funding", label: "Credit & funding" },
@@ -20,12 +21,14 @@ const NICHE_OPTIONS = [
 ];
 
 export const ContentNicheStep = () => {
-  const { onboardingAnswers, updateAnswer, nextStep, previousStep } = useOnboarding();
+  const { onboardingAnswers, updateAnswer, nextStep, previousStep, currentStep } = useOnboarding();
   const [selectedNiche, setSelectedNiche] = useState<string | null>(
     onboardingAnswers.niche_topic || null
   );
   const [customNiche, setCustomNiche] = useState<string>("");
   const [isOtherSelected, setIsOtherSelected] = useState<boolean>(false);
+  
+  const currentStepData = ONBOARDING_STEPS[currentStep];
 
   const handleNicheSelect = (niche: string) => {
     if (niche === "Other") {
@@ -57,18 +60,13 @@ export const ContentNicheStep = () => {
     : !selectedNiche;
 
   return (
-    <div className="onboarding-step flex flex-col h-full">
-      <div className="mb-4">
-        <ProgressBar />
+    <div className="onboarding-card">
+      <div className="flex justify-between items-center">
+        <div className="text-xl font-semibold">{currentStepData.title}</div>
+        <XPDisplay />
       </div>
       
-      <div className="text-center mb-6">
-        <XPDisplay />
-        <h1 className="text-2xl font-bold mb-2">What's your content focus?</h1>
-        <p className="text-gray-600 mb-6">
-          Choose the niche or topic you'll be creating content about. This helps us generate tailored strategy, topics, and scripts for your audience.
-        </p>
-      </div>
+      <h2 className="text-2xl font-bold mt-4 mb-6">What's your content focus?</h2>
       
       <div className="grid grid-cols-2 gap-3 mb-6">
         {NICHE_OPTIONS.map((option) => (
@@ -78,7 +76,7 @@ export const ContentNicheStep = () => {
             className={`
               py-3 px-4 cursor-pointer text-center flex items-center justify-center
               ${selectedNiche === option.label 
-                ? "bg-primary text-white" 
+                ? "bg-socialmize-purple text-white" 
                 : "bg-background hover:bg-accent"}
               transition-all text-sm font-medium
             `}
@@ -103,7 +101,7 @@ export const ContentNicheStep = () => {
         </div>
       )}
       
-      <div className="mt-auto flex justify-between">
+      <div className="flex justify-between mt-8">
         <Button 
           variant="outline" 
           onClick={previousStep}
@@ -113,10 +111,13 @@ export const ContentNicheStep = () => {
         <Button 
           onClick={handleNext}
           disabled={isNextDisabled}
+          className="bg-socialmize-purple hover:bg-socialmize-dark-purple text-white"
         >
-          Continue
+          Next
         </Button>
       </div>
+      
+      <ProgressBar />
     </div>
   );
 };
