@@ -45,20 +45,12 @@ export const RegeneratePlanModal = ({
         throw new Error('Failed to fetch onboarding data');
       }
       
-      // Get the assistant ID from environment variable
-      const assistantId = import.meta.env.SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID;
-                        
-      if (!assistantId) {
-        throw new Error('Assistant ID not configured');
-      }
-      
-      // Call the Supabase Edge Function to regenerate the strategy
-      const { error: functionError } = await supabase.functions.invoke(
+      // Call the Supabase Edge Function to regenerate the strategy plan
+      const { data, error: functionError } = await supabase.functions.invoke(
         'generate-strategy-plan', 
         {
           body: { 
             userId, 
-            assistantId,
             onboardingData 
           }
         }

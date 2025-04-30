@@ -33,7 +33,6 @@ export const StrategyPlanSection = () => {
   const navigate = useNavigate();
   const [strategyPlan, setStrategyPlan] = useState<StrategyPlan | null>(null);
   const [loading, setLoading] = useState(true);
-  const [regenerating, setRegenerating] = useState(false);
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
 
   // Define fetchStrategyPlan function before using it
@@ -89,78 +88,6 @@ export const StrategyPlanSection = () => {
     fetchStrategyPlan();
   }, [user]); // Add user as dependency
 
-  const regenerateStrategy = async () => {
-    if (!user) return;
-    
-    setRegenerating(true);
-    try {
-      // Get the user's onboarding answers to pass to the AI function
-      const { data: onboardingData, error: onboardingError } = await supabase
-        .from('onboarding_answers')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-        
-      if (onboardingError) {
-        console.error('Failed to fetch onboarding data:', onboardingError);
-        throw new Error('Failed to fetch onboarding data');
-      }
-      
-      console.log('Onboarding data retrieved:', onboardingData);
-      
-      // Get the assistant ID from environment variable
-      const assistantId = import.meta.env.SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID;
-                         
-      if (!assistantId) {
-        console.error('No assistant ID found in environment variables');
-        throw new Error('Assistant ID not configured');
-      }
-      
-      console.log('Calling generate-strategy-plan function with:', { 
-        userId: user.id, 
-        assistantId,
-        onboardingData 
-      });
-      
-      // Call the function to generate strategy
-      const { data, error } = await supabase.functions.invoke(
-        'generate-strategy-plan', 
-        {
-          body: { 
-            userId: user.id, 
-            assistantId,
-            onboardingData 
-          }
-        }
-      );
-      
-      if (error) {
-        console.error('Supabase function error:', error);
-        throw error;
-      }
-      
-      console.log('Strategy plan generation response:', data);
-      
-      // Update UI with new strategy plan
-      await fetchStrategyPlan();
-      
-      toast({
-        title: "Strategy Plan Regenerated",
-        description: "Your new content strategy plan is ready!",
-      });
-    } catch (error: any) {
-      console.error("Error regenerating strategy:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to regenerate your strategy. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setRegenerating(false);
-      setShowRegenerateModal(false);
-    }
-  };
-
   const getPhaseIcon = (index: number) => {
     const icons = [
       <Brain className="h-5 w-5 text-socialmize-purple" />,
@@ -204,21 +131,15 @@ export const StrategyPlanSection = () => {
               Generate a tailored content strategy plan based on your creator profile.
             </p>
             <Button 
-              onClick={regenerateStrategy} 
-              disabled={regenerating} 
+              onClick={() => {
+                if (user) {
+                  setShowRegenerateModal(true);
+                }
+              }}
               className="flex items-center gap-2"
             >
-              {regenerating ? (
-                <>
-                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Brain className="h-4 w-4" />
-                  Generate My Strategy Plan
-                </>
-              )}
+              <Brain className="h-4 w-4" />
+              Generate My Strategy Plan
             </Button>
           </div>
         </CardContent>
@@ -310,7 +231,6 @@ export const StrategyPlanSection = () => {
           <Button 
             onClick={() => setShowRegenerateModal(true)} 
             variant="outline" 
-            disabled={regenerating}
             className="flex items-center gap-2"
           >
             <RefreshCw className="h-4 w-4" />
@@ -320,11 +240,11 @@ export const StrategyPlanSection = () => {
       </Card>
 
       {/* Regenerate confirmation modal */}
-      {showRegenerateModal && (
+      {showRegenerateModal && user && (
         <RegeneratePlanModal
           isOpen={showRegenerateModal}
           onClose={() => setShowRegenerateModal(false)}
-          userId={user?.id || ''}
+          userId={user.id}
           onSuccess={fetchStrategyPlan}
         />
       )}

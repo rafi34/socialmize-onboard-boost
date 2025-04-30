@@ -14,15 +14,22 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, assistantId, onboardingData } = await req.json();
+    const { userId, onboardingData } = await req.json();
 
-    if (!userId || !assistantId) {
+    if (!userId) {
       throw new Error('Missing required parameters');
     }
 
+    // Get secrets directly in the Edge Function
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+    const assistantId = Deno.env.get('SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID');
+
     if (!openaiApiKey) {
       throw new Error('OpenAI API key not configured');
+    }
+
+    if (!assistantId) {
+      throw new Error('Assistant ID not configured');
     }
 
     console.log(`Generating strategy plan for user ${userId} with assistant ${assistantId}`);
