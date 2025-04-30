@@ -180,6 +180,19 @@
   @apply bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple;
 }
 
+/* Onboarding specific styles */
+.onboarding-card {
+  @apply max-w-lg mx-auto p-6 bg-white rounded-lg shadow-md;
+}
+
+.option-card {
+  @apply p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-socialmize-purple transition-all duration-200;
+}
+
+.option-card.selected {
+  @apply bg-socialmize-purple/10 border-socialmize-purple;
+}
+
 /* New animations */
 @keyframes fade-in {
   0% {
