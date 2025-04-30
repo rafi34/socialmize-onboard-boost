@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,9 +13,9 @@ import { ScriptPreviewsSection } from "@/components/dashboard/ScriptPreviewsSect
 import { ReminderCard } from "@/components/dashboard/ReminderCard";
 import { LevelProgressCard } from "@/components/dashboard/LevelProgressCard";
 import { ScriptsSection } from "@/components/dashboard/ScriptsSection";
+import { StrategyPlanSection } from "@/components/dashboard/StrategyPlanSection";
 import { Navigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -296,6 +297,9 @@ export default function Dashboard() {
         <div className="max-w-4xl mx-auto">
           {/* Creator Summary Header */}
           <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
+          
+          {/* Strategy Plan Section - New component */}
+          <StrategyPlanSection />
           
           {/* Strategy Overview Card */}
           <StrategyOverviewCard 

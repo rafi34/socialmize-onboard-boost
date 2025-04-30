@@ -279,6 +279,33 @@ export type Database = {
         }
         Relationships: []
       }
+      strategy_plans: {
+        Row: {
+          assistant_id: string | null
+          created_at: string | null
+          id: string
+          phases: Json | null
+          summary: string | null
+          user_id: string | null
+        }
+        Insert: {
+          assistant_id?: string | null
+          created_at?: string | null
+          id?: string
+          phases?: Json | null
+          summary?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          assistant_id?: string | null
+          created_at?: string | null
+          id?: string
+          phases?: Json | null
+          summary?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       strategy_profiles: {
         Row: {
           content_types: Json | null
