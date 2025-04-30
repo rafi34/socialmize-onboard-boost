@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,6 +18,16 @@ interface ChatMessage {
   created_at?: string;
 }
 
+interface OnboardingData {
+  creator_mission?: string;
+  creator_style?: string;
+  content_format_preference?: string;
+  posting_frequency_goal?: string;
+  existing_content?: string;
+  niche_topic?: string;
+  shooting_preference?: string;
+}
+
 const StrategyChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -25,31 +36,66 @@ const StrategyChat = () => {
   const [showConfetti, setShowConfetti] = useState(false);
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
   const [contentIdeas, setContentIdeas] = useState<string[]>([]);
+  const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
   
   // Initial welcome message from the assistant
   useEffect(() => {
-    const initialMessage: ChatMessage = {
-      id: "welcome",
-      role: "assistant",
-      message: "Welcome to your strategy onboarding session! I'm your AI Strategist, and I'll help build your personalized content plan. To start, could you tell me your main goal as a content creator? (For example: grow followers, get leads, build a community, etc.)"
+    const fetchInitialData = async () => {
+      if (!user) return;
+      
+      // Fetch onboarding data
+      await fetchOnboardingData();
+      
+      const initialMessage: ChatMessage = {
+        id: "welcome",
+        role: "assistant",
+        message: "Welcome to your strategy onboarding session! I'm your AI Strategist, and I'll help build your personalized content plan. To start, could you tell me your main goal as a content creator? (For example: grow followers, get leads, build a community, etc.)"
+      };
+      
+      setMessages([initialMessage]);
+      
+      // Try to retrieve the thread ID from localStorage
+      const storedThreadId = localStorage.getItem('strategyThreadId');
+      if (storedThreadId) {
+        setThreadId(storedThreadId);
+      }
+      
+      // Fetch existing message history from Supabase if a threadId exists
+      if (storedThreadId && user) {
+        fetchMessageHistory(storedThreadId);
+      }
     };
-    
-    setMessages([initialMessage]);
-    
-    // Try to retrieve the thread ID from localStorage
-    const storedThreadId = localStorage.getItem('strategyThreadId');
-    if (storedThreadId) {
-      setThreadId(storedThreadId);
-    }
-    
-    // Fetch existing message history from Supabase if a threadId exists
-    if (storedThreadId && user) {
-      fetchMessageHistory(storedThreadId);
-    }
+
+    fetchInitialData();
   }, [user]);
+
+  // Fetch user's onboarding data
+  const fetchOnboardingData = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('onboarding_answers')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+        
+      if (error) {
+        console.error('Error fetching onboarding data:', error);
+        return;
+      }
+      
+      if (data) {
+        console.log('Fetched onboarding data:', data);
+        setOnboardingData(data);
+      }
+    } catch (error) {
+      console.error('Error in fetchOnboardingData:', error);
+    }
+  };
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -185,12 +231,13 @@ const StrategyChat = () => {
       // Save user message to Supabase
       await saveMessage(userMessage, currentThreadId);
       
-      // Call the edge function
+      // Call the edge function with onboardingData
       const { data, error } = await supabase.functions.invoke("generate-strategy", {
         body: {
           userId: user.id,
           userMessage: inputMessage,
-          threadId: currentThreadId
+          threadId: currentThreadId,
+          onboardingData: onboardingData // Pass onboarding data to the edge function
         }
       });
       

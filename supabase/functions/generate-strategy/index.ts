@@ -17,7 +17,7 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, userMessage, threadId } = await req.json();
+    const { userId, userMessage, threadId, onboardingData } = await req.json();
 
     if (!userId || !userMessage) {
       throw new Error('Missing required parameters');
@@ -32,6 +32,11 @@ serve(async (req) => {
     }
 
     console.log(`Processing request for user ${userId}, message: "${userMessage.substring(0, 30)}..."`);
+    
+    // Log onboarding data if available
+    if (onboardingData) {
+      console.log('User onboarding data:', JSON.stringify(onboardingData, null, 2));
+    }
 
     // Create or retrieve thread
     let currentThreadId = threadId;
@@ -56,12 +61,40 @@ serve(async (req) => {
       const thread = await threadResponse.json();
       currentThreadId = thread.id;
       console.log(`Created new thread with ID: ${currentThreadId}`);
+
+      // If this is a new thread and we have onboarding data, send it as the first message
+      if (onboardingData) {
+        // Create a message that summarizes the user's onboarding answers
+        const onboardingMessage = createOnboardingDataMessage(onboardingData);
+        
+        await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/messages`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openaiApiKey}`,
+            'Content-Type': 'application/json',
+            'OpenAI-Beta': 'assistants=v2',
+          },
+          body: JSON.stringify({
+            role: 'user',
+            content: onboardingMessage,
+          }),
+        });
+        
+        console.log("Added onboarding data message to thread");
+      }
     } else {
       console.log(`Using existing thread with ID: ${currentThreadId}`);
     }
 
     // Add message to thread
     console.log(`Adding user message to thread...`);
+    
+    // If we have onboarding data and it's not a new thread, augment the message with onboarding context
+    let finalUserMessage = userMessage;
+    if (onboardingData && threadId) {
+      finalUserMessage = `${userMessage}\n\nFor context, here's a reminder of my preferences from onboarding: ${formatOnboardingContext(onboardingData)}`;
+    }
+    
     const messageResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/messages`, {
       method: 'POST',
       headers: {
@@ -71,7 +104,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         role: 'user',
-        content: userMessage,
+        content: finalUserMessage,
       }),
     });
 
@@ -270,3 +303,116 @@ serve(async (req) => {
     });
   }
 });
+
+// Helper function to create a message with onboarding data information
+function createOnboardingDataMessage(onboardingData) {
+  // Create a message that summarizes the user's preferences
+  let message = 'Here is my onboarding information to help personalize my content strategy:\n\n';
+  
+  if (onboardingData.creator_mission) {
+    message += `My creator mission: ${formatMission(onboardingData.creator_mission)}\n`;
+  }
+  
+  if (onboardingData.creator_style) {
+    message += `My content style: ${formatStyle(onboardingData.creator_style)}\n`;
+  }
+  
+  if (onboardingData.content_format_preference) {
+    message += `My preferred content format: ${formatContentFormat(onboardingData.content_format_preference)}\n`;
+  }
+  
+  if (onboardingData.posting_frequency_goal) {
+    message += `My posting frequency goal: ${formatFrequency(onboardingData.posting_frequency_goal)}\n`;
+  }
+  
+  if (onboardingData.existing_content !== undefined) {
+    message += `I ${onboardingData.existing_content === 'true' ? 'do' : 'do not'} have existing content\n`;
+  }
+  
+  if (onboardingData.niche_topic) {
+    message += `My niche topic: ${onboardingData.niche_topic}\n`;
+  }
+  
+  if (onboardingData.shooting_preference) {
+    message += `My shooting preference: ${formatShootingPreference(onboardingData.shooting_preference)}\n`;
+  }
+  
+  message += '\nPlease use this information to personalize my content strategy.';
+  return message;
+}
+
+// Helper function for a shorter context reminder format
+function formatOnboardingContext(onboardingData) {
+  const contextParts = [];
+  
+  if (onboardingData.creator_mission) {
+    contextParts.push(`mission: ${formatMission(onboardingData.creator_mission)}`);
+  }
+  
+  if (onboardingData.creator_style) {
+    contextParts.push(`style: ${formatStyle(onboardingData.creator_style)}`);
+  }
+  
+  if (onboardingData.content_format_preference) {
+    contextParts.push(`format: ${formatContentFormat(onboardingData.content_format_preference)}`);
+  }
+  
+  if (onboardingData.niche_topic) {
+    contextParts.push(`niche: ${onboardingData.niche_topic}`);
+  }
+  
+  return contextParts.join(', ');
+}
+
+// Helper functions to format values in human-readable form
+function formatMission(mission) {
+  const missions = {
+    'gain_followers': 'Gain followers',
+    'get_leads': 'Get leads',
+    'grow_personal_brand': 'Grow personal brand',
+    'go_viral': 'Go viral',
+    'build_community': 'Build community'
+  };
+  return missions[mission] || mission;
+}
+
+function formatStyle(style) {
+  const styles = {
+    'bold_energetic': 'Bold & energetic',
+    'calm_motivational': 'Calm & motivational',
+    'funny_relatable': 'Funny & relatable',
+    'inspirational_wise': 'Inspirational & wise',
+    'raw_authentic': 'Raw & authentic'
+  };
+  return styles[style] || style;
+}
+
+function formatContentFormat(format) {
+  const formats = {
+    'talking_to_camera': 'Talking to camera',
+    'voiceovers': 'Voiceovers',
+    'skits_storytelling': 'Skits & storytelling',
+    'tutorials_howto': 'Tutorials & how-to',
+    'lifestyle_documentary': 'Lifestyle & documentary'
+  };
+  return formats[format] || format;
+}
+
+function formatFrequency(frequency) {
+  const frequencies = {
+    'multiple_daily': 'Multiple times daily',
+    'daily': 'Daily',
+    'three_to_five_weekly': '3-5 times weekly',
+    'one_to_two_weekly': '1-2 times weekly',
+    'warming_up': 'Just warming up'
+  };
+  return frequencies[frequency] || frequency;
+}
+
+function formatShootingPreference(preference) {
+  const preferences = {
+    'bulk_shooting': 'Bulk shooting',
+    'single_video': 'Single video at a time'
+  };
+  return preferences[preference] || preference;
+}
