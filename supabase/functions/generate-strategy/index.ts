@@ -3,7 +3,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-const assistantId = Deno.env.get('ASSISTANT_ID');
+// Update to use the same environment variable as generate-strategy-plan
+const assistantId = Deno.env.get('SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

@@ -34,13 +34,17 @@ export const CelebrationScreen = () => {
       // First, save the onboarding data
       await completeOnboarding();
       
-      // Then generate the user's strategy with OpenAI
-      const { data: generatedStrategy, error } = await supabase.functions.invoke('generate-strategy', {
-        body: { onboardingAnswers }
+      // Generate the user's strategy plan instead of trying to generate a strategy directly
+      // This uses the same assistant ID variable as the regenerate plan function
+      const { data: generatedStrategy, error } = await supabase.functions.invoke('generate-strategy-plan', {
+        body: { 
+          userId: user.id,
+          onboardingData: onboardingAnswers 
+        }
       });
       
       if (error) {
-        console.error("Error generating strategy:", error);
+        console.error("Error generating strategy plan:", error);
         toast({
           title: "Strategy generation failed",
           description: "We couldn't generate your content strategy. Please try again later.",
@@ -50,54 +54,27 @@ export const CelebrationScreen = () => {
         // Still navigate to dashboard even if strategy generation fails
         navigate('/dashboard');
       } else {
-        console.log("Strategy generated successfully:", generatedStrategy);
+        console.log("Strategy plan generated successfully:", generatedStrategy);
+        toast({
+          title: "Strategy ready!",
+          description: "Your personalized content strategy has been created!",
+        });
         
-        if (generatedStrategy?.strategy) {
-          // Save the strategy to the database
-          const { error: saveError } = await supabase.from('strategy_profiles').insert({
-            user_id: user.id,
-            experience_level: generatedStrategy.strategy.experience_level,
-            content_types: generatedStrategy.strategy.content_types,
-            weekly_calendar: generatedStrategy.strategy.weekly_calendar,
-            first_five_scripts: generatedStrategy.strategy.starter_scripts,
-            full_plan_text: generatedStrategy.strategy.full_plan_text
-          });
-          
-          if (saveError) {
-            console.error("Error saving strategy to database:", saveError);
-            // Still store in localStorage as backup
-            localStorage.setItem('userStrategy', JSON.stringify(generatedStrategy.strategy));
-          }
-          
-          toast({
-            title: "Strategy ready!",
-            description: "Your personalized content strategy has been created!",
-          });
-          
-          // Create initial progress tracking entry
-          const { error: progressError } = await supabase.from('progress_tracking').insert({
-            user_id: user.id,
-            current_xp: 100,
-            current_level: 1,
-            streak_days: 1,
-            last_activity_date: new Date().toISOString()
-          });
-          
-          if (progressError) {
-            console.error("Error creating progress tracking:", progressError);
-          }
-          
-          // Navigate to dashboard with the new strategy
-          navigate('/dashboard');
-        } else {
-          console.error("Generated strategy has unexpected format:", generatedStrategy);
-          toast({
-            title: "Strategy generation incomplete",
-            description: "Your strategy was created but may be missing some details.",
-            variant: "default"
-          });
-          navigate('/dashboard');
+        // Create initial progress tracking entry
+        const { error: progressError } = await supabase.from('progress_tracking').insert({
+          user_id: user.id,
+          current_xp: 100,
+          current_level: 1,
+          streak_days: 1,
+          last_activity_date: new Date().toISOString()
+        });
+        
+        if (progressError) {
+          console.error("Error creating progress tracking:", progressError);
         }
+        
+        // Navigate to dashboard with the new strategy
+        navigate('/dashboard');
       }
     } catch (error) {
       console.error("Error in handleComplete:", error);
