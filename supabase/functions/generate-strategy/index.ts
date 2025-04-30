@@ -206,7 +206,8 @@ serve(async (req) => {
             const ideasToInsert = contentIdeas.map(idea => ({
               user_id: userId,
               idea: idea,
-              selected: false
+              selected: false,
+              generated_at: new Date().toISOString()
             }));
             
             // Insert into Supabase using the Supabase REST API

@@ -13,6 +13,7 @@ interface ContentIdea {
   idea: string;
 }
 
+// Fixed the interface to match the actual database schema
 interface GeneratedScript {
   id: string;
   idea_id: string;
@@ -20,6 +21,8 @@ interface GeneratedScript {
   hook: string;
   content: string;
   created_at: string;
+  format_type: string;
+  user_id: string;
 }
 
 const GenerateScripts = () => {
@@ -75,8 +78,9 @@ const GenerateScripts = () => {
         throw error;
       }
       
+      // Cast the data to match our GeneratedScript interface
       if (data) {
-        setGeneratedScripts(data as GeneratedScript[]);
+        setGeneratedScripts(data as unknown as GeneratedScript[]);
       }
     } catch (error) {
       console.error('Error loading existing scripts:', error);
@@ -119,7 +123,7 @@ const GenerateScripts = () => {
       
       if (data && data.success) {
         // Add the new script to the state
-        setGeneratedScripts(prev => [...prev, data.script]);
+        setGeneratedScripts(prev => [...prev, data.script as GeneratedScript]);
         
         toast({
           title: "Script generated!",

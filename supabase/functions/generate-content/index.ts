@@ -95,7 +95,7 @@ serve(async (req) => {
     // Create the script object
     const scriptData = {
       user_id: userId,
-      idea_id: ideaId,
+      idea_id: ideaId, // Make sure to save the idea_id
       title: parsedContent.title,
       hook: parsedContent.hook,
       content: parsedContent.content,
