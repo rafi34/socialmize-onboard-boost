@@ -1,3 +1,4 @@
+
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,9 +21,9 @@ import {
   ReminderCard,
   LevelProgressCard,
   ScriptsSection,
-  StrategyPlanSection,
 } from "@/components/dashboard";
 
+import { StrategyOverviewSection } from "@/components/dashboard/StrategyOverviewSection";
 import { Navigate } from "react-router-dom";
 import {
   Card,
@@ -294,7 +295,9 @@ export default function Dashboard() {
       <main className="flex-grow container py-6 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
-          <StrategyPlanSection />
+          
+          {/* Replace StrategyPlanSection with our custom StrategyOverviewSection */}
+          <StrategyOverviewSection onPlanConfirmed={setPlanConfirmed} />
 
           {planConfirmed && (
             <>

@@ -12,3 +12,4 @@ export { StrategyPlanSection } from './StrategyPlanSection';
 export { StrategyOverviewCard } from './StrategyOverviewCard';
 export { FullStrategyModal } from './FullStrategyModal';
 export { RegeneratePlanModal } from './RegeneratePlanModal';
+export { StrategyOverviewSection } from './StrategyOverviewSection';
