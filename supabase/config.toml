@@ -55,3 +55,6 @@ verify_jwt = true
 
 [functions.generate-waiting-message]
 verify_jwt = false
+
+[functions.generate-content]
+verify_jwt = true

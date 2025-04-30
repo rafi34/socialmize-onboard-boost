@@ -15,6 +15,7 @@ import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import StrategyChat from "./pages/StrategyChat";
 import ReviewIdeas from "./pages/ReviewIdeas";
+import GenerateScripts from "./pages/GenerateScripts";
 
 const queryClient = new QueryClient();
 
@@ -99,6 +100,18 @@ const App = () => (
                 <ProtectedRoute>
                   <PremiumAppLayout>
                     <ReviewIdeas />
+                  </PremiumAppLayout>
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Generate Scripts - only for authenticated users */}
+            <Route 
+              path="/generate-scripts" 
+              element={
+                <ProtectedRoute>
+                  <PremiumAppLayout>
+                    <GenerateScripts />
                   </PremiumAppLayout>
                 </ProtectedRoute>
               } 

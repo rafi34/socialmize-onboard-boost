@@ -180,8 +180,7 @@ serve(async (req) => {
       messageContent = latestAssistantMessage.content[0].text?.value || '';
       
       // Check if message contains completion marker
-      if (messageContent.includes('ONBOARDING_COMPLETE') || 
-          messageContent.includes('onboarding_complete') || 
+      if (messageContent.includes('[content_ideas_ready]') || 
           messageContent.toLowerCase().includes('content ideas:')) {
         isCompleted = true;
         
@@ -198,8 +197,46 @@ serve(async (req) => {
               return line.replace(/^\d+[\.\)\s]+/, '').trim();
             }).filter(idea => idea.length > 0);
           }
+          
+          // If we found content ideas, save them to the database
+          if (contentIdeas.length > 0) {
+            console.log(`Found ${contentIdeas.length} content ideas, saving to database...`);
+            
+            // Create objects for insertion
+            const ideasToInsert = contentIdeas.map(idea => ({
+              user_id: userId,
+              idea: idea,
+              selected: false
+            }));
+            
+            // Insert into Supabase using the Supabase REST API
+            const supabaseUrl = Deno.env.get('SUPABASE_URL');
+            const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+            
+            if (!supabaseUrl || !supabaseServiceKey) {
+              console.error('Supabase URL or service key not configured');
+            } else {
+              const insertResponse = await fetch(`${supabaseUrl}/rest/v1/content_ideas`, {
+                method: 'POST',
+                headers: {
+                  'apikey': supabaseServiceKey,
+                  'Authorization': `Bearer ${supabaseServiceKey}`,
+                  'Content-Type': 'application/json',
+                  'Prefer': 'return=minimal'
+                },
+                body: JSON.stringify(ideasToInsert)
+              });
+              
+              if (!insertResponse.ok) {
+                const error = await insertResponse.text();
+                console.error('Error inserting content ideas:', error);
+              } else {
+                console.log('Content ideas inserted successfully');
+              }
+            }
+          }
         } catch (error) {
-          console.error('Error parsing content ideas:', error);
+          console.error('Error parsing or saving content ideas:', error);
         }
       }
     }
