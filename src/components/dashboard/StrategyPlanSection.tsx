@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import { RegeneratePlanModal } from "./RegeneratePlanModal";
 
 interface StrategyPhase {
   title: string;
@@ -33,6 +34,7 @@ export const StrategyPlanSection = () => {
   const [strategyPlan, setStrategyPlan] = useState<StrategyPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
+  const [showRegenerateModal, setShowRegenerateModal] = useState(false);
 
   // Define fetchStrategyPlan function before using it
   const fetchStrategyPlan = async () => {
@@ -100,16 +102,28 @@ export const StrategyPlanSection = () => {
         .single();
         
       if (onboardingError) {
+        console.error('Failed to fetch onboarding data:', onboardingError);
         throw new Error('Failed to fetch onboarding data');
       }
       
+      console.log('Onboarding data retrieved:', onboardingData);
+      
       // Get the assistant ID from environment variable
-      const assistantId = process.env.SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID;
+      const assistantId = import.meta.env.VITE_SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID || 
+                         process.env.SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID;
+                         
       if (!assistantId) {
+        console.error('No assistant ID found in environment variables');
         throw new Error('Assistant ID not configured');
       }
       
-      // Call the function to generate strategy (this would be an edge function in production)
+      console.log('Calling generate-strategy-plan function with:', { 
+        userId: user.id, 
+        assistantId,
+        onboardingData 
+      });
+      
+      // Call the function to generate strategy
       const { data, error } = await supabase.functions.invoke(
         'generate-strategy-plan', 
         {
@@ -122,8 +136,11 @@ export const StrategyPlanSection = () => {
       );
       
       if (error) {
+        console.error('Supabase function error:', error);
         throw error;
       }
+      
+      console.log('Strategy plan generation response:', data);
       
       // Update UI with new strategy plan
       await fetchStrategyPlan();
@@ -132,15 +149,16 @@ export const StrategyPlanSection = () => {
         title: "Strategy Plan Regenerated",
         description: "Your new content strategy plan is ready!",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error regenerating strategy:", error);
       toast({
         title: "Error",
-        description: "Failed to regenerate your strategy. Please try again.",
+        description: error.message || "Failed to regenerate your strategy. Please try again.",
         variant: "destructive",
       });
     } finally {
       setRegenerating(false);
+      setShowRegenerateModal(false);
     }
   };
 
@@ -210,104 +228,107 @@ export const StrategyPlanSection = () => {
   }
 
   return (
-    <Card className="mb-6">
-      <CardHeader>
-        <CardTitle className="text-lg">Your Strategy Plan (Tailored for You)</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Summary section */}
-        {strategyPlan.summary && (
-          <div className="p-4 bg-socialmize-light-purple/50 rounded-lg border border-socialmize-light-purple">
-            <p className="text-sm">{strategyPlan.summary}</p>
-          </div>
-        )}
-
-        {/* Phases section */}
-        {strategyPlan.phases && strategyPlan.phases.map((phase, index) => (
-          <div key={index} className="border rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="bg-socialmize-light-purple p-2 rounded-full">
-                {getPhaseIcon(index)}
-              </div>
-              <div>
-                <h3 className="font-bold">{phase.title}</h3>
-                <p className="text-sm text-muted-foreground">{phase.goal}</p>
-              </div>
+    <>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-lg">Your Strategy Plan (Tailored for You)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Summary section */}
+          {strategyPlan.summary && (
+            <div className="p-4 bg-socialmize-light-purple/50 rounded-lg border border-socialmize-light-purple">
+              <p className="text-sm">{strategyPlan.summary}</p>
             </div>
-
-            {/* Tactics */}
-            {phase.tactics && phase.tactics.length > 0 && (
-              <div className="mb-4">
-                <h4 className="text-sm font-medium mb-2">Tactics:</h4>
-                <ul className="list-disc pl-5 space-y-1">
-                  {phase.tactics.map((tactic, i) => (
-                    <li key={i} className="text-sm">{tactic}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Content Plan */}
-            {phase.content_plan && (
-              <div className="mt-4">
-                <h4 className="text-sm font-medium mb-2">Content Plan:</h4>
-                
-                {/* Weekly Schedule */}
-                {phase.content_plan.weekly_schedule && (
-                  <div className="mb-3">
-                    <h5 className="text-xs font-medium text-muted-foreground mb-2">Weekly Schedule:</h5>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                      {Object.entries(phase.content_plan.weekly_schedule).map(([format, count], i) => (
-                        <div key={i} className="bg-muted p-2 rounded text-xs">
-                          <span className="font-medium">{format}</span>: {count}x/week
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Example Post Ideas */}
-                {phase.content_plan.example_post_ideas && phase.content_plan.example_post_ideas.length > 0 && (
-                  <div>
-                    <h5 className="text-xs font-medium text-muted-foreground mb-2">Example Post Ideas:</h5>
-                    <ul className="list-disc pl-5 space-y-1">
-                      {phase.content_plan.example_post_ideas.slice(0, 5).map((idea, i) => (
-                        <li key={i} className="text-sm">{idea}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-      </CardContent>
-      <CardFooter className="flex justify-between gap-4 flex-wrap">
-        <Button 
-          onClick={() => navigate('/strategy-chat')}
-          variant="default"
-        >
-          Use This Strategy
-        </Button>
-        <Button 
-          onClick={regenerateStrategy} 
-          variant="outline" 
-          disabled={regenerating}
-          className="flex items-center gap-2"
-        >
-          {regenerating ? (
-            <>
-              <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></span>
-              Regenerating...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="h-4 w-4" />
-              Regenerate Strategy
-            </>
           )}
-        </Button>
-      </CardFooter>
-    </Card>
+
+          {/* Phases section */}
+          {strategyPlan.phases && strategyPlan.phases.map((phase, index) => (
+            <div key={index} className="border rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="bg-socialmize-light-purple p-2 rounded-full">
+                  {getPhaseIcon(index)}
+                </div>
+                <div>
+                  <h3 className="font-bold">{phase.title}</h3>
+                  <p className="text-sm text-muted-foreground">{phase.goal}</p>
+                </div>
+              </div>
+
+              {/* Tactics */}
+              {phase.tactics && phase.tactics.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium mb-2">Tactics:</h4>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {phase.tactics.map((tactic, i) => (
+                      <li key={i} className="text-sm">{tactic}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Content Plan */}
+              {phase.content_plan && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-medium mb-2">Content Plan:</h4>
+                  
+                  {/* Weekly Schedule */}
+                  {phase.content_plan.weekly_schedule && (
+                    <div className="mb-3">
+                      <h5 className="text-xs font-medium text-muted-foreground mb-2">Weekly Schedule:</h5>
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                        {Object.entries(phase.content_plan.weekly_schedule).map(([format, count], i) => (
+                          <div key={i} className="bg-muted p-2 rounded text-xs">
+                            <span className="font-medium">{format}</span>: {count}x/week
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Example Post Ideas */}
+                  {phase.content_plan.example_post_ideas && phase.content_plan.example_post_ideas.length > 0 && (
+                    <div>
+                      <h5 className="text-xs font-medium text-muted-foreground mb-2">Example Post Ideas:</h5>
+                      <ul className="list-disc pl-5 space-y-1">
+                        {phase.content_plan.example_post_ideas.slice(0, 5).map((idea, i) => (
+                          <li key={i} className="text-sm">{idea}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </CardContent>
+        <CardFooter className="flex justify-between gap-4 flex-wrap">
+          <Button 
+            onClick={() => navigate('/strategy-chat')}
+            variant="default"
+          >
+            Use This Strategy
+          </Button>
+          <Button 
+            onClick={() => setShowRegenerateModal(true)} 
+            variant="outline" 
+            disabled={regenerating}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Regenerate Strategy
+          </Button>
+        </CardFooter>
+      </Card>
+
+      {/* Regenerate confirmation modal */}
+      {showRegenerateModal && (
+        <RegeneratePlanModal
+          isOpen={showRegenerateModal}
+          onClose={() => setShowRegenerateModal(false)}
+          userId={user?.id || ''}
+          onSuccess={fetchStrategyPlan}
+        />
+      )}
+    </>
   );
 };
