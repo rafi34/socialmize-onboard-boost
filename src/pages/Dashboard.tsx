@@ -1,6 +1,4 @@
-
 import { useAuth } from "@/contexts/AuthContext";
-import { Navbar } from "@/components/Navbar";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -274,7 +272,6 @@ export default function Dashboard() {
   if (isGeneratingStrategy && !showContent) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
-        <Navbar />
         <main className="flex-grow flex flex-col items-center justify-center p-6">
           <div className="w-full max-w-md text-center space-y-6">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-socialmize-purple mx-auto"></div>
@@ -295,7 +292,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
-      <Navbar />
       <main className="flex-grow container py-6 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
           {/* Creator Summary Header */}
