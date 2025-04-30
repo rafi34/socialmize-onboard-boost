@@ -9,7 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { ChatBubble } from "@/components/strategy-chat/ChatBubble";
 import { ConfettiExplosion } from "@/components/strategy-chat/ConfettiExplosion";
 import { CompletionModal } from "@/components/strategy-chat/CompletionModal";
-import { Send } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Sparkles, Send, ArrowLeft } from "lucide-react";
 
 interface ChatMessage {
   id: string;
@@ -40,6 +41,7 @@ const StrategyChat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   
   // Initial welcome message from the assistant
   useEffect(() => {
@@ -296,6 +298,10 @@ const StrategyChat = () => {
     navigate('/review-ideas');
     setCompletionModalOpen(false);
   };
+
+  const handleBackToDashboard = () => {
+    navigate('/dashboard');
+  };
   
   if (!user) {
     // Redirect to auth if not logged in
@@ -303,16 +309,32 @@ const StrategyChat = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-background to-background/90">
       {/* Header */}
-      <div className="premium-header p-6">
-        <h1 className="text-3xl font-bold bg-gradient-to-br from-socialmize-dark-purple to-socialmize-purple bg-clip-text text-transparent">Strategy Onboarding</h1>
-        <p className="text-muted-foreground mt-1">Let's get deeper so we can build your best-ever content plan.</p>
+      <div className="premium-header p-4 md:p-6 sticky top-0 z-10 backdrop-blur-md bg-background/80 border-b border-border/20 shadow-sm">
+        <div className="max-w-3xl mx-auto flex items-center">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="mr-3" 
+            onClick={handleBackToDashboard}
+            aria-label="Back to dashboard"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-br from-socialmize-dark-purple to-socialmize-purple bg-clip-text text-transparent flex items-center">
+              <Sparkles className="h-5 w-5 mr-2 text-socialmize-purple" />
+              Strategy Session
+            </h1>
+            <p className="text-sm md:text-base text-muted-foreground">Let's build your personalized content strategy</p>
+          </div>
+        </div>
       </div>
       
       {/* Chat area */}
-      <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4 chat-container">
-        <div className="max-w-3xl mx-auto">
+      <div className="flex-1 overflow-auto p-4 md:p-6 chat-container bg-background/60">
+        <div className="max-w-3xl mx-auto space-y-4">
           {messages.map((message) => (
             <ChatBubble
               key={message.id}
@@ -326,29 +348,34 @@ const StrategyChat = () => {
       </div>
       
       {/* Input area */}
-      <div className="border-t border-border/40 p-4 md:p-6 bg-gradient-to-t from-background/80 to-background">
-        <div className="max-w-3xl mx-auto flex gap-3">
-          <Textarea
-            value={inputMessage}
-            onChange={(e) => setInputMessage(e.target.value)}
-            placeholder="Type your message..."
-            className="resize-none premium-input"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            disabled={isLoading}
-          />
-          <Button 
-            onClick={handleSendMessage}
-            disabled={isLoading || !inputMessage.trim()}
-            className="bg-gradient-to-br from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity"
-            size="icon"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+      <div className="border-t border-border/20 p-3 md:p-6 bg-gradient-to-t from-background/95 to-background/80 backdrop-blur-sm">
+        <div className="max-w-3xl mx-auto">
+          <div className="relative glass-panel rounded-lg shadow-lg">
+            <Textarea
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              placeholder="Type your message..."
+              className="resize-none min-h-[60px] md:min-h-[80px] premium-input border-0 focus-visible:ring-1 focus-visible:ring-socialmize-purple/50 bg-transparent rounded-tl-lg rounded-tr-lg"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              disabled={isLoading}
+            />
+            <div className="absolute bottom-3 right-3">
+              <Button 
+                onClick={handleSendMessage}
+                disabled={isLoading || !inputMessage.trim()}
+                className="bg-gradient-to-br from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-all shadow-md"
+                size={isMobile ? "sm" : "default"}
+              >
+                <Send className={`h-4 w-4 ${isMobile ? 'mr-0' : 'mr-2'}`} />
+                {!isMobile && "Send"}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
       

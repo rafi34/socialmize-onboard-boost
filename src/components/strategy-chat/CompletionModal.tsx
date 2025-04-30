@@ -20,7 +20,7 @@ interface CompletionModalProps {
 export function CompletionModal({ open, onClose, onViewIdeas, ideasCount }: CompletionModalProps) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-gradient-to-b from-card to-background border-socialmize-light-purple/30">
+      <DialogContent className="sm:max-w-md bg-gradient-to-b from-card to-background border-socialmize-light-purple/30 shadow-lg animate-scale-in">
         <DialogHeader>
           <DialogTitle className="text-center text-2xl font-bold bg-gradient-to-r from-socialmize-dark-purple to-socialmize-purple bg-clip-text text-transparent">
             🎉 Strategy Onboarding Complete!
@@ -42,7 +42,7 @@ export function CompletionModal({ open, onClose, onViewIdeas, ideasCount }: Comp
           <Button 
             onClick={onViewIdeas} 
             size="lg" 
-            className="bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity"
+            className="bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity shadow-md"
           >
             Review Content Ideas
           </Button>

@@ -2,7 +2,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bot } from "lucide-react";
+import { Bot, User } from "lucide-react";
 
 interface ChatBubbleProps {
   role: string;
@@ -24,30 +24,36 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ role, message, isLoading
       className={cn(
         "flex w-full",
         role === "user" ? "justify-end" : "justify-start",
-        "my-2" // Added vertical spacing between messages
+        "my-4 animate-fade-in" // Added vertical spacing and animation
       )}
     >
       <div
         className={cn(
-          "flex max-w-[80%] sm:max-w-[70%]",
+          "flex max-w-[85%] sm:max-w-[75%]",
           role === "user" ? "flex-row-reverse" : "flex-row",
           "items-start gap-3" // Increased gap for better spacing
         )}
       >
-        {role === "assistant" && (
-          <Avatar className="mt-0.5 h-9 w-9 border border-primary/10 bg-gradient-to-br from-socialmize-purple to-socialmize-dark-purple shadow-sm">
+        {role === "assistant" ? (
+          <Avatar className="mt-0.5 h-9 w-9 border border-primary/10 bg-gradient-to-br from-socialmize-purple to-socialmize-dark-purple shadow-md">
             <AvatarFallback className="text-primary-foreground">
               <Bot size={18} />
+            </AvatarFallback>
+          </Avatar>
+        ) : (
+          <Avatar className="mt-0.5 h-9 w-9 border border-primary/10 bg-gradient-to-br from-socialmize-green to-socialmize-blue shadow-md">
+            <AvatarFallback className="text-primary-foreground">
+              <User size={18} />
             </AvatarFallback>
           </Avatar>
         )}
         
         <div
           className={cn(
-            "rounded-2xl px-4 py-3 text-sm shadow-sm", // Increased padding and rounded corners
+            "rounded-2xl px-4 py-3 text-sm md:text-base shadow-md", // Increased padding and rounded corners
             role === "user"
               ? "bg-gradient-to-br from-socialmize-purple to-socialmize-dark-purple text-white"
-              : "bg-card border border-border/40 text-foreground",
+              : "glass-panel border border-border/30 text-foreground",
             isLoading && "animate-pulse"
           )}
         >
