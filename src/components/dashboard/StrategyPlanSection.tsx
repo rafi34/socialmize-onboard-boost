@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,6 @@ interface StrategyPhase {
 interface StrategyPlan {
   id: string;
   user_id: string;
-  assistant_id: string | null;
   summary: string | null;
   phases: StrategyPhase[] | null;
   created_at: string | null;
@@ -44,10 +42,10 @@ export const StrategyPlanSection = () => {
     try {
       console.log("Fetching strategy plan for user:", user.id);
       
-      // Changed this query to fetch from the strategy_plans table instead of strategy_profiles
+      // Updated to fetch from the strategy_profiles table
       const { data, error } = await supabase
-        .from('strategy_plans')
-        .select('*')
+        .from('strategy_profiles')
+        .select('id, user_id, summary, phases, created_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .maybeSingle();

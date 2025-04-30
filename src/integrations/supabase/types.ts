@@ -316,7 +316,9 @@ export type Database = {
           full_plan_text: string | null
           id: string
           niche_topic: string | null
+          phases: Json | null
           posting_frequency: string | null
+          summary: string | null
           topic_ideas: Json | null
           updated_at: string
           user_id: string
@@ -331,7 +333,9 @@ export type Database = {
           full_plan_text?: string | null
           id?: string
           niche_topic?: string | null
+          phases?: Json | null
           posting_frequency?: string | null
+          summary?: string | null
           topic_ideas?: Json | null
           updated_at?: string
           user_id: string
@@ -346,7 +350,9 @@ export type Database = {
           full_plan_text?: string | null
           id?: string
           niche_topic?: string | null
+          phases?: Json | null
           posting_frequency?: string | null
+          summary?: string | null
           topic_ideas?: Json | null
           updated_at?: string
           user_id?: string
