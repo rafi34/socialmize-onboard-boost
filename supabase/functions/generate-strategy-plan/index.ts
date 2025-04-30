@@ -52,6 +52,20 @@ serve(async (req) => {
     
     if (useMockResponse) {
       // Return a mock strategy plan for testing
+      const mockData = {
+        summary: "Your personalized content strategy plan is ready. Below you'll find a structured approach to grow your creator presence.",
+        phases: [
+          {
+            title: "Getting Started",
+            goal: "Build your foundation and establish your presence",
+            tactics: ["Create a content calendar", "Define your core topics", "Set up your creator profiles"]
+          }
+        ]
+      };
+      
+      // Save the mock data to both tables
+      await saveStrategyPlan(userId, assistantId, mockData.summary, mockData.phases);
+      
       return new Response(JSON.stringify({
         success: true,
         message: 'Strategy plan generated and saved (mock response for testing)',
@@ -225,39 +239,8 @@ Format this as structured data so it can be displayed in my dashboard.`;
     // Process the message content to extract structured data
     const strategyPlan = processStrategyPlanFromText(messageContent);
     
-    // Save to strategy_plans table using the Supabase REST API
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('Supabase URL or service key not configured');
-      throw new Error('Database configuration error');
-    }
-
-    // Save the strategy plan
-    const planData = {
-      user_id: userId,
-      assistant_id: assistantId,
-      summary: strategyPlan.summary,
-      phases: strategyPlan.phases
-    };
-    
-    const insertResponse = await fetch(`${supabaseUrl}/rest/v1/strategy_plans`, {
-      method: 'POST',
-      headers: {
-        'apikey': supabaseServiceKey,
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=minimal'
-      },
-      body: JSON.stringify(planData)
-    });
-    
-    if (!insertResponse.ok) {
-      const error = await insertResponse.text();
-      console.error('Error inserting strategy plan:', error);
-      throw new Error(`Failed to save strategy plan: ${error}`);
-    }
+    // Save to both strategy_plans and strategy_profiles tables
+    await saveStrategyPlan(userId, assistantId, strategyPlan.summary, strategyPlan.phases);
     
     console.log('Strategy plan successfully generated and saved');
 
@@ -282,6 +265,230 @@ Format this as structured data so it can be displayed in my dashboard.`;
     });
   }
 });
+
+// Helper function to save strategy plan to both tables
+async function saveStrategyPlan(userId: string, assistantId: string, summary: string, phases: any[]) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('Supabase URL or service key not configured');
+    throw new Error('Database configuration error');
+  }
+
+  // First, save to strategy_plans table like before
+  const planData = {
+    user_id: userId,
+    assistant_id: assistantId,
+    summary: summary,
+    phases: phases
+  };
+  
+  console.log('Saving to strategy_plans table...');
+  const insertResponsePlans = await fetch(`${supabaseUrl}/rest/v1/strategy_plans`, {
+    method: 'POST',
+    headers: {
+      'apikey': supabaseServiceKey,
+      'Authorization': `Bearer ${supabaseServiceKey}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify(planData)
+  });
+  
+  if (!insertResponsePlans.ok) {
+    const error = await insertResponsePlans.text();
+    console.error('Error inserting into strategy_plans:', error);
+    throw new Error(`Failed to save to strategy_plans: ${error}`);
+  }
+  
+  // Then also save to strategy_profiles table for backward compatibility
+  // First check if the user already has a strategy profile
+  console.log('Checking for existing strategy_profiles entry...');
+  const getProfileResponse = await fetch(`${supabaseUrl}/rest/v1/strategy_profiles?user_id=eq.${userId}&select=id`, {
+    headers: {
+      'apikey': supabaseServiceKey,
+      'Authorization': `Bearer ${supabaseServiceKey}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  const existingProfile = await getProfileResponse.json();
+  let method = 'POST';
+  let url = `${supabaseUrl}/rest/v1/strategy_profiles`;
+  let headers = {
+    'apikey': supabaseServiceKey,
+    'Authorization': `Bearer ${supabaseServiceKey}`,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=minimal'
+  };
+  
+  // Structure data for strategy_profiles table
+  // Extract content types, weekly schedule, etc. from phases
+  const profileData: any = {
+    user_id: userId,
+    summary: summary,
+    phases: phases,
+    full_plan_text: summary,
+    updated_at: new Date().toISOString()
+  };
+  
+  // If experience_level doesn't exist in onboardingData, set to "Beginner"
+  profileData.experience_level = "Beginner";
+  
+  // Extract content types from phases
+  const contentTypes = extractContentTypesFromPhases(phases);
+  if (contentTypes.length > 0) {
+    profileData.content_types = contentTypes;
+  }
+  
+  // Extract weekly calendar from phases
+  const weeklyCalendar = extractWeeklyCalendarFromPhases(phases);
+  if (Object.keys(weeklyCalendar).length > 0) {
+    profileData.weekly_calendar = weeklyCalendar;
+  }
+  
+  // Extract example scripts as first_five_scripts
+  const scripts = extractExampleScriptsFromPhases(phases);
+  if (scripts.length > 0) {
+    profileData.first_five_scripts = scripts;
+  }
+  
+  if (existingProfile && existingProfile.length > 0) {
+    // Update existing record
+    method = 'PATCH';
+    url = `${supabaseUrl}/rest/v1/strategy_profiles?user_id=eq.${userId}`;
+    console.log('Updating existing strategy_profiles entry...');
+  } else {
+    console.log('Creating new strategy_profiles entry...');
+  }
+  
+  console.log('Saving to strategy_profiles table with method:', method);
+  const insertResponseProfiles = await fetch(url, {
+    method: method,
+    headers: headers,
+    body: JSON.stringify(profileData)
+  });
+  
+  if (!insertResponseProfiles.ok) {
+    const error = await insertResponseProfiles.text();
+    console.error('Error saving to strategy_profiles:', error);
+    console.error('Failed with data:', JSON.stringify(profileData));
+    throw new Error(`Failed to save to strategy_profiles: ${error}`);
+  }
+  
+  console.log('Successfully saved data to both tables');
+}
+
+function extractContentTypesFromPhases(phases: any[]): string[] {
+  const contentTypes: Set<string> = new Set();
+  
+  phases.forEach(phase => {
+    if (phase.tactics && Array.isArray(phase.tactics)) {
+      phase.tactics.forEach((tactic: string) => {
+        // Extract content types from tactics based on common patterns
+        if (tactic.includes('video')) contentTypes.add('Video');
+        if (tactic.includes('post')) contentTypes.add('Post');
+        if (tactic.includes('carousel')) contentTypes.add('Carousel');
+        if (tactic.includes('story') || tactic.includes('stories')) contentTypes.add('Story');
+        if (tactic.includes('reel')) contentTypes.add('Reel');
+        if (tactic.includes('live')) contentTypes.add('Live');
+      });
+    }
+    
+    if (phase.content_plan && phase.content_plan.weekly_schedule) {
+      Object.keys(phase.content_plan.weekly_schedule).forEach(type => {
+        contentTypes.add(type);
+      });
+    }
+  });
+  
+  // If we couldn't extract any content types, add some defaults
+  if (contentTypes.size === 0) {
+    return ["Video", "Carousel", "Post", "Story"];
+  }
+  
+  return Array.from(contentTypes);
+}
+
+function extractWeeklyCalendarFromPhases(phases: any[]): Record<string, string[]> {
+  const weeklyCalendar: Record<string, string[]> = {
+    "Monday": [],
+    "Tuesday": [],
+    "Wednesday": [],
+    "Thursday": [],
+    "Friday": [],
+    "Saturday": [],
+    "Sunday": []
+  };
+  
+  // Try to extract calendar information from phases
+  phases.forEach(phase => {
+    if (phase.content_plan && phase.content_plan.example_post_ideas) {
+      const ideas = phase.content_plan.example_post_ideas;
+      if (ideas.length >= 7) {
+        Object.keys(weeklyCalendar).forEach((day, index) => {
+          if (ideas[index]) {
+            weeklyCalendar[day].push(ideas[index]);
+          }
+        });
+      }
+    }
+  });
+  
+  // Add default content if calendar is empty
+  let isEmpty = true;
+  Object.values(weeklyCalendar).forEach(posts => {
+    if (posts.length > 0) isEmpty = false;
+  });
+  
+  if (isEmpty) {
+    weeklyCalendar["Monday"] = ["Morning motivation post", "Weekly goals update"];
+    weeklyCalendar["Wednesday"] = ["Mid-week inspiration", "Behind-the-scenes content"];
+    weeklyCalendar["Friday"] = ["Weekly win celebration", "Weekend engagement question"];
+    weeklyCalendar["Sunday"] = ["Week reflection", "Next week preview"];
+  }
+  
+  return weeklyCalendar;
+}
+
+function extractExampleScriptsFromPhases(phases: any[]): { title: string, script: string }[] {
+  const scripts: { title: string, script: string }[] = [];
+  
+  // Try to extract script ideas from phases
+  phases.forEach(phase => {
+    if (phase.content_plan && phase.content_plan.example_post_ideas) {
+      phase.content_plan.example_post_ideas.forEach((idea: string, index: number) => {
+        if (scripts.length < 5) {
+          scripts.push({
+            title: `Script Idea ${scripts.length + 1}: ${idea.substring(0, 30)}...`,
+            script: `Hook: Start with an attention-grabbing question or statement.\n\nContent: ${idea}\n\nCall to Action: Ask viewers to engage by commenting or sharing.`
+          });
+        }
+      });
+    }
+  });
+  
+  // Add default scripts if we don't have enough
+  if (scripts.length === 0) {
+    scripts.push(
+      {
+        title: "Introductory Video",
+        script: "Hook: \"Ever wondered how to...?\"\nContent: Introduce yourself and your expertise.\nCall to Action: \"Follow for more tips!\""
+      },
+      {
+        title: "Tutorial Basics",
+        script: "Hook: \"This changed everything for me...\"\nContent: Share one key insight or tip.\nCall to Action: \"Try this and let me know how it works for you!\""
+      },
+      {
+        title: "Q&A Session",
+        script: "Hook: \"Your top question answered!\"\nContent: Address a common question in your niche.\nCall to Action: \"What other questions do you have? Comment below!\""
+      }
+    );
+  }
+  
+  return scripts;
+}
 
 // Helper function to create a message with onboarding data information
 function createOnboardingDataMessage(onboardingData) {
