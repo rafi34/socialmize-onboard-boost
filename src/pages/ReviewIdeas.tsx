@@ -7,7 +7,7 @@ import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, CheckCircle } from "lucide-react";
+import { Loader2, CheckCircle, RefreshCcw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 interface ContentIdea {
@@ -19,6 +19,7 @@ interface ContentIdea {
 const ReviewIdeas = () => {
   const [ideas, setIdeas] = useState<ContentIdea[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedCount, setSelectedCount] = useState(0);
   const { user } = useAuth();
@@ -32,6 +33,7 @@ const ReviewIdeas = () => {
 
   const loadContentIdeas = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('content_ideas')
         .select('*')
@@ -57,6 +59,74 @@ const ReviewIdeas = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateContentIdeas = async () => {
+    if (!user) return;
+    
+    try {
+      setGenerating(true);
+      toast({
+        title: "Generating content ideas",
+        description: "We're creating fresh content ideas for you. This might take a moment..."
+      });
+
+      // Call the edge function to generate new topics
+      const { data, error } = await supabase.functions.invoke('refresh-topics', {
+        body: { user_id: user.id }
+      });
+      
+      if (error) {
+        throw error;
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || "Failed to generate content ideas");
+      }
+
+      // Get the topics from the response
+      const topicIdeas = data.topics || [];
+      
+      // Convert topics to content ideas format for saving
+      if (topicIdeas.length > 0) {
+        const ideaObjects = topicIdeas.map((idea: string) => ({
+          user_id: user.id,
+          idea: idea,
+          selected: false
+        }));
+        
+        // Save the content ideas to the database
+        const { error: saveError } = await supabase
+          .from('content_ideas')
+          .insert(ideaObjects);
+          
+        if (saveError) {
+          throw saveError;
+        }
+        
+        toast({
+          title: "Content ideas generated!",
+          description: `${topicIdeas.length} new content ideas have been created.`
+        });
+        
+        // Reload the content ideas
+        await loadContentIdeas();
+      } else {
+        toast({
+          title: "No new ideas generated",
+          description: "Try updating your strategy profile with more specific information."
+        });
+      }
+    } catch (error: any) {
+      console.error('Error generating content ideas:', error);
+      toast({
+        title: "Error generating ideas",
+        description: error.message || "There was a problem generating your content ideas.",
+        variant: "destructive"
+      });
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -182,46 +252,76 @@ const ReviewIdeas = () => {
           <div className="space-y-4">
             {ideas.length === 0 ? (
               <Card className="premium-card">
-                <CardContent className="p-6">
-                  <p className="text-center text-muted-foreground">
-                    No content ideas found. Complete your strategy onboarding to generate ideas.
+                <CardContent className="p-6 flex flex-col items-center">
+                  <p className="text-center text-muted-foreground mb-4">
+                    No content ideas found. Click the button below to generate some ideas based on your strategy profile.
                   </p>
-                  <div className="flex justify-center mt-4">
-                    <Button onClick={() => navigate('/strategy-chat')} className="bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity">
-                      Go to Strategy Chat
-                    </Button>
-                  </div>
+                  <Button 
+                    onClick={generateContentIdeas} 
+                    className="bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity"
+                    disabled={generating}
+                  >
+                    {generating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating Ideas...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCcw className="mr-2 h-4 w-4" />
+                        Generate Content Ideas
+                      </>
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
             ) : (
-              ideas.map((idea) => (
-                <Card 
-                  key={idea.id} 
-                  className={`hover:border-socialmize-purple/40 transition-all duration-200 ${
-                    idea.selected ? "border-socialmize-purple bg-socialmize-purple/5" : "premium-card"
-                  }`}
-                >
-                  <CardContent className="p-4 flex items-start gap-4">
-                    <div className="mt-1">
-                      <Checkbox
-                        checked={idea.selected}
-                        onCheckedChange={() => toggleSelection(idea.id, idea.selected)}
-                        id={`idea-${idea.id}`}
-                        className={idea.selected ? "text-socialmize-purple border-socialmize-purple" : ""}
-                      />
-                    </div>
-                    <label
-                      htmlFor={`idea-${idea.id}`}
-                      className="text-sm cursor-pointer flex-1 leading-relaxed"
-                    >
-                      {idea.idea}
-                    </label>
-                    {idea.selected && (
-                      <CheckCircle className="h-5 w-5 text-socialmize-purple shrink-0" />
+              <>
+                <div className="flex justify-end mb-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={generateContentIdeas}
+                    disabled={generating}
+                    className="text-xs"
+                  >
+                    {generating ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                      <RefreshCcw className="mr-1 h-3 w-3" />
                     )}
-                  </CardContent>
-                </Card>
-              ))
+                    Refresh Ideas
+                  </Button>
+                </div>
+                {ideas.map((idea) => (
+                  <Card 
+                    key={idea.id} 
+                    className={`hover:border-socialmize-purple/40 transition-all duration-200 ${
+                      idea.selected ? "border-socialmize-purple bg-socialmize-purple/5" : "premium-card"
+                    }`}
+                  >
+                    <CardContent className="p-4 flex items-start gap-4">
+                      <div className="mt-1">
+                        <Checkbox
+                          checked={idea.selected}
+                          onCheckedChange={() => toggleSelection(idea.id, idea.selected)}
+                          id={`idea-${idea.id}`}
+                          className={idea.selected ? "text-socialmize-purple border-socialmize-purple" : ""}
+                        />
+                      </div>
+                      <label
+                        htmlFor={`idea-${idea.id}`}
+                        className="text-sm cursor-pointer flex-1 leading-relaxed"
+                      >
+                        {idea.idea}
+                      </label>
+                      {idea.selected && (
+                        <CheckCircle className="h-5 w-5 text-socialmize-purple shrink-0" />
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </>
             )}
           </div>
         )}
