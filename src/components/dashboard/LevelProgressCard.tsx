@@ -27,10 +27,10 @@ export const LevelProgressCard = ({ progress, loading }: LevelProgressCardProps)
     return null;
   }
 
-  // Calculate XP needed for next level (in a real app, this would be more dynamic)
+  // Calculate XP needed for next level
   const currentXP = progress.current_xp || 0;
-  const nextLevelXP = progress.xp_next_level || (progress.current_level * 100);
-  const xpNeeded = nextLevelXP - currentXP;
+  const nextLevelXP = progress.xp_next_level || (progress.current_level + 1) * 100;
+  const xpNeeded = Math.max(0, nextLevelXP - currentXP);
   const xpPercentage = (currentXP / nextLevelXP) * 100;
 
   const nextLevelReward = progress.current_level === 1 
