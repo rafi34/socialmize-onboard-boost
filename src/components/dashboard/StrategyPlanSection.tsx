@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -109,8 +108,7 @@ export const StrategyPlanSection = () => {
       console.log('Onboarding data retrieved:', onboardingData);
       
       // Get the assistant ID from environment variable
-      const assistantId = import.meta.env.VITE_SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID || 
-                         process.env.SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID;
+      const assistantId = import.meta.env.VITE_SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID;
                          
       if (!assistantId) {
         console.error('No assistant ID found in environment variables');

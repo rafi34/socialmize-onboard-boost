@@ -46,8 +46,7 @@ export const RegeneratePlanModal = ({
       }
       
       // Get the assistant ID from environment variable
-      const assistantId = import.meta.env.VITE_SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID || 
-                        process.env.SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID;
+      const assistantId = import.meta.env.VITE_SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID;
                         
       if (!assistantId) {
         throw new Error('Assistant ID not configured');
