@@ -69,3 +69,6 @@ minimal_apis = false
 [functions]
 [functions.generate-strategy-plan]
 verify_jwt = true
+
+[functions.generate-strategy]
+verify_jwt = true

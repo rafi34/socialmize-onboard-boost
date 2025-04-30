@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-// Update to use the same environment variable as generate-strategy-plan
+// Use the same environment variable as generate-strategy-plan
 const assistantId = Deno.env.get('SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID');
 
 const corsHeaders = {
@@ -25,10 +25,13 @@ serve(async (req) => {
     }
 
     if (!openaiApiKey) {
+      console.error('OpenAI API key not configured');
       throw new Error('OpenAI API key not configured');
     }
 
     if (!assistantId) {
+      console.error('Assistant ID not configured');
+      console.error('Available env variables:', Object.keys(Deno.env.toObject()));
       throw new Error('Assistant ID not configured');
     }
 

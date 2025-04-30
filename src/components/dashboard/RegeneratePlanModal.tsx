@@ -49,6 +49,7 @@ export const RegeneratePlanModal = ({
       }
       
       console.log("Onboarding data fetched successfully:", onboardingData);
+      console.log("Calling generate-strategy-plan with userId:", userId);
       
       // Call the Supabase Edge Function to regenerate the strategy plan
       const { data, error: functionError } = await supabase.functions.invoke(

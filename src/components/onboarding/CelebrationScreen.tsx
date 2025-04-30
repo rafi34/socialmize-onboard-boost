@@ -34,8 +34,10 @@ export const CelebrationScreen = () => {
       // First, save the onboarding data
       await completeOnboarding();
       
-      // Generate the user's strategy plan instead of trying to generate a strategy directly
-      // This uses the same assistant ID variable as the regenerate plan function
+      console.log("Calling generate-strategy-plan with userId:", user.id);
+      console.log("Onboarding answers:", onboardingAnswers);
+      
+      // Generate the user's strategy plan
       const { data: generatedStrategy, error } = await supabase.functions.invoke('generate-strategy-plan', {
         body: { 
           userId: user.id,
