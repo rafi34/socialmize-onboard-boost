@@ -170,7 +170,7 @@ export const StrategyOverviewSection = ({
     if (!phases) return [];
     
     return phases.filter(phase => 
-      // Filter out phases that don't have a proper title or are just labels
+      // Filter out phases that don't have proper title or are just labels
       phase.title && 
       !["summary", "phases", "summary paragraph", "phase"].includes(phase.title.toLowerCase()) &&
       // Ensure it has either a goal or tactics
@@ -269,7 +269,7 @@ export const StrategyOverviewSection = ({
               <Card key={index} className="border shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-md">
-                    {phase.title?.includes("Phase") ? phase.title : `Phase ${index + 1}: ${phase.title}`}
+                    {phase.title}
                   </CardTitle>
                   {phase.goal && <p className="text-sm text-muted-foreground">{phase.goal}</p>}
                 </CardHeader>

@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -81,39 +82,33 @@ serve(async (req) => {
 
     // Add a specific request for generating a structured strategy plan with clear JSON-like format
     const strategyPlanPrompt = `Based on my onboarding information, please generate a comprehensive content strategy plan.
-Please structure your response in the following JSON-like format for easy parsing:
+Your response must follow this exact structure for proper parsing:
 
-1. Start with a summary paragraph explaining the overall strategy
-2. Then, provide 3-5 distinct phases, each containing:
-   - Phase title (clearly labeled as "Phase X: Title")
-   - Goal description
-   - List of specific tactics (as bullet points)
-   - A content plan with weekly schedule (content type -> frequency) and example post ideas
+SUMMARY: Write a concise paragraph summarizing the overall strategy.
 
-Please make each phase clearly distinguishable with proper headings and formatting.
-For example:
-
-SUMMARY: Your strategy focuses on...
-
-PHASE 1: Establish Your Presence
-GOAL: Build a foundation for...
+PHASE 1: [Title of the first phase]
+GOAL: [Clear goal description for this phase]
 TACTICS:
-- Create consistent branding
-- Post 3x per week
-- etc.
+- [Specific tactic 1]
+- [Specific tactic 2]
+- [Additional tactics as needed]
 
 CONTENT PLAN:
 WEEKLY SCHEDULE:
-- Instagram posts: 2x
-- Stories: 5x
-- etc.
+- [Content type 1]: [frequency per week]
+- [Content type 2]: [frequency per week]
 
 EXAMPLE POST IDEAS:
-- Behind the scenes look at...
-- Tutorial on how to...
-- etc.
+- [Example post idea 1]
+- [Example post idea 2]
+- [Example post idea 3]
 
-Please follow this format strictly for each phase to ensure your strategy is properly structured.`;
+PHASE 2: [Title of the second phase]
+[... repeat the same structure for phases 2-5]
+
+It's critical that you follow this exact format with the exact headings (SUMMARY, PHASE, GOAL, TACTICS, CONTENT PLAN, etc.) to ensure proper parsing. 
+Do not add any markdown formatting like ###, bullet points other than the ones indicated with -, or any other formatting.
+Include 3-5 phases total, each with clear tactics and content plans.`;
 
     await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       method: 'POST',
@@ -219,7 +214,7 @@ Please follow this format strictly for each phase to ensure your strategy is pro
     }
 
     console.log('Assistant response received. Processing...');
-    console.log('Raw assistant response:', messageContent.substring(0, 500) + '...');
+    console.log('Raw assistant response:', messageContent);
 
     // Process the message content to extract structured data
     const strategyPlan = processStrategyPlanFromText(messageContent);
@@ -497,212 +492,208 @@ function processStrategyPlanFromText(text) {
   console.log("Processing strategy plan from text...");
   
   try {
-    // Extract summary - first paragraph before any headings
-    const summaryMatch = text.match(/^(.*?)(?=SUMMARY:|PHASE \d|Phase \d|\n\s*\n\s*PHASE|\n\s*\n\s*Phase|\n# |\n## |\n### )/s);
-    const summary = summaryMatch ? summaryMatch[1].trim() : text.split('\n\n')[0].trim();
-    
-    console.log("Extracted summary:", summary);
-    
-    // Define regex patterns for different phase heading formats
-    const phasePatterns = [
-      // Format: "PHASE 1: Title" or "Phase 1: Title"
-      /(?:PHASE|Phase)\s+(\d+)\s*:\s*([^\n]+)(?:\n+(?:GOAL|Goal)\s*:\s*([^\n]+))?[\s\n]+((?:.+\n)+?)(?=(?:(?:PHASE|Phase)\s+\d|CONTENT PLAN|Content Plan|$))/gi,
-      
-      // Format: "# Phase 1: Title" (markdown style)
-      /#+\s*(?:PHASE|Phase)\s+(\d+)\s*:\s*([^\n]+)(?:\n+(?:GOAL|Goal)\s*:\s*([^\n]+))?[\s\n]+((?:.+\n)+?)(?=(?:#|PHASE|Phase|\s*\d|CONTENT PLAN|Content Plan|$))/gi,
-      
-      // Format: Section with just "Phase 1" as a heading
-      /(?:^|\n\n)(?:PHASE|Phase)\s+(\d+)\s*\n+([^\n]+)?(?:\n+(?:GOAL|Goal)\s*:\s*([^\n]+))?[\s\n]+((?:.+\n)+?)(?=(?:(?:PHASE|Phase)\s+\d|CONTENT PLAN|Content Plan|$))/gi
-    ];
-    
+    // Extract summary
+    let summary = '';
     let phases = [];
-    let matchFound = false;
     
-    // Try each pattern until we find matches
-    for (const pattern of phasePatterns) {
-      const matches = Array.from(text.matchAll(pattern));
-      if (matches.length > 0) {
-        matchFound = true;
-        console.log(`Found ${matches.length} phases using pattern:`, pattern);
-        
-        matches.forEach(match => {
-          const phaseNumber = match[1];
-          const title = match[2] ? match[2].trim() : `Phase ${phaseNumber}`;
-          const goal = match[3] ? match[3].trim() : "Implement this phase of your content strategy";
-          const details = match[4] ? match[4].trim() : "";
-          
-          // Extract tactics
-          const tactics = extractTactics(details);
-          
-          // Extract content plan
-          const contentPlan = extractContentPlan(details);
-          
-          phases.push({
-            title,
-            goal,
-            tactics,
-            content_plan: contentPlan
-          });
-        });
-        
-        break; // Stop after finding matches with one pattern
+    // First, clean up the text by removing any markdown formatting
+    const cleanedText = text.replace(/#+\s+/g, ''); // Remove markdown headings
+    
+    // Split the text into sections based on "SUMMARY:" and "PHASE" markers
+    const sections = cleanedText.split(/\n(?:SUMMARY:|PHASE \d+:)/g).filter(section => section.trim().length > 0);
+    
+    // Log sections for debugging
+    console.log(`Found ${sections.length} sections in the text`);
+    
+    if (sections.length > 0) {
+      // First section should be the summary if it doesn't start with a phase marker
+      if (!cleanedText.trim().startsWith('PHASE')) {
+        summary = sections[0].trim();
+        console.log("Found summary:", summary);
       }
-    }
-    
-    // If no phases were found using the structured patterns, try fallback approach
-    if (!matchFound || phases.length === 0) {
-      console.log("No phases found with structured patterns, trying fallback approach");
       
-      // Try to find sections that might represent phases
-      const phaseCandidates = text.split(/(?:\n\n|\n###|\n##|\n#)/g).filter(section => 
-        section.trim().length > 0 && 
-        (section.toLowerCase().includes('phase') || 
-         section.includes('establish') ||
-         section.includes('grow') ||
-         section.includes('expand'))
-      );
+      // Extract phase information using regex pattern matching
+      const phasePattern = /PHASE (\d+):(.*?)(?=PHASE \d+:|$)/gs;
+      const phaseMatches = Array.from(text.matchAll(phasePattern));
       
-      if (phaseCandidates.length > 0) {
-        console.log(`Found ${phaseCandidates.length} potential phase candidates`);
-        
-        phaseCandidates.forEach((section, index) => {
-          const lines = section.split('\n');
-          const title = lines[0].trim();
+      console.log(`Found ${phaseMatches.length} phase matches with regex`);
+      
+      if (phaseMatches.length > 0) {
+        phases = phaseMatches.map(match => {
+          const phaseNumber = match[1];
+          const phaseContent = match[2].trim();
           
-          // Try to extract a goal if it exists
+          // Extract phase title
+          const titleMatch = phaseContent.match(/^(.+?)(?=\n|$)/);
+          const title = titleMatch ? `Phase ${phaseNumber}: ${titleMatch[1].trim()}` : `Phase ${phaseNumber}`;
+          
+          // Extract goal
           let goal = "Implement this phase of your content strategy";
-          const goalLine = lines.find(line => 
-            line.toLowerCase().includes('goal:') || 
-            line.toLowerCase().includes('aim:') || 
-            line.toLowerCase().includes('objective:')
-          );
-          
-          if (goalLine) {
-            const goalMatch = goalLine.match(/(?:goal|aim|objective):\s*(.+)/i);
-            if (goalMatch && goalMatch[1]) {
-              goal = goalMatch[1].trim();
-            }
+          const goalMatch = phaseContent.match(/GOAL:(.*?)(?=\n\s*TACTICS:|$)/s);
+          if (goalMatch && goalMatch[1]) {
+            goal = goalMatch[1].trim();
           }
           
           // Extract tactics
-          const tactics = lines.filter(line => 
-            line.trim().startsWith('-') || 
-            line.trim().startsWith('*')
-          ).map(line => line.replace(/^[*-]\s*/, '').trim());
+          const tactics = [];
+          const tacticsMatch = phaseContent.match(/TACTICS:([^]*?)(?=CONTENT PLAN:|$)/s);
+          if (tacticsMatch && tacticsMatch[1]) {
+            const tacticsLines = tacticsMatch[1].trim().split('\n');
+            tacticsLines.forEach(line => {
+              if (line.trim().startsWith('-')) {
+                tactics.push(line.trim().substring(1).trim());
+              }
+            });
+          }
           
-          phases.push({
-            title: title || `Phase ${index + 1}`,
+          // Extract content plan
+          let contentPlan = null;
+          const contentPlanMatch = phaseContent.match(/CONTENT PLAN:([^]*?)(?=PHASE \d+:|$)/s);
+          if (contentPlanMatch && contentPlanMatch[1]) {
+            const contentPlanText = contentPlanMatch[1].trim();
+            
+            // Extract weekly schedule
+            const weeklySchedule = {};
+            const scheduleMatch = contentPlanText.match(/WEEKLY SCHEDULE:([^]*?)(?=EXAMPLE POST IDEAS:|$)/s);
+            if (scheduleMatch && scheduleMatch[1]) {
+              const scheduleLines = scheduleMatch[1].trim().split('\n');
+              scheduleLines.forEach(line => {
+                if (line.trim().startsWith('-')) {
+                  const parts = line.substring(1).trim().split(':');
+                  if (parts.length === 2) {
+                    const contentType = parts[0].trim();
+                    const frequency = parseInt(parts[1].trim());
+                    if (!isNaN(frequency)) {
+                      weeklySchedule[contentType] = frequency;
+                    }
+                  }
+                }
+              });
+            }
+            
+            // Extract example post ideas
+            const examplePostIdeas = [];
+            const ideasMatch = contentPlanText.match(/EXAMPLE POST IDEAS:([^]*?)$/s);
+            if (ideasMatch && ideasMatch[1]) {
+              const ideasLines = ideasMatch[1].trim().split('\n');
+              ideasLines.forEach(line => {
+                if (line.trim().startsWith('-')) {
+                  examplePostIdeas.push(line.substring(1).trim());
+                }
+              });
+            }
+            
+            if (Object.keys(weeklySchedule).length > 0 || examplePostIdeas.length > 0) {
+              contentPlan = {
+                weekly_schedule: weeklySchedule,
+                example_post_ideas: examplePostIdeas
+              };
+            }
+          }
+          
+          return {
+            title,
             goal,
-            tactics: tactics.length > 0 ? tactics : ["Implement strategies aligned with your content goals"],
-            content_plan: null
-          });
+            tactics: tactics.length > 0 ? tactics : ["Create engaging content aligned with your strategy"],
+            content_plan: contentPlan
+          };
         });
+      }
+      // If no phases were found with regex, try an alternative approach
+      else if (sections.length > 1) {
+        console.log("Using fallback approach to extract phases from sections");
+        
+        // Skip the first section if it's the summary
+        const startIndex = summary ? 1 : 0;
+        
+        for (let i = startIndex; i < sections.length; i++) {
+          const phaseContent = sections[i].trim();
+          
+          // Try to determine phase number from context
+          const phaseNumber = i - startIndex + 1;
+          
+          // Extract phase title - first line is likely the title
+          const lines = phaseContent.split('\n');
+          const title = lines.length > 0 ? `Phase ${phaseNumber}: ${lines[0].trim()}` : `Phase ${phaseNumber}`;
+          
+          // Extract goal
+          let goal = "Implement this phase of your content strategy";
+          const goalIndex = phaseContent.indexOf('GOAL:');
+          if (goalIndex !== -1) {
+            const goalText = phaseContent.substring(goalIndex + 5);
+            const endIndex = goalText.indexOf('\n');
+            if (endIndex !== -1) {
+              goal = goalText.substring(0, endIndex).trim();
+            } else {
+              goal = goalText.trim();
+            }
+          }
+          
+          // Extract tactics - look for bullet points
+          const tactics = [];
+          const tacticLines = phaseContent.split('\n');
+          let inTacticsSection = false;
+          
+          tacticLines.forEach(line => {
+            if (line.includes('TACTICS:')) {
+              inTacticsSection = true;
+            } else if (inTacticsSection && line.includes('CONTENT PLAN:')) {
+              inTacticsSection = false;
+            } else if (inTacticsSection && line.trim().startsWith('-')) {
+              tactics.push(line.trim().substring(1).trim());
+            }
+          });
+          
+          // Add the phase with extracted information
+          phases.push({
+            title,
+            goal,
+            tactics: tactics.length > 0 ? tactics : ["Create engaging content aligned with your strategy"],
+            content_plan: null // Content plan parsing would be more complex here
+          });
+        }
       }
     }
     
-    // If we still don't have phases, create a default one
-    if (phases.length === 0) {
-      console.log("No phases found, creating default phase");
+    // If we couldn't extract anything useful, create a default placeholder
+    if (summary === '' && phases.length === 0) {
+      console.log("Couldn't extract useful data, creating default structure");
+      summary = text.split('\n')[0]; // Just use the first line as summary
       phases = [{
         title: "Content Strategy",
-        goal: "Implement your personalized content strategy",
-        tactics: ["Create engaging content based on your niche", "Post regularly following your schedule", "Engage with your audience"],
+        goal: "Build your social media presence",
+        tactics: ["Create consistent content", "Engage with your audience", "Analyze and adjust your strategy"],
         content_plan: null
       }];
     }
     
-    console.log(`Final result: ${phases.length} phases extracted`);
+    console.log(`Final result: Summary and ${phases.length} phases extracted`);
     return { summary, phases };
   } catch (error) {
     console.error("Error processing strategy plan text:", error);
+    // Return a default structure in case of parsing failure
     return {
       summary: "Your personalized content strategy plan is ready. Below you'll find a structured approach to grow your creator presence.",
       phases: [
         {
-          title: "Getting Started",
+          title: "Phase 1: Getting Started",
           goal: "Build your foundation and establish your presence",
           tactics: ["Create a content calendar", "Define your core topics", "Set up your creator profiles"],
+          content_plan: null
+        },
+        {
+          title: "Phase 2: Content Development",
+          goal: "Create engaging content for your audience",
+          tactics: ["Develop your unique voice", "Experiment with different formats", "Focus on quality over quantity"],
+          content_plan: null
+        },
+        {
+          title: "Phase 3: Community Building",
+          goal: "Grow your audience and foster engagement",
+          tactics: ["Engage with comments and messages", "Collaborate with other creators", "Host Q&A sessions"],
           content_plan: null
         }
       ]
     };
   }
-}
-
-// Helper function to extract tactics from phase details
-function extractTactics(details) {
-  // Look for sections labeled as "TACTICS:" or bullet points
-  const tacticsSection = details.match(/(?:TACTICS|Tactics):\s*((?:[\s\S](?!CONTENT PLAN|Content Plan|WEEKLY SCHEDULE|Weekly Schedule|EXAMPLE POST|Example Post))+)/i);
-  
-  if (tacticsSection && tacticsSection[1]) {
-    // Extract bullet points from tactics section
-    return tacticsSection[1]
-      .split('\n')
-      .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
-      .map(line => line.replace(/^[*-]\s*/, '').trim());
-  }
-  
-  // If no explicitly labeled tactics section, look for bullet points in general
-  const bulletPoints = details
-    .split('\n')
-    .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
-    .map(line => line.replace(/^[*-]\s*/, '').trim());
-  
-  // Only use bullet points if they're not part of a content plan section
-  if (bulletPoints.length > 0 && !details.includes('CONTENT PLAN') && !details.includes('Content Plan')) {
-    return bulletPoints;
-  }
-  
-  // Default tactics if none found
-  return ["Implement strategies aligned with your content goals"];
-}
-
-// Helper function to extract content plan from phase details
-function extractContentPlan(details) {
-  // Check if there's a content plan section
-  if (!details.includes('CONTENT PLAN') && !details.includes('Content Plan') && 
-      !details.includes('WEEKLY SCHEDULE') && !details.includes('Weekly Schedule')) {
-    return null;
-  }
-  
-  const contentPlan = {
-    weekly_schedule: {},
-    example_post_ideas: []
-  };
-  
-  // Extract weekly schedule
-  const scheduleSection = details.match(/(?:WEEKLY SCHEDULE|Weekly Schedule):\s*((?:[\s\S](?!EXAMPLE POST|Example Post))+)/i);
-  if (scheduleSection && scheduleSection[1]) {
-    const scheduleLines = scheduleSection[1]
-      .split('\n')
-      .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'));
-    
-    scheduleLines.forEach(line => {
-      const formatMatch = line.match(/[*-]\s*([^:]+):\s*(\d+)/);
-      if (formatMatch) {
-        const format = formatMatch[1].trim();
-        const count = parseInt(formatMatch[2], 10);
-        contentPlan.weekly_schedule[format] = count;
-      }
-    });
-  }
-  
-  // Extract example post ideas
-  const ideasSection = details.match(/(?:EXAMPLE POST IDEAS|Example Post Ideas):\s*([\s\S]+)/i);
-  if (ideasSection && ideasSection[1]) {
-    const ideas = ideasSection[1]
-      .split('\n')
-      .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*'))
-      .map(line => line.replace(/^[*-]\s*/, '').trim());
-    
-    contentPlan.example_post_ideas = ideas;
-  }
-  
-  // If we have any data, return the content plan
-  if (Object.keys(contentPlan.weekly_schedule).length > 0 || contentPlan.example_post_ideas.length > 0) {
-    return contentPlan;
-  }
-  
-  // Otherwise return null
-  return null;
 }
