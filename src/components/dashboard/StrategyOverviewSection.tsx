@@ -48,8 +48,8 @@ export const StrategyOverviewSection = ({
         .from('strategy_profiles')
         .select('id, user_id, summary, phases, first_five_scripts')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .maybeSingle();
+        .limit(1)
+        .single();
       
       if (error) {
         console.error("Error fetching strategy plan:", error);
@@ -60,7 +60,17 @@ export const StrategyOverviewSection = ({
         });
       } else if (data) {
         console.log("Strategy plan data:", data);
-        setStrategy(data as StrategyData);
+        
+        // Type cast the data properly to our StrategyData interface
+        const typedStrategy: StrategyData = {
+          id: data.id,
+          user_id: data.user_id,
+          summary: data.summary,
+          phases: data.phases as unknown as StrategyPhase[],
+          first_five_scripts: data.first_five_scripts as any[]
+        };
+        
+        setStrategy(typedStrategy);
         
         // Check if plan has been confirmed (first_five_scripts exist)
         const confirmed = !!(data.first_five_scripts && 
@@ -211,7 +221,7 @@ export const StrategyOverviewSection = ({
 
           {/* Phase breakdown */}
           <div className="space-y-4">
-            {strategy.phases.map((phase, index) => (
+            {strategy.phases && strategy.phases.map((phase, index) => (
               <Card key={index} className="border shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-md">Phase {index + 1}: {phase.title}</CardTitle>

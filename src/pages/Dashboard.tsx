@@ -1,4 +1,3 @@
-
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
