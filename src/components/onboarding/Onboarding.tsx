@@ -6,7 +6,6 @@ import { CreatorStyleStep } from "@/components/onboarding/CreatorStyleStep";
 import { ContentFormatStep } from "@/components/onboarding/ContentFormatStep";
 import { PostingFrequencyStep } from "@/components/onboarding/PostingFrequencyStep";
 import { ContentLibraryStep } from "@/components/onboarding/ContentLibraryStep";
-import { ContentNicheStep } from "@/components/onboarding/ContentNicheStep";
 import { ShootingModeStep } from "@/components/onboarding/ShootingModeStep";
 import { CelebrationScreen } from "@/components/onboarding/CelebrationScreen";
 
@@ -28,10 +27,8 @@ export const Onboarding = () => {
       case 5:
         return <ContentLibraryStep />;
       case 6:
-        return <ContentNicheStep />;
-      case 7:
         return <ShootingModeStep />;
-      case 8:
+      case 7:
         return <CelebrationScreen />;
       default:
         return <WelcomeScreen />;
