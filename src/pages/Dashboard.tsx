@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -215,7 +216,7 @@ export default function Dashboard() {
     }
   }, [user]);
 
-  // Generate strategy function
+  // Updated strategy generation function to use generate-strategy-plan
   const generateStrategy = async (onboardingData: any) => {
     try {
       if (!user) return;
@@ -223,12 +224,18 @@ export default function Dashboard() {
       // Generate custom waiting message while we wait
       generateWaitingMessage();
       
-      const { data, error } = await supabase.functions.invoke("generate-strategy", {
-        body: { onboardingAnswers: onboardingData }
+      console.log("Calling generate-strategy-plan with userId:", user.id);
+      console.log("Onboarding data for strategy plan:", onboardingData);
+      
+      const { data, error } = await supabase.functions.invoke("generate-strategy-plan", {
+        body: { 
+          userId: user.id, 
+          onboardingData: onboardingData 
+        }
       });
       
       if (error) {
-        console.error("Error generating strategy:", error);
+        console.error("Error generating strategy plan:", error);
         toast({
           title: "Strategy Generation Failed",
           description: "We couldn't generate your content strategy. Please try again.",
@@ -237,7 +244,9 @@ export default function Dashboard() {
         return;
       }
       
-      if (data?.strategy) {
+      console.log("Strategy plan generation response:", data);
+      
+      if (data?.success) {
         // Strategy generated successfully, fetch the data
         fetchUserData();
         toast({
