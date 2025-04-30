@@ -192,7 +192,11 @@ const ReviewIdeas = () => {
         description: "We're creating your personalized content strategy based on your selections."
       });
       
-      // Navigate to dashboard after a short delay
+      // Get selected ideas
+      const selectedIdeas = ideas.filter(idea => idea.selected);
+      console.log("Selected ideas for content plan:", selectedIdeas);
+      
+      // Navigate to dashboard after a short delay to give the impression of processing
       setTimeout(() => {
         navigate('/dashboard');
       }, 1500);
