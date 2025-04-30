@@ -1,20 +1,35 @@
+// pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
-import { StrategyData, ProgressData, ReminderData, GeneratedScript } from "@/types/dashboard";
-import { CreatorSummaryHeader } from "@/components/dashboard/CreatorSummaryHeader";
-import { WeeklyCalendarGrid } from "@/components/dashboard/WeeklyCalendarGrid";
-import { ContentGeneratorSection } from "@/components/dashboard/ContentGeneratorSection";
-import { TodaysMissionCard } from "@/components/dashboard/TodaysMissionCard";
-import { ScriptPreviewsSection } from "@/components/dashboard/ScriptPreviewsSection";
-import { ReminderCard } from "@/components/dashboard/ReminderCard";
-import { LevelProgressCard } from "@/components/dashboard/LevelProgressCard";
-import { ScriptsSection } from "@/components/dashboard/ScriptsSection";
-import { StrategyPlanSection } from "@/components/dashboard/StrategyPlanSection";
+import {
+  StrategyData,
+  ProgressData,
+  ReminderData,
+  GeneratedScript,
+} from "@/types/dashboard";
+
+import {
+  CreatorSummaryHeader,
+  WeeklyCalendarGrid,
+  ContentGeneratorSection,
+  TodaysMissionCard,
+  ScriptPreviewsSection,
+  ReminderCard,
+  LevelProgressCard,
+  ScriptsSection,
+  StrategyPlanSection,
+} from "@/components/dashboard";
+
 import { Navigate } from "react-router-dom";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@/components/ui/card";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -31,93 +46,93 @@ export default function Dashboard() {
 
   const fetchUserData = useCallback(async () => {
     if (!user) return;
-    
+
     setLoading(true);
-    
+
     try {
-      // Check if onboarding is complete
       const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('onboarding_complete')
-        .eq('id', user.id)
+        .from("profiles")
+        .select("onboarding_complete")
+        .eq("id", user.id)
         .single();
-      
+
       if (profileError) {
         console.error("Error fetching profile:", profileError);
-      } else {
-        setProfileComplete(profileData.onboarding_complete);
-        
-        // If not onboarded, don't try to fetch other data
-        if (!profileData.onboarding_complete) {
-          setLoading(false);
-          return;
-        }
+        setLoading(false);
+        return;
       }
-      
-      // Try to fetch strategy from database
+
+      setProfileComplete(profileData.onboarding_complete);
+      if (!profileData.onboarding_complete) {
+        setLoading(false);
+        return;
+      }
+
       const { data: strategyData, error: strategyError } = await supabase
-        .from('strategy_profiles')
-        .select('id, user_id, experience_level, content_types, weekly_calendar, first_five_scripts, full_plan_text, niche_topic, topic_ideas, posting_frequency, creator_style')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+        .from("strategy_profiles")
+        .select(
+          "id, user_id, experience_level, content_types, weekly_calendar, first_five_scripts, full_plan_text, niche_topic, topic_ideas, posting_frequency, creator_style"
+        )
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      
+
       if (strategyError) {
         console.error("Error fetching strategy:", strategyError);
       }
-      
-      // If strategy exists in database, use it
+
       if (strategyData && !strategyError) {
-        console.log("Strategy data from DB:", strategyData);
-        
-        // Check if plan has been confirmed by looking for first_five_scripts
-        const confirmed = !!(strategyData.first_five_scripts && 
-          Array.isArray(strategyData.first_five_scripts) && 
-          strategyData.first_five_scripts.length > 0);
-        
+        const confirmed =
+          Array.isArray(strategyData.first_five_scripts) &&
+          strategyData.first_five_scripts.length > 0;
+
         setPlanConfirmed(confirmed);
-        
+
         const processedStrategy: StrategyData = {
           experience_level: strategyData.experience_level,
           content_types: strategyData.content_types as string[],
-          weekly_calendar: strategyData.weekly_calendar as Record<string, string[]>,
-          starter_scripts: strategyData.first_five_scripts as { title: string; script: string }[],
-          // Use the dynamic values from DB or provide fallbacks if not available
+          weekly_calendar: strategyData.weekly_calendar as Record<
+            string,
+            string[]
+          >,
+          starter_scripts: strategyData.first_five_scripts as {
+            title: string;
+            script: string;
+          }[],
           posting_frequency: strategyData.posting_frequency || "3-5x per week",
           creator_style: strategyData.creator_style || "Authentic",
           content_breakdown: {
-            "Duet": 2,
-            "Meme": 1,
-            "Carousel": 2,
-            "Voiceover": 1
+            Duet: 2,
+            Meme: 1,
+            Carousel: 2,
+            Voiceover: 1,
           },
           full_plan_text: strategyData.full_plan_text,
           niche_topic: strategyData.niche_topic,
-          topic_ideas: strategyData.topic_ideas as string[]
+          topic_ideas: strategyData.topic_ideas as string[],
         };
+
         setStrategy(processedStrategy);
         setIsGeneratingStrategy(false);
       } else {
-        // If no strategy found, check if we need to generate it
-        const { data: onboardingData, error: onboardingError } = await supabase
-          .from('onboarding_answers')
-          .select('*')
-          .eq('user_id', user.id)
-          .maybeSingle();
-          
+        const { data: onboardingData, error: onboardingError } =
+          await supabase
+            .from("onboarding_answers")
+            .select("*")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
         if (onboardingError) {
           console.error("Error fetching onboarding data:", onboardingError);
         }
-        
+
         if (onboardingData) {
-          // We have onboarding data but no strategy - initiate generation
           setIsGeneratingStrategy(true);
-          generateStrategy(onboardingData);
+          await generateStrategy(onboardingData);
         }
-        
-        // Check localStorage as fallback
-        const storedStrategy = localStorage.getItem('userStrategy');
+
+        const storedStrategy = localStorage.getItem("userStrategy");
         if (storedStrategy) {
           try {
             setStrategy(JSON.parse(storedStrategy));
@@ -126,72 +141,63 @@ export default function Dashboard() {
           }
         }
       }
-      
-      // Fetch user progress
+
       const { data: progressData, error: progressError } = await supabase
-        .from('progress_tracking')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+        .from("progress_tracking")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-          
-      if (progressError) {
-        console.error("Error fetching progress:", progressError);
-      } else if (progressData) {
+
+      if (!progressError && progressData) {
         setProgress({
           current_xp: progressData.current_xp || 0,
           current_level: progressData.current_level || 1,
           streak_days: progressData.streak_days || 0,
-          last_activity_date: progressData.last_activity_date || new Date().toISOString(),
+          last_activity_date:
+            progressData.last_activity_date || new Date().toISOString(),
           xp_next_level: (progressData.current_level + 1) * 100,
-          level_tag: progressData.current_level === 1 ? 'Beginner' : 
-                    progressData.current_level === 2 ? 'Explorer' : 'Creator'
+          level_tag:
+            progressData.current_level === 1
+              ? "Beginner"
+              : progressData.current_level === 2
+              ? "Explorer"
+              : "Creator",
         });
       }
-      
-      // Fetch reminders
+
       const { data: reminderData, error: reminderError } = await supabase
-        .from('reminders')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .order('reminder_time', { ascending: true })
+        .from("reminders")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .order("reminder_time", { ascending: true })
         .limit(1)
         .maybeSingle();
-          
-      if (reminderError) {
-        console.error("Error fetching reminder:", reminderError);
-      } else if (reminderData) {
+
+      if (!reminderError && reminderData) {
         setReminder(reminderData as ReminderData);
       }
-      
-      try {
-        // Use our new RPC function to fetch generated scripts
-        const { data: scriptsData, error: scriptsError } = await supabase
-          .rpc('get_generated_scripts', { user_id_param: user.id });
-            
-        if (scriptsError) {
-          console.error("Error fetching scripts:", scriptsError);
-        } else if (scriptsData) {
-          setScripts(scriptsData as GeneratedScript[]);
-        }
-      } catch (error) {
-        console.error("Error fetching generated scripts:", error);
-        setScripts(null);
+
+      const { data: scriptsData, error: scriptsError } = await supabase.rpc(
+        "get_generated_scripts",
+        { user_id_param: user.id }
+      );
+
+      if (!scriptsError && scriptsData) {
+        setScripts(scriptsData as GeneratedScript[]);
       }
-      
     } catch (error) {
       console.error("Error fetching user data:", error);
       toast({
         title: "Error loading data",
         description: "There was a problem loading your dashboard data.",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
-      
-      // Set a timeout to show content after 15s even if strategy is still generating
+
       if (isGeneratingStrategy) {
         setTimeout(() => {
           setShowContent(true);
@@ -200,74 +206,59 @@ export default function Dashboard() {
         setShowContent(true);
       }
     }
-  }, [user]);
+  }, [user, isGeneratingStrategy]);
 
-  // Generate waiting message from OpenAI
   const generateWaitingMessage = useCallback(async () => {
+    if (!user) return;
+
     try {
-      if (!user) return;
-      
-      const { data, error } = await supabase.functions.invoke("generate-waiting-message", {
-        body: { userId: user.id }
-      });
-      
-      if (error) {
-        console.error("Error generating waiting message:", error);
-        return;
-      }
-      
-      if (data?.message) {
-        setWaitingMessage(data.message);
-      }
+      const { data, error } = await supabase.functions.invoke(
+        "generate-waiting-message",
+        {
+          body: { userId: user.id },
+        }
+      );
+
+      if (data?.message) setWaitingMessage(data.message);
     } catch (error) {
       console.error("Error generating waiting message:", error);
     }
   }, [user]);
 
-  // Updated strategy generation function to use generate-strategy-plan
   const generateStrategy = async (onboardingData: any) => {
+    if (!user || !onboardingData) return;
+
     try {
-      if (!user) return;
-      
-      // Generate custom waiting message while we wait
-      generateWaitingMessage();
-      
-      console.log("Calling generate-strategy-plan with userId:", user.id);
-      console.log("Onboarding data for strategy plan:", onboardingData);
-      
-      const { data, error } = await supabase.functions.invoke("generate-strategy-plan", {
-        body: { 
-          userId: user.id, 
-          onboardingData: onboardingData 
+      await generateWaitingMessage();
+
+      const { data, error } = await supabase.functions.invoke(
+        "generate-strategy-plan",
+        {
+          body: { userId: user.id, onboardingData },
         }
-      });
-      
-      if (error) {
-        console.error("Error generating strategy plan:", error);
+      );
+
+      if (error || !data?.success) {
         toast({
           title: "Strategy Generation Failed",
-          description: "We couldn't generate your content strategy. Please try again.",
-          variant: "destructive"
+          description: "We couldn't generate your content strategy. Try again.",
+          variant: "destructive",
         });
         return;
       }
-      
-      console.log("Strategy plan generation response:", data);
-      
-      if (data?.success) {
-        // Strategy generated successfully, fetch the data
-        fetchUserData();
-        toast({
-          title: "Strategy Generated",
-          description: "Your personalized content strategy is ready!",
-        });
-      }
+
+      toast({
+        title: "Strategy Generated",
+        description: "Your personalized content strategy is ready!",
+      });
+
+      await fetchUserData();
     } catch (error) {
       console.error("Error generating strategy:", error);
       toast({
         title: "Strategy Generation Failed",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive"
+        description: "Unexpected error occurred. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsGeneratingStrategy(false);
@@ -279,12 +270,8 @@ export default function Dashboard() {
     fetchUserData();
   }, [fetchUserData]);
 
-  // Redirect if onboarding is not complete
-  if (profileComplete === false) {
-    return <Navigate to="/" replace />;
-  }
+  if (profileComplete === false) return <Navigate to="/" replace />;
 
-  // Show loading screen if we're generating strategy and haven't timed out yet
   if (isGeneratingStrategy && !showContent) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
@@ -292,14 +279,10 @@ export default function Dashboard() {
           <div className="w-full max-w-md text-center space-y-6">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-socialmize-purple mx-auto"></div>
             <h1 className="text-2xl font-bold">Generating Your Content Strategy</h1>
-            
-            {waitingMessage ? (
-              <p className="text-lg">{waitingMessage}</p>
-            ) : (
-              <p className="text-lg">Our AI is analyzing your profile to create a personalized content strategy...</p>
-            )}
-            
-            <p className="text-sm text-muted-foreground">This takes about 15-30 seconds. You'll be redirected automatically when it's ready.</p>
+            <p className="text-lg">{waitingMessage || "Our AI is analyzing your profile..."}</p>
+            <p className="text-sm text-muted-foreground">
+              This takes about 15–30 seconds. You’ll be redirected automatically when it’s ready.
+            </p>
           </div>
         </main>
       </div>
@@ -310,29 +293,18 @@ export default function Dashboard() {
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
       <main className="flex-grow container py-6 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
-          {/* Creator Summary Header */}
           <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
-          
-          {/* Strategy Plan Section - New component */}
           <StrategyPlanSection />
-          
-          {/* Only show these sections if plan is confirmed */}
+
           {planConfirmed && (
             <>
-              {/* Weekly Calendar Grid */}
               <WeeklyCalendarGrid strategy={strategy} loading={loading} />
-              
-              {/* Content Generator Section */}
-              <ContentGeneratorSection 
-                strategy={strategy} 
-                loading={loading} 
-                refetchScripts={fetchUserData} 
+              <ContentGeneratorSection
+                strategy={strategy}
+                loading={loading}
+                refetchScripts={fetchUserData}
               />
-              
-              {/* Today's Mission Card */}
               <TodaysMissionCard strategy={strategy} loading={loading} />
-              
-              {/* Scripts Section - For starter scripts */}
               <Card className="mb-6">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg">Your Starter Scripts</CardTitle>
@@ -341,13 +313,10 @@ export default function Dashboard() {
                   <ScriptsSection strategy={strategy} loading={loading} />
                 </CardContent>
               </Card>
-              
-              {/* Script Previews Section - For generated scripts */}
               <ScriptPreviewsSection scripts={scripts} loading={loading} />
             </>
           )}
-          
-          {/* Always show these sections */}
+
           <ReminderCard reminder={reminder} loading={loading} />
           <LevelProgressCard progress={progress} loading={loading} />
         </div>
