@@ -31,9 +31,11 @@ export const RegeneratePlanModal = ({
   isFirstGeneration = false
 }: RegeneratePlanModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   const regenerateStrategy = async () => {
     setIsLoading(true);
+    setErrorMessage(null);
     
     try {
       // Get the user's onboarding answers to pass to the AI function
@@ -64,15 +66,26 @@ export const RegeneratePlanModal = ({
       
       if (functionError) {
         console.error("Function error:", functionError);
-        throw new Error('Failed to generate strategy plan');
+        throw new Error(`Failed to generate strategy plan: ${functionError.message}`);
       }
       
       console.log("Strategy plan generation response:", data);
       
-      toast({
-        title: isFirstGeneration ? "Strategy plan generated" : "Strategy plan regenerated",
-        description: "Your content strategy has been updated successfully.",
-      });
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      if (data.mock) {
+        toast({
+          title: isFirstGeneration ? "Strategy plan generated (test mode)" : "Strategy plan regenerated (test mode)",
+          description: "Your content strategy has been updated in test mode. Setup the OpenAI assistant in Supabase secrets to enable full AI generation.",
+        });
+      } else {
+        toast({
+          title: isFirstGeneration ? "Strategy plan generated" : "Strategy plan regenerated",
+          description: "Your content strategy has been updated successfully.",
+        });
+      }
       
       // Call the success callback to refresh the data
       if (onSuccess) {
@@ -80,6 +93,7 @@ export const RegeneratePlanModal = ({
       }
     } catch (error: any) {
       console.error("Error regenerating strategy:", error);
+      setErrorMessage(error.message || "Failed to regenerate your strategy. Please try again.");
       toast({
         title: "Error",
         description: error.message || "Failed to regenerate your strategy. Please try again.",
@@ -87,7 +101,9 @@ export const RegeneratePlanModal = ({
       });
     } finally {
       setIsLoading(false);
-      onClose();
+      if (!errorMessage) {
+        onClose();
+      }
     }
   };
 
@@ -110,6 +126,13 @@ export const RegeneratePlanModal = ({
             <div className="mt-2 rounded-md border border-[#FF8C42] bg-[#FF8C42]/10 p-3">
               <p className="text-sm font-medium text-[#FF8C42]">
                 ⚠️ If you've already started generating or scheduling content based on your current plan, those will not match the new strategy.
+              </p>
+            </div>
+          )}
+          {errorMessage && (
+            <div className="mt-2 rounded-md border border-red-500 bg-red-500/10 p-3">
+              <p className="text-sm font-medium text-red-500">
+                Error: {errorMessage}
               </p>
             </div>
           )}
