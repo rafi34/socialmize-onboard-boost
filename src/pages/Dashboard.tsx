@@ -1,11 +1,9 @@
-
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { StrategyData, ProgressData, ReminderData, GeneratedScript } from "@/types/dashboard";
 import { CreatorSummaryHeader } from "@/components/dashboard/CreatorSummaryHeader";
-import { StrategyOverviewCard } from "@/components/dashboard/StrategyOverviewCard";
 import { WeeklyCalendarGrid } from "@/components/dashboard/WeeklyCalendarGrid";
 import { ContentGeneratorSection } from "@/components/dashboard/ContentGeneratorSection";
 import { TodaysMissionCard } from "@/components/dashboard/TodaysMissionCard";
@@ -300,13 +298,6 @@ export default function Dashboard() {
           
           {/* Strategy Plan Section - New component */}
           <StrategyPlanSection />
-          
-          {/* Strategy Overview Card */}
-          <StrategyOverviewCard 
-            strategy={strategy} 
-            loading={loading} 
-            refetchStrategy={fetchUserData} 
-          />
           
           {/* Weekly Calendar Grid */}
           <WeeklyCalendarGrid strategy={strategy} loading={loading} />

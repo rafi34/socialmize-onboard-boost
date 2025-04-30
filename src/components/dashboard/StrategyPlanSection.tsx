@@ -55,10 +55,23 @@ export const StrategyPlanSection = () => {
           variant: "destructive",
         });
       } else if (data) {
-        // Convert the JSON data to the proper type
+        // Convert the JSON data to the proper type with proper type casting
+        const phasesData = data.phases as unknown;
         const parsedData: StrategyPlan = {
           ...data,
-          phases: Array.isArray(data.phases) ? data.phases as StrategyPhase[] : null
+          phases: Array.isArray(phasesData) 
+            ? phasesData.map(phase => ({
+                title: phase.title || "",
+                goal: phase.goal || "",
+                tactics: Array.isArray(phase.tactics) ? phase.tactics : [],
+                content_plan: phase.content_plan ? {
+                  weekly_schedule: phase.content_plan.weekly_schedule || {},
+                  example_post_ideas: Array.isArray(phase.content_plan.example_post_ideas) 
+                    ? phase.content_plan.example_post_ideas 
+                    : []
+                } : undefined
+              }))
+            : null
         };
         setStrategyPlan(parsedData);
       }
