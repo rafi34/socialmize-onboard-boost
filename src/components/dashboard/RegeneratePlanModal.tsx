@@ -42,8 +42,11 @@ export const RegeneratePlanModal = ({
         .single();
         
       if (onboardingError) {
+        console.error("Error fetching onboarding data:", onboardingError);
         throw new Error('Failed to fetch onboarding data');
       }
+      
+      console.log("Onboarding data fetched successfully:", onboardingData);
       
       // Call the Supabase Edge Function to regenerate the strategy plan
       const { data, error: functionError } = await supabase.functions.invoke(
@@ -57,8 +60,11 @@ export const RegeneratePlanModal = ({
       );
       
       if (functionError) {
+        console.error("Function error:", functionError);
         throw new Error('Failed to generate strategy plan');
       }
+      
+      console.log("Strategy plan generation response:", data);
       
       toast({
         title: "Strategy plan regenerated",

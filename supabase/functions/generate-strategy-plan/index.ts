@@ -25,10 +25,13 @@ serve(async (req) => {
     const assistantId = Deno.env.get('SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID');
 
     if (!openaiApiKey) {
+      console.error('OpenAI API key not configured');
       throw new Error('OpenAI API key not configured');
     }
 
     if (!assistantId) {
+      console.error('Assistant ID not configured');
+      console.error('Available env variables:', Object.keys(Deno.env.toObject()));
       throw new Error('Assistant ID not configured');
     }
 

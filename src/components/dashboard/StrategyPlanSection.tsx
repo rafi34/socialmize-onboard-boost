@@ -35,12 +35,14 @@ export const StrategyPlanSection = () => {
   const [loading, setLoading] = useState(true);
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
 
-  // Define fetchStrategyPlan function before using it
+  // Define fetchStrategyPlan function
   const fetchStrategyPlan = async () => {
     if (!user) return;
     
     setLoading(true);
     try {
+      console.log("Fetching strategy plan for user:", user.id);
+      
       const { data, error } = await supabase
         .from('strategy_plans')
         .select('*')
@@ -56,6 +58,8 @@ export const StrategyPlanSection = () => {
           variant: "destructive",
         });
       } else if (data) {
+        console.log("Strategy plan data:", data);
+        
         // Convert the JSON data to the proper type with proper type casting
         const phasesData = data.phases as unknown;
         const parsedData: StrategyPlan = {
@@ -75,6 +79,9 @@ export const StrategyPlanSection = () => {
             : null
         };
         setStrategyPlan(parsedData);
+      } else {
+        console.log("No strategy plan found");
+        setStrategyPlan(null);
       }
     } catch (error) {
       console.error("Error in fetchStrategyPlan:", error);
@@ -83,7 +90,7 @@ export const StrategyPlanSection = () => {
     }
   };
 
-  // Use useEffect instead of useState for initializing data fetching
+  // Use useEffect to fetch data on component mount and when user changes
   useEffect(() => {
     fetchStrategyPlan();
   }, [user]); // Add user as dependency
@@ -192,7 +199,8 @@ export const StrategyPlanSection = () => {
                   <h4 className="text-sm font-medium mb-2">Content Plan:</h4>
                   
                   {/* Weekly Schedule */}
-                  {phase.content_plan.weekly_schedule && (
+                  {phase.content_plan.weekly_schedule && 
+                   Object.keys(phase.content_plan.weekly_schedule).length > 0 && (
                     <div className="mb-3">
                       <h5 className="text-xs font-medium text-muted-foreground mb-2">Weekly Schedule:</h5>
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -206,7 +214,8 @@ export const StrategyPlanSection = () => {
                   )}
                   
                   {/* Example Post Ideas */}
-                  {phase.content_plan.example_post_ideas && phase.content_plan.example_post_ideas.length > 0 && (
+                  {phase.content_plan.example_post_ideas && 
+                   phase.content_plan.example_post_ideas.length > 0 && (
                     <div>
                       <h5 className="text-xs font-medium text-muted-foreground mb-2">Example Post Ideas:</h5>
                       <ul className="list-disc pl-5 space-y-1">
