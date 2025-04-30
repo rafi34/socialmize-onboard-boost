@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Brain, CheckCircle, RefreshCw } from "lucide-react";
+import { Brain, CheckCircle, RefreshCw, Zap } from "lucide-react";
 import { RegeneratePlanModal } from "./RegeneratePlanModal";
 
 interface StrategyPhase {
@@ -37,6 +37,10 @@ export const StrategyOverviewSection = ({
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [planConfirmed, setPlanConfirmed] = useState(false);
   const [generatingPlan, setGeneratingPlan] = useState(false);
+  const [phaseIcons] = useState([
+    <Zap key="zap" className="h-5 w-5 text-socialmize-purple" />,
+    <Brain key="brain" className="h-5 w-5 text-socialmize-purple" />
+  ]);
 
   const fetchStrategyPlan = async () => {
     if (!user) return;
@@ -161,6 +165,24 @@ export const StrategyOverviewSection = ({
     }
   };
 
+  // Helper function to get filtered phases (only valid ones)
+  const getValidPhases = (phases: StrategyPhase[] | null) => {
+    if (!phases) return [];
+    
+    return phases.filter(phase => 
+      // Filter out phases that don't have a proper title or are just labels
+      phase.title && 
+      !["summary", "phases", "summary paragraph", "phase"].includes(phase.title.toLowerCase()) &&
+      // Ensure it has either a goal or tactics
+      (phase.goal || (phase.tactics && phase.tactics.length > 0))
+    );
+  };
+
+  // Helper function to get a random icon for a phase
+  const getPhaseIcon = (index: number) => {
+    return phaseIcons[index % phaseIcons.length];
+  };
+
   // Loading state
   if (loading || generatingPlan) {
     return (
@@ -190,7 +212,7 @@ export const StrategyOverviewSection = ({
   }
 
   // Empty state
-  if (!strategy || !strategy.phases) {
+  if (!strategy || !strategy.phases || getValidPhases(strategy.phases).length === 0) {
     return (
       <Card className="mb-6">
         <CardHeader>
@@ -216,6 +238,9 @@ export const StrategyOverviewSection = ({
     );
   }
 
+  // Get valid phases
+  const validPhases = getValidPhases(strategy.phases);
+
   return (
     <>
       <Card className="mb-6">
@@ -240,11 +265,13 @@ export const StrategyOverviewSection = ({
 
           {/* Phase breakdown */}
           <div className="space-y-4">
-            {strategy.phases && strategy.phases.map((phase, index) => (
+            {validPhases.map((phase, index) => (
               <Card key={index} className="border shadow-sm">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-md">Phase {index + 1}: {phase.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{phase.goal}</p>
+                  <CardTitle className="text-md">
+                    {phase.title?.includes("Phase") ? phase.title : `Phase ${index + 1}: ${phase.title}`}
+                  </CardTitle>
+                  {phase.goal && <p className="text-sm text-muted-foreground">{phase.goal}</p>}
                 </CardHeader>
                 <CardContent>
                   {/* Tactics */}
