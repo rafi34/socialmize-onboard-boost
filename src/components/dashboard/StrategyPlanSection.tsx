@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Brain, Wrench, TrendingUp, Package, Megaphone, RefreshCw } from "lucide-react";
@@ -34,11 +34,7 @@ export const StrategyPlanSection = () => {
   const [loading, setLoading] = useState(true);
   const [regenerating, setRegenerating] = useState(false);
 
-  // Fetch strategy plan on component mount
-  useState(() => {
-    fetchStrategyPlan();
-  });
-
+  // Define fetchStrategyPlan function before using it
   const fetchStrategyPlan = async () => {
     if (!user) return;
     
@@ -62,7 +58,7 @@ export const StrategyPlanSection = () => {
         // Convert the JSON data to the proper type
         const parsedData: StrategyPlan = {
           ...data,
-          phases: Array.isArray(data.phases) ? data.phases : null
+          phases: Array.isArray(data.phases) ? data.phases as StrategyPhase[] : null
         };
         setStrategyPlan(parsedData);
       }
@@ -72,6 +68,11 @@ export const StrategyPlanSection = () => {
       setLoading(false);
     }
   };
+
+  // Use useEffect instead of useState for initializing data fetching
+  useEffect(() => {
+    fetchStrategyPlan();
+  }, [user]); // Add user as dependency
 
   const regenerateStrategy = async () => {
     if (!user) return;
