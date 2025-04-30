@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Brain, Wrench, TrendingUp, Package, Megaphone, RefreshCw } from "lucide-react";
+import { Brain, Wrench, TrendingUp, Package, Megaphone, RefreshCw, CheckCircle, FileText, List } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -24,6 +25,7 @@ interface StrategyPlan {
   summary: string | null;
   phases: StrategyPhase[] | null;
   created_at: string | null;
+  confirmed: boolean;
 }
 
 export const StrategyPlanSection = () => {
@@ -33,6 +35,7 @@ export const StrategyPlanSection = () => {
   const [loading, setLoading] = useState(true);
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [isFirstGeneration, setIsFirstGeneration] = useState(false);
+  const [planConfirmed, setPlanConfirmed] = useState(false);
 
   // Define fetchStrategyPlan function
   const fetchStrategyPlan = async () => {
@@ -76,19 +79,51 @@ export const StrategyPlanSection = () => {
                     : []
                 } : undefined
               }))
-            : null
+            : null,
+          confirmed: false // Default to not confirmed
         };
         setStrategyPlan(parsedData);
         setIsFirstGeneration(false);
+
+        // Check if plan has been confirmed by looking for the presence of first_five_scripts
+        checkPlanConfirmation(user.id);
+
       } else {
         console.log("No strategy plan found");
         setStrategyPlan(null);
         setIsFirstGeneration(true);
+        setPlanConfirmed(false);
       }
     } catch (error) {
       console.error("Error in fetchStrategyPlan:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkPlanConfirmation = async (userId: string) => {
+    try {
+      // Check if first_five_scripts exists to determine if plan has been confirmed
+      const { data, error } = await supabase
+        .from('strategy_profiles')
+        .select('first_five_scripts')
+        .eq('user_id', userId)
+        .maybeSingle();
+        
+      if (error) {
+        console.error("Error checking plan confirmation:", error);
+        return;
+      }
+      
+      // If first_five_scripts exists and is not null, plan has been confirmed
+      const confirmed = !!(data?.first_five_scripts && 
+        Array.isArray(data.first_five_scripts) && 
+        data.first_five_scripts.length > 0);
+        
+      setPlanConfirmed(confirmed);
+      console.log("Plan confirmation status:", confirmed);
+    } catch (error) {
+      console.error("Error in checkPlanConfirmation:", error);
     }
   };
 
@@ -114,10 +149,65 @@ export const StrategyPlanSection = () => {
     }
   };
 
+  const handleConfirmPlan = async () => {
+    if (!user || !strategyPlan) return;
+    
+    try {
+      toast({
+        title: "Confirming plan...",
+        description: "We're unlocking your starter scripts and weekly calendar.",
+      });
+      
+      // Call edge function to generate scripts and calendar
+      const { data, error } = await supabase.functions.invoke('confirm-strategy-plan', {
+        body: { 
+          userId: user.id,
+          strategyPlanId: strategyPlan.id 
+        }
+      });
+      
+      if (error) {
+        console.error("Error confirming strategy plan:", error);
+        toast({
+          title: "Error",
+          description: "Unable to confirm your strategy plan. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Show success message
+      toast({
+        title: "Plan confirmed!",
+        description: "Your starter scripts and weekly calendar are now available.",
+      });
+      
+      // Refresh data
+      setPlanConfirmed(true);
+      fetchStrategyPlan();
+      
+      // Scroll down to show the newly unlocked content
+      setTimeout(() => {
+        window.scrollTo({ 
+          top: document.getElementById('strategyPlanSection')?.offsetHeight || 0,
+          behavior: 'smooth'
+        });
+      }, 500);
+      
+    } catch (error) {
+      console.error("Error in handleConfirmPlan:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
-      <Card className="mb-6">
+      <Card className="mb-6" id="strategyPlanSection">
         <CardHeader>
           <CardTitle className="text-lg">Your Strategy Plan (Tailored for You)</CardTitle>
         </CardHeader>
@@ -134,7 +224,7 @@ export const StrategyPlanSection = () => {
   // Empty state
   if (!strategyPlan) {
     return (
-      <Card className="mb-6">
+      <Card className="mb-6" id="strategyPlanSection">
         <CardHeader>
           <CardTitle className="text-lg">Your Strategy Plan (Tailored for You)</CardTitle>
         </CardHeader>
@@ -160,17 +250,33 @@ export const StrategyPlanSection = () => {
 
   return (
     <>
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-lg">Your Strategy Plan (Tailored for You)</CardTitle>
+      <Card className="mb-6" id="strategyPlanSection">
+        <CardHeader className="pb-2 flex flex-row items-start justify-between">
+          <div>
+            <CardTitle className="text-lg">Your Strategy Plan (Tailored for You)</CardTitle>
+          </div>
+          <div className="flex items-center space-x-1">
+            {planConfirmed ? (
+              <div className="flex items-center text-green-500 text-xs font-medium bg-green-100 rounded-full py-1 px-2">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                <span>Plan Confirmed</span>
+              </div>
+            ) : null}
+          </div>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Summary section */}
           {strategyPlan.summary && (
-            <div className="p-4 bg-socialmize-light-purple/50 rounded-lg border border-socialmize-light-purple">
+            <div className="p-4 bg-socialmize-light-purple/50 rounded-lg border border-socialmize-light-purple flex gap-4">
+              <FileText className="h-6 w-6 text-socialmize-purple shrink-0 mt-1" />
               <p className="text-sm">{strategyPlan.summary}</p>
             </div>
           )}
+
+          <div className="flex items-center gap-2">
+            <List className="h-5 w-5 text-socialmize-purple" />
+            <h3 className="font-medium text-base">Strategy Phases</h3>
+          </div>
 
           {/* Phases section */}
           {strategyPlan.phases && strategyPlan.phases.map((phase, index) => (
@@ -235,12 +341,23 @@ export const StrategyPlanSection = () => {
           ))}
         </CardContent>
         <CardFooter className="flex justify-between gap-4 flex-wrap">
-          <Button 
-            onClick={() => navigate('/strategy-chat')}
-            variant="default"
-          >
-            Use This Strategy
-          </Button>
+          {!planConfirmed ? (
+            <Button 
+              onClick={handleConfirmPlan}
+              variant="default"
+              className="flex items-center gap-2"
+            >
+              <CheckCircle className="h-4 w-4" />
+              Confirm Plan
+            </Button>
+          ) : (
+            <Button 
+              onClick={() => navigate('/strategy-chat')}
+              variant="default"
+            >
+              Use This Strategy
+            </Button>
+          )}
           <Button 
             onClick={handleGenerateClick}
             variant="outline" 

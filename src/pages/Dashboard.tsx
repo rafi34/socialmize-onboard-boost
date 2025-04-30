@@ -27,6 +27,7 @@ export default function Dashboard() {
   const [showContent, setShowContent] = useState(false);
   const [isGeneratingStrategy, setIsGeneratingStrategy] = useState(false);
   const [waitingMessage, setWaitingMessage] = useState("");
+  const [planConfirmed, setPlanConfirmed] = useState(false);
 
   const fetchUserData = useCallback(async () => {
     if (!user) return;
@@ -69,6 +70,13 @@ export default function Dashboard() {
       // If strategy exists in database, use it
       if (strategyData && !strategyError) {
         console.log("Strategy data from DB:", strategyData);
+        
+        // Check if plan has been confirmed by looking for first_five_scripts
+        const confirmed = !!(strategyData.first_five_scripts && 
+          Array.isArray(strategyData.first_five_scripts) && 
+          strategyData.first_five_scripts.length > 0);
+        
+        setPlanConfirmed(confirmed);
         
         const processedStrategy: StrategyData = {
           experience_level: strategyData.experience_level,
@@ -308,36 +316,39 @@ export default function Dashboard() {
           {/* Strategy Plan Section - New component */}
           <StrategyPlanSection />
           
-          {/* Weekly Calendar Grid */}
-          <WeeklyCalendarGrid strategy={strategy} loading={loading} />
+          {/* Only show these sections if plan is confirmed */}
+          {planConfirmed && (
+            <>
+              {/* Weekly Calendar Grid */}
+              <WeeklyCalendarGrid strategy={strategy} loading={loading} />
+              
+              {/* Content Generator Section */}
+              <ContentGeneratorSection 
+                strategy={strategy} 
+                loading={loading} 
+                refetchScripts={fetchUserData} 
+              />
+              
+              {/* Today's Mission Card */}
+              <TodaysMissionCard strategy={strategy} loading={loading} />
+              
+              {/* Scripts Section - For starter scripts */}
+              <Card className="mb-6">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Your Starter Scripts</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScriptsSection strategy={strategy} loading={loading} />
+                </CardContent>
+              </Card>
+              
+              {/* Script Previews Section - For generated scripts */}
+              <ScriptPreviewsSection scripts={scripts} loading={loading} />
+            </>
+          )}
           
-          {/* Content Generator Section */}
-          <ContentGeneratorSection 
-            strategy={strategy} 
-            loading={loading} 
-            refetchScripts={fetchUserData} 
-          />
-          
-          {/* Today's Mission Card */}
-          <TodaysMissionCard strategy={strategy} loading={loading} />
-          
-          {/* Scripts Section - For starter scripts */}
-          <Card className="mb-6">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Your Starter Scripts</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ScriptsSection strategy={strategy} loading={loading} />
-            </CardContent>
-          </Card>
-          
-          {/* Script Previews Section - For generated scripts */}
-          <ScriptPreviewsSection scripts={scripts} loading={loading} />
-          
-          {/* Reminder Card - Only shown if a reminder exists */}
+          {/* Always show these sections */}
           <ReminderCard reminder={reminder} loading={loading} />
-          
-          {/* Level Progress Card */}
           <LevelProgressCard progress={progress} loading={loading} />
         </div>
       </main>
