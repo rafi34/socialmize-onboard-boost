@@ -44,6 +44,7 @@ export const StrategyPlanSection = () => {
     try {
       console.log("Fetching strategy plan for user:", user.id);
       
+      // Changed this query to fetch from the strategy_plans table instead of strategy_profiles
       const { data, error } = await supabase
         .from('strategy_plans')
         .select('*')
