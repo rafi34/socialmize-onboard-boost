@@ -151,22 +151,21 @@ export const RegeneratePlanModal = ({
           <AlertDialogCancel asChild>
             <Button variant="outline">Cancel</Button>
           </AlertDialogCancel>
-          <AlertDialogAction asChild>
-            <Button 
-              onClick={regenerateStrategy} 
-              disabled={isLoading} 
-              className="bg-[#FF8C42] hover:bg-[#FF8C42]/90"
-            >
-              {isLoading ? (
-                <>
-                  <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                  {isFirstGeneration ? "Generating..." : "Regenerating..."}
-                </>
-              ) : (
-                isFirstGeneration ? "Yes, Generate My Plan" : "Yes, Regenerate My Plan"
-              )}
-            </Button>
-          </AlertDialogAction>
+          {/* Fix: Remove the AlertDialogAction wrapper and use a regular Button with onClick handler */}
+          <Button 
+            onClick={regenerateStrategy} 
+            disabled={isLoading} 
+            className="bg-[#FF8C42] hover:bg-[#FF8C42]/90"
+          >
+            {isLoading ? (
+              <>
+                <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                {isFirstGeneration ? "Generating..." : "Regenerating..."}
+              </>
+            ) : (
+              isFirstGeneration ? "Yes, Generate My Plan" : "Yes, Regenerate My Plan"
+            )}
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
