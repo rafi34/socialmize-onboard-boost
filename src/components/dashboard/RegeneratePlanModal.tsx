@@ -20,13 +20,15 @@ interface RegeneratePlanModalProps {
   onClose: () => void;
   userId: string;
   onSuccess?: () => void;
+  isFirstGeneration?: boolean;
 }
 
 export const RegeneratePlanModal = ({ 
   isOpen, 
   onClose, 
   userId,
-  onSuccess 
+  onSuccess,
+  isFirstGeneration = false
 }: RegeneratePlanModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   
@@ -67,7 +69,7 @@ export const RegeneratePlanModal = ({
       console.log("Strategy plan generation response:", data);
       
       toast({
-        title: "Strategy plan regenerated",
+        title: isFirstGeneration ? "Strategy plan generated" : "Strategy plan regenerated",
         description: "Your content strategy has been updated successfully.",
       });
       
@@ -94,18 +96,26 @@ export const RegeneratePlanModal = ({
         <AlertDialogHeader>
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-[#FF8C42]" />
-            <AlertDialogTitle>Regenerate Your Strategy?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isFirstGeneration ? "Generate Your Strategy" : "Regenerate Your Strategy?"}
+            </AlertDialogTitle>
           </div>
           <AlertDialogDescription>
-            Regenerating your plan will overwrite your current content strategy. You'll receive a new weekly layout and content breakdown based on your latest creator profile.
+            {isFirstGeneration 
+              ? "Generate a tailored content strategy plan based on your creator profile."
+              : "Regenerating your plan will overwrite your current content strategy. You'll receive a new weekly layout and content breakdown based on your latest creator profile."}
           </AlertDialogDescription>
-          <div className="mt-2 rounded-md border border-[#FF8C42] bg-[#FF8C42]/10 p-3">
-            <p className="text-sm font-medium text-[#FF8C42]">
-              ⚠️ If you've already started generating or scheduling content based on your current plan, those will not match the new strategy.
-            </p>
-          </div>
+          {!isFirstGeneration && (
+            <div className="mt-2 rounded-md border border-[#FF8C42] bg-[#FF8C42]/10 p-3">
+              <p className="text-sm font-medium text-[#FF8C42]">
+                ⚠️ If you've already started generating or scheduling content based on your current plan, those will not match the new strategy.
+              </p>
+            </div>
+          )}
           <p className="mt-4 text-center font-semibold">
-            Are you sure you want to regenerate?
+            {isFirstGeneration 
+              ? "Would you like to generate your personalized strategy plan?"
+              : "Are you sure you want to regenerate?"}
           </p>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -121,10 +131,10 @@ export const RegeneratePlanModal = ({
               {isLoading ? (
                 <>
                   <span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                  Regenerating...
+                  {isFirstGeneration ? "Generating..." : "Regenerating..."}
                 </>
               ) : (
-                "Yes, Regenerate My Plan"
+                isFirstGeneration ? "Yes, Generate My Plan" : "Yes, Regenerate My Plan"
               )}
             </Button>
           </AlertDialogAction>

@@ -34,6 +34,7 @@ export const StrategyPlanSection = () => {
   const [strategyPlan, setStrategyPlan] = useState<StrategyPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+  const [isFirstGeneration, setIsFirstGeneration] = useState(false);
 
   // Define fetchStrategyPlan function
   const fetchStrategyPlan = async () => {
@@ -79,9 +80,11 @@ export const StrategyPlanSection = () => {
             : null
         };
         setStrategyPlan(parsedData);
+        setIsFirstGeneration(false);
       } else {
         console.log("No strategy plan found");
         setStrategyPlan(null);
+        setIsFirstGeneration(true);
       }
     } catch (error) {
       console.error("Error in fetchStrategyPlan:", error);
@@ -104,6 +107,12 @@ export const StrategyPlanSection = () => {
       <Megaphone className="h-5 w-5 text-socialmize-purple" />
     ];
     return icons[index % icons.length];
+  };
+
+  const handleGenerateClick = () => {
+    if (user) {
+      setShowRegenerateModal(true);
+    }
   };
 
   // Loading state
@@ -138,11 +147,7 @@ export const StrategyPlanSection = () => {
               Generate a tailored content strategy plan based on your creator profile.
             </p>
             <Button 
-              onClick={() => {
-                if (user) {
-                  setShowRegenerateModal(true);
-                }
-              }}
+              onClick={handleGenerateClick}
               className="flex items-center gap-2"
             >
               <Brain className="h-4 w-4" />
@@ -238,7 +243,7 @@ export const StrategyPlanSection = () => {
             Use This Strategy
           </Button>
           <Button 
-            onClick={() => setShowRegenerateModal(true)} 
+            onClick={handleGenerateClick}
             variant="outline" 
             className="flex items-center gap-2"
           >
@@ -248,13 +253,14 @@ export const StrategyPlanSection = () => {
         </CardFooter>
       </Card>
 
-      {/* Regenerate confirmation modal */}
+      {/* Regenerate/Generate confirmation modal */}
       {showRegenerateModal && user && (
         <RegeneratePlanModal
           isOpen={showRegenerateModal}
           onClose={() => setShowRegenerateModal(false)}
           userId={user.id}
           onSuccess={fetchStrategyPlan}
+          isFirstGeneration={isFirstGeneration}
         />
       )}
     </>
