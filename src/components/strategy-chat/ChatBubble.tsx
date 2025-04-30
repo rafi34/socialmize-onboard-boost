@@ -1,7 +1,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Bot, User } from "lucide-react";
 
 interface ChatBubbleProps {
@@ -36,6 +36,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ role, message, isLoading
       >
         {role === "assistant" ? (
           <Avatar className="mt-0.5 h-9 w-9 border border-primary/10 bg-gradient-to-br from-socialmize-purple to-socialmize-dark-purple shadow-md">
+            <AvatarImage src="/ai-assistant.png" alt="AI Assistant" />
             <AvatarFallback className="text-primary-foreground">
               <Bot size={18} />
             </AvatarFallback>
