@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Brain, Tool, TrendingUp, Package, Megaphone, RefreshCw } from "lucide-react";
+import { Brain, Wrench, TrendingUp, Package, Megaphone, RefreshCw } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -58,8 +58,13 @@ export const StrategyPlanSection = () => {
           description: "Unable to load your strategy plan. Please try again.",
           variant: "destructive",
         });
-      } else {
-        setStrategyPlan(data);
+      } else if (data) {
+        // Convert the JSON data to the proper type
+        const parsedData: StrategyPlan = {
+          ...data,
+          phases: Array.isArray(data.phases) ? data.phases : null
+        };
+        setStrategyPlan(parsedData);
       }
     } catch (error) {
       console.error("Error in fetchStrategyPlan:", error);
@@ -128,7 +133,7 @@ export const StrategyPlanSection = () => {
   const getPhaseIcon = (index: number) => {
     const icons = [
       <Brain className="h-5 w-5 text-socialmize-purple" />,
-      <Tool className="h-5 w-5 text-socialmize-purple" />,
+      <Wrench className="h-5 w-5 text-socialmize-purple" />,
       <TrendingUp className="h-5 w-5 text-socialmize-purple" />,
       <Package className="h-5 w-5 text-socialmize-purple" />,
       <Megaphone className="h-5 w-5 text-socialmize-purple" />
