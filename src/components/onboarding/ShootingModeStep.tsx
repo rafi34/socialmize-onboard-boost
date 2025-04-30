@@ -52,7 +52,7 @@ export const ShootingModeStep = () => {
       
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div
-          className={`option-card flex flex-col items-center justify-center py-8 ${selected === "bulk_shooting" ? "selected" : ""}`}
+          className={`option-card flex flex-col items-center justify-center py-8 transition-all duration-200 hover:shadow-md ${selected === "bulk_shooting" ? "selected bg-socialmize-light-purple border-socialmize-purple" : "bg-white"}`}
           onClick={() => handleSelect("bulk_shooting")}
         >
           <div className="text-4xl mb-2">📦</div>
@@ -61,7 +61,7 @@ export const ShootingModeStep = () => {
         </div>
         
         <div
-          className={`option-card flex flex-col items-center justify-center py-8 ${selected === "single_video" ? "selected" : ""}`}
+          className={`option-card flex flex-col items-center justify-center py-8 transition-all duration-200 hover:shadow-md ${selected === "single_video" ? "selected bg-socialmize-light-purple border-socialmize-purple" : "bg-white"}`}
           onClick={() => handleSelect("single_video")}
         >
           <div className="text-4xl mb-2">🎥</div>
@@ -71,31 +71,32 @@ export const ShootingModeStep = () => {
       </div>
       
       {selected === "bulk_shooting" && (
-        <div className="bg-socialmize-light-purple rounded-xl p-4 mb-6">
-          <div className="font-medium mb-2">When is your next shooting day?</div>
+        <div className="bg-socialmize-light-purple rounded-xl p-5 mb-6 shadow-sm">
+          <div className="font-medium mb-2 text-lg">When is your next shooting day?</div>
           
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                className="w-full justify-start text-left font-normal mb-3"
+                className="w-full justify-start text-left font-normal mb-4 bg-white hover:bg-white/90"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {date ? format(date, "PPP") : <span>Pick a date</span>}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
+            <PopoverContent className="w-auto p-0 pointer-events-auto">
               <Calendar
                 mode="single"
                 selected={date}
                 onSelect={handleDateSelect}
                 initialFocus
+                className="p-3 pointer-events-auto"
               />
             </PopoverContent>
           </Popover>
           
-          <div className="flex items-center justify-between">
-            <span>Remind me</span>
+          <div className="flex items-center justify-between bg-white p-3 rounded-lg">
+            <span className="font-medium">Remind me</span>
             <Switch checked={reminder} onCheckedChange={handleReminderToggle} />
           </div>
         </div>

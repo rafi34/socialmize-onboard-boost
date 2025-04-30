@@ -6,6 +6,8 @@ import { XPDisplay } from "@/components/onboarding/XPDisplay";
 import { useOnboarding } from "@/contexts/OnboardingContext";
 import { PostingFrequency } from "@/types/onboarding";
 import { ONBOARDING_STEPS } from "@/types/onboarding";
+import { Badge } from "@/components/ui/badge";
+import { Check } from "lucide-react";
 
 const OPTIONS: { value: PostingFrequency; label: string; icon: string }[] = [
   { value: "multiple_daily", label: "Multiple posts/day", icon: "⚡" },
@@ -43,14 +45,22 @@ export const PostingFrequencyStep = () => {
       
       <div className="space-y-3 mb-6">
         {OPTIONS.map((option) => (
-          <div
+          <Badge
             key={option.value}
-            className={`option-card flex items-center ${selected === option.value ? "selected" : ""}`}
+            variant={selected === option.value ? "default" : "outline"}
+            className={`
+              w-full py-3 px-4 cursor-pointer flex items-center
+              ${selected === option.value 
+                ? "bg-socialmize-purple text-white" 
+                : "bg-background hover:bg-accent"}
+              transition-all text-sm font-medium
+            `}
             onClick={() => handleSelect(option.value)}
           >
-            <div className="text-2xl mr-3">{option.icon}</div>
-            <div className="font-medium">{option.label}</div>
-          </div>
+            <span className="text-2xl mr-3">{option.icon}</span>
+            <span className="font-medium">{option.label}</span>
+            {selected === option.value && <Check className="h-4 w-4 ml-auto" />}
+          </Badge>
         ))}
       </div>
       

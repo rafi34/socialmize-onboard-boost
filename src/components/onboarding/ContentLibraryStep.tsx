@@ -34,7 +34,7 @@ export const ContentLibraryStep = () => {
       
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div
-          className={`option-card flex flex-col items-center justify-center py-8 ${selected === true ? "selected" : ""}`}
+          className={`option-card flex flex-col items-center justify-center py-8 transition-all duration-200 hover:shadow-md ${selected === true ? "selected bg-socialmize-light-purple border-socialmize-purple" : "bg-white"}`}
           onClick={() => handleSelect(true)}
         >
           <div className="text-4xl mb-2">📚</div>
@@ -43,7 +43,7 @@ export const ContentLibraryStep = () => {
         </div>
         
         <div
-          className={`option-card flex flex-col items-center justify-center py-8 ${selected === false ? "selected" : ""}`}
+          className={`option-card flex flex-col items-center justify-center py-8 transition-all duration-200 hover:shadow-md ${selected === false ? "selected bg-socialmize-light-purple border-socialmize-purple" : "bg-white"}`}
           onClick={() => handleSelect(false)}
         >
           <div className="text-4xl mb-2">🆕</div>
