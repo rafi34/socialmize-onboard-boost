@@ -52,9 +52,6 @@ export const CelebrationScreen = () => {
           description: "We couldn't generate your content strategy. Please try again later.",
           variant: "destructive"
         });
-        
-        // Still navigate to dashboard even if strategy generation fails
-        navigate('/dashboard');
       } else {
         console.log("Strategy plan generated successfully:", generatedStrategy);
         toast({
@@ -74,10 +71,12 @@ export const CelebrationScreen = () => {
         if (progressError) {
           console.error("Error creating progress tracking:", progressError);
         }
-        
-        // Navigate to dashboard with the new strategy
-        navigate('/dashboard');
       }
+      
+      // Always navigate to dashboard, even with errors
+      // The dashboard will handle showing the strategy or generation UI
+      navigate('/dashboard');
+      
     } catch (error) {
       console.error("Error in handleComplete:", error);
       toast({

@@ -1,3 +1,4 @@
+
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -47,6 +48,7 @@ export default function Dashboard() {
   const [planConfirmed, setPlanConfirmed] = useState(false);
   const [generationStatus, setGenerationStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [lastFetchAttempt, setLastFetchAttempt] = useState<number>(0);
 
   const fetchUserData = useCallback(async () => {
     if (!user) return;
@@ -116,6 +118,8 @@ export default function Dashboard() {
         setStrategy(processedStrategy);
         setIsGeneratingStrategy(false);
         setGenerationStatus('success');
+        // Auto-display content if we have valid strategy data
+        setShowContent(true);
       } else {
         const { data: onboardingData, error: onboardingError } =
           await supabase
@@ -199,16 +203,17 @@ export default function Dashboard() {
       });
     } finally {
       setLoading(false);
+      setLastFetchAttempt(Date.now());
 
-      if (isGeneratingStrategy) {
+      // Always show content after fetching, even if still generating
+      // This ensures users don't get stuck at loading screen
+      if (!showContent) {
         setTimeout(() => {
           setShowContent(true);
-        }, 15000);
-      } else {
-        setShowContent(true);
+        }, 1000);
       }
     }
-  }, [user, isGeneratingStrategy]);
+  }, [user]);
 
   const generateWaitingMessage = useCallback(async () => {
     if (!user) return;
@@ -266,7 +271,11 @@ export default function Dashboard() {
         });
         
         setGenerationStatus('success');
+        setIsGeneratingStrategy(false);
+        // Immediately fetch user data after successful generation
         await fetchUserData();
+        // Force show content after successful generation
+        setShowContent(true);
       } catch (error: any) {
         console.error("Fetch error:", error);
         setGenerationError(error.message);
@@ -283,7 +292,7 @@ export default function Dashboard() {
         variant: "destructive",
       });
     } finally {
-      // Even in case of errors, stop showing the loading UI after some time
+      // Always stop showing the loading UI after some time
       setTimeout(() => {
         setIsGeneratingStrategy(false);
         setShowContent(true);
@@ -291,10 +300,24 @@ export default function Dashboard() {
     }
   };
 
+  // Initial data loading
   useEffect(() => {
     fetchUserData();
   }, [fetchUserData]);
 
+  // Auto-refresh after 5 seconds if we're still in pending state
+  useEffect(() => {
+    if (generationStatus === 'pending') {
+      const refreshTimer = setTimeout(() => {
+        console.log("Auto-refreshing data due to pending generation...");
+        fetchUserData();
+      }, 5000);
+      
+      return () => clearTimeout(refreshTimer);
+    }
+  }, [generationStatus, fetchUserData, lastFetchAttempt]);
+
+  // Additional recovery attempt for errors
   useEffect(() => {
     // If generation was pending but there was an error, try once more after a timeout
     if (generationStatus === 'error' && generationError) {
