@@ -13,6 +13,9 @@ const assistantId = Deno.env.get("ASSISTANT_ID") || "";
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: openaiApiKey,
+  defaultHeaders: {
+    "OpenAI-Beta": "assistants=v2" // Add this header to use v2 of Assistants API
+  }
 });
 
 // CORS headers for browser requests

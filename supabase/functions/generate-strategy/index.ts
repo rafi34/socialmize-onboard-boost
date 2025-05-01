@@ -11,6 +11,9 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: Deno.env.get("OPENAI_API_KEY"),
+  defaultHeaders: {
+    "OpenAI-Beta": "assistants=v2" // Add this header to use v2 of Assistants API
+  }
 });
 
 // CORS headers for browser requests
