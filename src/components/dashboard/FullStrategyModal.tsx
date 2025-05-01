@@ -96,30 +96,6 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
             </div>
           )}
           
-          {/* If there are other relevant fields in the JSON, display them */}
-          {parsedJson.phases && Array.isArray(parsedJson.phases) && (
-            <div className="space-y-4">
-              <h3 className="font-medium text-lg">Strategy Phases</h3>
-              {parsedJson.phases.map((phase, i) => (
-                <div key={i} className="border rounded-lg p-4">
-                  <h4 className="font-bold">{phase.title}</h4>
-                  <p className="text-muted-foreground mb-2">{phase.goal}</p>
-                  
-                  {phase.tactics && (
-                    <div className="mt-2">
-                      <h5 className="font-medium text-sm mb-1">Tactics:</h5>
-                      <ul className="list-disc pl-5">
-                        {phase.tactics.map((tactic, j) => (
-                          <li key={j}>{tactic}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          
           {/* Topic Ideas */}
           {parsedJson.topic_ideas && Array.isArray(parsedJson.topic_ideas) && parsedJson.topic_ideas.length > 0 && (
             <div>
@@ -129,6 +105,15 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
                   <li key={i}>{topic}</li>
                 ))}
               </ul>
+            </div>
+          )}
+          
+          {/* Additional sections - handle if JSON structure is different */}
+          {!parsedJson.weeks && !parsedJson.topic_ideas && !parsedJson.summary && (
+            <div>
+              <pre className="whitespace-pre-wrap text-sm bg-secondary/10 p-4 rounded-md overflow-auto">
+                {JSON.stringify(parsedJson, null, 2)}
+              </pre>
             </div>
           )}
         </div>
