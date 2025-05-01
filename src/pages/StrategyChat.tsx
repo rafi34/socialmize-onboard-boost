@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -294,7 +295,7 @@ const StrategyChat = () => {
       });
       
       if (error) {
-        throw error;
+        throw new Error(`Edge function error: ${error.message}`);
       }
       
       if (!data.success) {
