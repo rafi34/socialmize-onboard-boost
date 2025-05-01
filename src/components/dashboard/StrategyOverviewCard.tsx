@@ -1,77 +1,101 @@
 
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { RefreshCw, FileText } from "lucide-react";
 import { useState } from "react";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Brain, RefreshCw, FileText } from "lucide-react";
 import { FullStrategyModal } from "./FullStrategyModal";
 
 interface StrategyOverviewCardProps {
-  onRegenerateClick: () => void;
+  onRegenerateClick?: () => void;
   fullPlanText?: string | null;
 }
 
-export const StrategyOverviewCard = ({ onRegenerateClick, fullPlanText }: StrategyOverviewCardProps) => {
-  const [showFullPlan, setShowFullPlan] = useState(false);
+export const StrategyOverviewCard = ({ 
+  onRegenerateClick,
+  fullPlanText 
+}: StrategyOverviewCardProps) => {
+  const [showFullStrategy, setShowFullStrategy] = useState(false);
+
+  // Extract a summary from the full plan text
+  const getSummaryFromFullPlan = () => {
+    if (!fullPlanText) return null;
+    
+    try {
+      // Try to parse as JSON first
+      const parsedPlan = JSON.parse(fullPlanText);
+      if (parsedPlan.summary) return parsedPlan.summary;
+      
+      // If no summary in JSON, extract the first paragraph
+      return null;
+    } catch {
+      // Not valid JSON, extract the first few sentences
+      const sentences = fullPlanText.split(/[.!?]/);
+      if (sentences.length > 0) {
+        // Get up to first 3 sentences that have content
+        const firstSentences = sentences
+          .filter(s => s.trim().length > 0)
+          .slice(0, 3)
+          .join(". ");
+        
+        return firstSentences + (firstSentences.endsWith(".") ? "" : ".");
+      }
+      return null;
+    }
+  };
+
+  const summary = getSummaryFromFullPlan();
 
   return (
     <>
       <Card className="mb-6">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Your Strategy Plan (Tailored for You)</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-muted/50 p-4 rounded-lg border">
-              <h3 className="font-medium text-sm mb-2">Content Style</h3>
-              <p className="text-sm text-muted-foreground">
-                Authentic, educational content focusing on your expertise area
-              </p>
-            </div>
-            <div className="bg-muted/50 p-4 rounded-lg border">
-              <h3 className="font-medium text-sm mb-2">Posting Frequency</h3>
-              <p className="text-sm text-muted-foreground">
-                3-5 posts per week for optimal growth and engagement
-              </p>
-            </div>
-            <div className="bg-muted/50 p-4 rounded-lg border">
-              <h3 className="font-medium text-sm mb-2">Strategy Focus</h3>
-              <p className="text-sm text-muted-foreground">
-                Building audience authority through consistent, valuable content
-              </p>
-            </div>
-            <div className="bg-muted/50 p-4 rounded-lg border">
-              <h3 className="font-medium text-sm mb-2">Growth Timeline</h3>
-              <p className="text-sm text-muted-foreground">
-                First 90 days: Establish foundation and begin growing audience
-              </p>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Brain className="h-5 w-5 mr-2 text-socialmize-purple" />
+              <CardTitle className="text-lg">Your Strategy Plan</CardTitle>
             </div>
           </div>
-          <Button 
-            variant="outline" 
-            className="w-full" 
-            onClick={() => setShowFullPlan(true)}
-          >
-            <FileText className="h-4 w-4 mr-2" />
-            View Full Strategy Plan
-          </Button>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {summary ? (
+              <p className="text-sm">{summary}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                Your personalized content strategy has been generated.
+                View the full plan for detailed guidance on growing your profile.
+              </p>
+            )}
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 flex items-center gap-2"
+              onClick={() => setShowFullStrategy(true)}
+            >
+              <FileText className="h-4 w-4" />
+              View Full Strategy Plan
+            </Button>
+          </div>
         </CardContent>
         <CardFooter>
           <Button 
-            variant="outline" 
-            className="w-full" 
+            variant="outline"
+            size="sm"
             onClick={onRegenerateClick}
+            className="flex items-center gap-2"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
+            <RefreshCw className="h-4 w-4" />
             Regenerate Strategy
           </Button>
         </CardFooter>
       </Card>
 
       <FullStrategyModal 
-        isOpen={showFullPlan} 
-        onClose={() => setShowFullPlan(false)}
+        isOpen={showFullStrategy}
+        onClose={() => setShowFullStrategy(false)}
+        fullPlanText={fullPlanText || ""}
         onRegenerateClick={onRegenerateClick}
-        fullPlanText={fullPlanText}
       />
     </>
   );

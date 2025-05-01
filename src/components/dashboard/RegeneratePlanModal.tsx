@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface RegeneratePlanModalProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export const RegeneratePlanModal = ({
 }: RegeneratePlanModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const queryClient = useQueryClient();
   
   const regenerateStrategy = async () => {
     setIsLoading(true);
@@ -72,69 +74,54 @@ export const RegeneratePlanModal = ({
       console.log("Onboarding data fetched successfully:", onboardingData);
       console.log("Calling generate-strategy-plan with userId:", userId);
       
-      // Call the Supabase Edge Function to regenerate the strategy plan
-      // This function uses SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID for the dashboard
-      const { data, error: functionError } = await supabase.functions.invoke(
-        'generate-strategy-plan', 
-        {
-          body: { 
+      try {
+        // Direct fetch to the Supabase Function
+        const response = await fetch("/functions/generate-strategy-plan", {
+          method: "POST",
+          body: JSON.stringify({ 
             userId, 
             onboardingData 
-          }
-        }
-      );
-      
-      if (functionError) {
-        console.error("Function error:", functionError);
-        throw new Error(`Failed to generate strategy plan: ${functionError.message}`);
-      }
-      
-      console.log("Strategy plan generation response:", data);
-      
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      // Update the strategy_profiles table with creator_style and posting_frequency
-      if (onboardingData.creator_style || onboardingData.posting_frequency_goal) {
-        const updateData: any = {};
-        
-        if (onboardingData.creator_style) {
-          updateData.creator_style = onboardingData.creator_style;
-        }
-        
-        if (onboardingData.posting_frequency_goal) {
-          updateData.posting_frequency = onboardingData.posting_frequency_goal;
-        }
-        
-        const { error: updateError } = await supabase
-          .from('strategy_profiles')
-          .update(updateData)
-          .eq('user_id', userId);
-          
-        if (updateError) {
-          console.error("Error updating strategy profile with style/frequency:", updateError);
-          // Not throwing error here as this is a secondary update
-        } else {
-          console.log("Updated strategy profile with creator_style and posting_frequency");
-        }
-      }
-      
-      if (data?.mock) {
-        toast({
-          title: isFirstGeneration ? "Strategy plan generated (test mode)" : "Strategy plan regenerated (test mode)",
-          description: "Your content strategy has been updated in test mode. Setup is using mock data since OpenAI Assistant configuration is incomplete.",
+          }),
         });
-      } else {
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Strategy generation failed");
+        }
+        
+        const data = await response.json();
+        
+        if (data.mock) {
+          console.log("Using mock strategy data (OpenAI assistant not configured)");
+        }
+        
+        // Invalidate all related queries to ensure fresh data
+        queryClient.invalidateQueries({
+          queryKey: ['strategy_profiles']
+        });
+        
+        queryClient.invalidateQueries({
+          queryKey: ['strategyPlan', userId]
+        });
+        
+        queryClient.invalidateQueries({
+          queryKey: ['planConfirmation', userId]
+        });
+        
         toast({
           title: isFirstGeneration ? "Strategy plan generated" : "Strategy plan regenerated",
           description: "Your content strategy has been updated successfully.",
         });
-      }
-      
-      // Call the success callback to refresh the data
-      if (onSuccess) {
-        onSuccess();
+        
+        // Call the success callback to refresh the data
+        if (onSuccess) {
+          setTimeout(() => {
+            onSuccess();
+          }, 1000); // Small delay to ensure DB updates are complete
+        }
+      } catch (error: any) {
+        console.error("Fetch error:", error);
+        throw error;
       }
     } catch (error: any) {
       console.error("Error regenerating strategy:", error);
@@ -144,6 +131,10 @@ export const RegeneratePlanModal = ({
         description: error.message || "Failed to regenerate your strategy. Please try again.",
         variant: "destructive",
       });
+      
+      if (onClose) {
+        onClose();
+      }
     } finally {
       setIsLoading(false);
     }

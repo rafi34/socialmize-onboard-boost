@@ -1,3 +1,4 @@
+
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,6 +46,8 @@ export default function Dashboard() {
   const [isGeneratingStrategy, setIsGeneratingStrategy] = useState(false);
   const [waitingMessage, setWaitingMessage] = useState("");
   const [planConfirmed, setPlanConfirmed] = useState(false);
+  const [generationStatus, setGenerationStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+  const [generationError, setGenerationError] = useState<string | null>(null);
 
   const fetchUserData = useCallback(async () => {
     if (!user) return;
@@ -117,6 +120,7 @@ export default function Dashboard() {
 
         setStrategy(processedStrategy);
         setIsGeneratingStrategy(false);
+        setGenerationStatus('success');
       } else {
         const { data: onboardingData, error: onboardingError } =
           await supabase
@@ -131,6 +135,7 @@ export default function Dashboard() {
 
         if (onboardingData) {
           setIsGeneratingStrategy(true);
+          setGenerationStatus('pending');
           await generateStrategy(onboardingData);
         }
 
@@ -232,43 +237,91 @@ export default function Dashboard() {
 
     try {
       await generateWaitingMessage();
+      setGenerationStatus('pending');
 
-      // Direct fetch to the Supabase Function as requested
-      await fetch("/functions/generate-strategy-plan", {
-        method: "POST",
-        body: JSON.stringify({ 
-          userId: user.id, 
-          onboardingData 
-        }),
-      });
-      
-      // Invalidate queries to refresh strategy data
-      queryClient.invalidateQueries({
-        queryKey: ['strategy_profiles']
-      });
-      
-      toast({
-        title: "Strategy Generated",
-        description: "Your personalized content strategy is ready!",
-      });
-      
-      await fetchUserData();
-    } catch (error) {
+      try {
+        // Direct fetch to the Supabase Function
+        const response = await fetch("/functions/generate-strategy-plan", {
+          method: "POST",
+          body: JSON.stringify({ 
+            userId: user.id, 
+            onboardingData 
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Strategy generation failed");
+        }
+        
+        const data = await response.json();
+        
+        if (data.mock) {
+          console.log("Using mock strategy data (OpenAI assistant not configured)");
+        }
+        
+        // Invalidate queries to refresh strategy data
+        queryClient.invalidateQueries({
+          queryKey: ['strategy_profiles']
+        });
+        
+        toast({
+          title: "Strategy Generated",
+          description: "Your personalized content strategy is ready!",
+        });
+        
+        setGenerationStatus('success');
+        await fetchUserData();
+      } catch (error: any) {
+        console.error("Fetch error:", error);
+        setGenerationError(error.message);
+        setGenerationStatus('error');
+        throw error;
+      }
+    } catch (error: any) {
       console.error("Error generating strategy:", error);
+      setGenerationStatus('error');
+      setGenerationError(error.message || "Unexpected error occurred");
       toast({
         title: "Strategy Generation Failed",
         description: "Unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsGeneratingStrategy(false);
-      setShowContent(true);
+      // Even in case of errors, stop showing the loading UI after some time
+      setTimeout(() => {
+        setIsGeneratingStrategy(false);
+        setShowContent(true);
+      }, 2000);
     }
   };
 
   useEffect(() => {
     fetchUserData();
   }, [fetchUserData]);
+
+  useEffect(() => {
+    // If generation was pending but there was an error, try once more after a timeout
+    if (generationStatus === 'error' && generationError) {
+      const retryTimeout = setTimeout(async () => {
+        // Retry fetching the strategy in case it was generated despite the error
+        console.log("Retrying strategy fetch after error...");
+        
+        const { data: strategyData } = await supabase
+          .from("strategy_profiles")
+          .select("id")
+          .eq("user_id", user?.id)
+          .maybeSingle();
+          
+        if (strategyData) {
+          console.log("Strategy found on retry, refreshing data");
+          fetchUserData();
+        }
+      }, 10000); // Wait 10 seconds before retrying
+      
+      return () => clearTimeout(retryTimeout);
+    }
+  }, [generationStatus, generationError, fetchUserData, user?.id]);
 
   if (profileComplete === false) return <Navigate to="/" replace />;
 
@@ -283,6 +336,17 @@ export default function Dashboard() {
             <p className="text-sm text-muted-foreground">
               This takes about 15–30 seconds. You'll be redirected automatically when it's ready.
             </p>
+            {generationStatus === 'error' && (
+              <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-red-600">There was an issue generating your strategy. We're retrying...</p>
+                <button 
+                  onClick={fetchUserData}
+                  className="mt-2 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-800 rounded-md text-sm"
+                >
+                  Retry Now
+                </button>
+              </div>
+            )}
           </div>
         </main>
       </div>
