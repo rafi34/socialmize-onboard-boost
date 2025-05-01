@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,7 +39,7 @@ export const StrategyOverviewSection = ({ onPlanConfirmed }: StrategyOverviewSec
     try {
       const { data, error } = await supabase
         .from('strategy_profiles')
-        .select('id, first_five_scripts, full_plan_text')
+        .select('id, weekly_calendar, full_plan_text')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -68,10 +67,9 @@ export const StrategyOverviewSection = ({ onPlanConfirmed }: StrategyOverviewSec
         // Store strategy ID for confirmation
         setStrategyId(data.id);
         
-        // Check if plan is confirmed by looking for first_five_scripts
-        const confirmed = !!(data.first_five_scripts && 
-          Array.isArray(data.first_five_scripts) && 
-          data.first_five_scripts.length > 0);
+        // Check if plan is confirmed by looking for weekly_calendar
+        const confirmed = !!(data.weekly_calendar && 
+          typeof data.weekly_calendar === 'object');
           
         setIsPlanConfirmed(confirmed);
         
@@ -115,7 +113,7 @@ export const StrategyOverviewSection = ({ onPlanConfirmed }: StrategyOverviewSec
     try {
       toast({
         title: "Confirming plan...",
-        description: "We're unlocking your starter scripts and weekly calendar.",
+        description: "We're generating your weekly calendar.",
       });
       
       // Call the confirm-strategy-plan edge function
@@ -144,7 +142,7 @@ export const StrategyOverviewSection = ({ onPlanConfirmed }: StrategyOverviewSec
       
       toast({
         title: "Plan confirmed!",
-        description: "Your starter scripts and weekly calendar are now available.",
+        description: "Your weekly calendar is now available.",
       });
       
     } catch (error: any) {
@@ -238,7 +236,7 @@ export const StrategyOverviewSection = ({ onPlanConfirmed }: StrategyOverviewSec
           <div className="flex flex-col items-center justify-center py-4">
             <h3 className="text-xl font-medium mb-2">Ready to Implement Your Strategy?</h3>
             <p className="text-center text-muted-foreground mb-4">
-              Confirm your strategy plan to unlock your starter scripts and weekly calendar.
+              Confirm your strategy plan to unlock your weekly calendar.
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
               <Button 

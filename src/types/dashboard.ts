@@ -1,9 +1,10 @@
+
 // Strategy and planning types
 export interface StrategyData {
   experience_level: string;
   content_types: string[];
   weekly_calendar: Record<string, string[]>;
-  starter_scripts: { title: string; script: string }[];
+  starter_scripts?: { title: string; script: string }[];
   posting_frequency: string;
   creator_style: string;
   content_breakdown: Record<string, number>;

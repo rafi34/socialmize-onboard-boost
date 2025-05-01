@@ -1,4 +1,3 @@
-// ✅ RegeneratePlanModal.tsx — Updated to pass onboardingData
 
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";

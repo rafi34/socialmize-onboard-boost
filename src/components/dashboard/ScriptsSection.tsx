@@ -43,18 +43,20 @@ export const ScriptsSection = ({ strategy, loading }: ScriptsSectionProps) => {
     );
   }
 
-  if (!strategy?.starter_scripts?.length) {
+  const hasScripts = strategy?.starter_scripts && strategy.starter_scripts.length > 0;
+
+  if (!hasScripts) {
     return (
       <div className="text-center py-12">
         <h3 className="text-xl font-medium mb-2">No Scripts Available</h3>
-        <p className="text-muted-foreground">Please complete the onboarding process to generate your content scripts.</p>
+        <p className="text-muted-foreground">Try generating content scripts in the content generator section.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {strategy.starter_scripts.map((script, index) => (
+      {strategy?.starter_scripts?.map((script, index) => (
         <Card key={index}>
           <CardHeader>
             <CardTitle>Script {index + 1}: {script.title}</CardTitle>

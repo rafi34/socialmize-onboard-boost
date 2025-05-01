@@ -53,37 +53,10 @@ serve(async (req) => {
       );
     }
     
-    // Generate simple starter scripts based on the phases
+    // Generate simple weekly calendar based on the phases
     const phases = strategyData.phases as any[] || [];
     
-    // Create sample scripts based on the phases
-    const starterScripts = [];
-    
-    // Generate 5 starter scripts
-    for (let i = 0; i < Math.min(5, phases.length * 2); i++) {
-      const phaseIndex = i % phases.length;
-      const phase = phases[phaseIndex];
-      
-      if (phase && phase.tactics && Array.isArray(phase.tactics)) {
-        const tacticIndex = Math.floor(i / phases.length) % phase.tactics.length;
-        const tactic = phase.tactics[tacticIndex];
-        
-        starterScripts.push({
-          title: `${phase.title} - ${tactic.substring(0, 30)}...`,
-          script: `# ${phase.title} Script\n\n**Objective:** ${phase.goal}\n\n**Based on tactic:** ${tactic}\n\n## Script:\n\n[Hook - Attention grabber related to ${phase.title}]\n\n[Main Content - Explain the value and demonstrate ${tactic}]\n\n[Call to Action - Ask viewers to engage]`
-        });
-      }
-    }
-    
-    // Fill in with generic scripts if we don't have enough
-    while (starterScripts.length < 5) {
-      starterScripts.push({
-        title: `Starter Script ${starterScripts.length + 1}`,
-        script: `# Starter Script\n\n**Objective:** Build your audience\n\n## Script:\n\n[Hook - Grab attention in the first 3 seconds]\n\n[Main Content - Deliver value to your audience]\n\n[Call to Action - Ask for engagement]`
-      });
-    }
-    
-    // Generate a simple weekly calendar
+    // Create a simple weekly calendar
     const weeklyCalendar = {
       "Monday": ["Content Brainstorming"],
       "Tuesday": ["Script Writing"],
@@ -94,11 +67,10 @@ serve(async (req) => {
       "Sunday": ["Rest & Planning"]
     };
     
-    // Update the strategy profile with first_five_scripts and weekly_calendar
+    // Update the strategy profile with weekly_calendar
     const { error: updateError } = await supabaseAdmin
       .from("strategy_profiles")
       .update({
-        first_five_scripts: starterScripts,
         weekly_calendar: weeklyCalendar
       })
       .eq("id", strategyPlanId)

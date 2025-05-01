@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -104,10 +103,10 @@ export const StrategyPlanSection = () => {
       if (!user) return false;
       
       try {
-        // Check if first_five_scripts exists to determine if plan has been confirmed
+        // Check if weekly_calendar exists to determine if plan has been confirmed
         const { data, error } = await supabase
           .from('strategy_profiles')
-          .select('first_five_scripts')
+          .select('weekly_calendar')
           .eq('user_id', user.id)
           .maybeSingle();
           
@@ -116,10 +115,9 @@ export const StrategyPlanSection = () => {
           return false;
         }
         
-        // If first_five_scripts exists and is not null, plan has been confirmed
-        const confirmed = !!(data?.first_five_scripts && 
-          Array.isArray(data.first_five_scripts) && 
-          data.first_five_scripts.length > 0);
+        // If weekly_calendar exists and is not null, plan has been confirmed
+        const confirmed = !!(data?.weekly_calendar && 
+          typeof data.weekly_calendar === 'object');
           
         setPlanConfirmed(confirmed);
         console.log("Plan confirmation status:", confirmed);

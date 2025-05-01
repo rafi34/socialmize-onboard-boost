@@ -1,4 +1,3 @@
-
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -76,7 +75,7 @@ export default function Dashboard() {
       const { data: strategyData, error: strategyError } = await supabase
         .from("strategy_profiles")
         .select(
-          "id, user_id, experience_level, content_types, weekly_calendar, first_five_scripts, full_plan_text, niche_topic, topic_ideas, posting_frequency, creator_style"
+          "id, user_id, experience_level, content_types, weekly_calendar, full_plan_text, niche_topic, topic_ideas, posting_frequency, creator_style"
         )
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
@@ -88,9 +87,9 @@ export default function Dashboard() {
       }
 
       if (strategyData && !strategyError) {
-        const confirmed =
-          Array.isArray(strategyData.first_five_scripts) &&
-          strategyData.first_five_scripts.length > 0;
+        // Check if plan is confirmed by looking for weekly_calendar
+        const confirmed = !!(strategyData.weekly_calendar && 
+          typeof strategyData.weekly_calendar === 'object');
 
         setPlanConfirmed(confirmed);
 
@@ -101,10 +100,6 @@ export default function Dashboard() {
             string,
             string[]
           >,
-          starter_scripts: strategyData.first_five_scripts as {
-            title: string;
-            script: string;
-          }[],
           posting_frequency: strategyData.posting_frequency || "3-5x per week",
           creator_style: strategyData.creator_style || "Authentic",
           content_breakdown: {
@@ -359,7 +354,6 @@ export default function Dashboard() {
         <div className="max-w-4xl mx-auto">
           <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
           
-          {/* The StrategyOverviewSection component is now updated to handle plan confirmation */}
           <StrategyOverviewSection onPlanConfirmed={setPlanConfirmed} />
 
           {planConfirmed && (
@@ -373,7 +367,7 @@ export default function Dashboard() {
               <TodaysMissionCard strategy={strategy} loading={loading} />
               <Card className="mb-6">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Your Starter Scripts</CardTitle>
+                  <CardTitle className="text-lg">Your Scripts</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ScriptsSection strategy={strategy} loading={loading} />
