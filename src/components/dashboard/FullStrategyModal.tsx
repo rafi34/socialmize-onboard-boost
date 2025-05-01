@@ -19,6 +19,18 @@ interface FullStrategyModalProps {
 }
 
 export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateClick }: FullStrategyModalProps) => {
+  // Function to clean JSON text that might have markdown backticks
+  const cleanJsonText = (text?: string | null): string => {
+    if (!text) return "";
+    
+    // Remove markdown code block indicators if present
+    const cleaned = text.trim()
+      .replace(/^```json\s*/g, '')  // Remove opening ```json
+      .replace(/```$/g, '');        // Remove closing ```
+    
+    return cleaned;
+  };
+  
   // Function to format and display the plan text, supporting both JSON and plain text
   const formatPlanText = (text?: string | null) => {
     if (!text || text.trim().length === 0) {
@@ -26,8 +38,12 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
     }
 
     try {
+      // Clean text of any markdown formatting before parsing JSON
+      const cleanedText = cleanJsonText(text);
+      console.log("Cleaned text for JSON parsing:", cleanedText.substring(0, 100) + "...");
+      
       // Try to parse as JSON
-      const parsedJson = JSON.parse(text);
+      const parsedJson = JSON.parse(cleanedText);
       console.log("Parsed JSON plan:", parsedJson);
       
       // Format JSON content in a structured way

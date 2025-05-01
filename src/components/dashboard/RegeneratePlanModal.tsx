@@ -74,54 +74,53 @@ export const RegeneratePlanModal = ({
       console.log("Onboarding data fetched successfully:", onboardingData);
       console.log("Calling generate-strategy-plan with userId:", userId);
       
-      try {
-        // Direct fetch to the Supabase Function
-        const response = await fetch("/functions/generate-strategy-plan", {
-          method: "POST",
-          body: JSON.stringify({ 
-            userId, 
-            onboardingData 
-          }),
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Strategy generation failed");
+      // Use supabase.functions.invoke instead of direct fetch for better error handling
+      const { data, error } = await supabase.functions.invoke('generate-strategy-plan', {
+        body: { 
+          userId, 
+          onboardingData 
         }
-        
-        const data = await response.json();
-        
-        if (data.mock) {
-          console.log("Using mock strategy data (OpenAI assistant not configured)");
-        }
-        
-        // Invalidate all related queries to ensure fresh data
-        queryClient.invalidateQueries({
-          queryKey: ['strategy_profiles']
-        });
-        
-        queryClient.invalidateQueries({
-          queryKey: ['strategyPlan', userId]
-        });
-        
-        queryClient.invalidateQueries({
-          queryKey: ['planConfirmation', userId]
-        });
-        
-        toast({
-          title: isFirstGeneration ? "Strategy plan generated" : "Strategy plan regenerated",
-          description: "Your content strategy has been updated successfully.",
-        });
-        
-        // Call the success callback to refresh the data
-        if (onSuccess) {
-          setTimeout(() => {
-            onSuccess();
-          }, 1000); // Small delay to ensure DB updates are complete
-        }
-      } catch (error: any) {
-        console.error("Fetch error:", error);
-        throw error;
+      });
+      
+      if (error) {
+        console.error("Error calling generate-strategy-plan function:", error);
+        throw new Error(error.message || "Strategy generation failed");
+      }
+      
+      if (!data) {
+        console.error("No data returned from generate-strategy-plan function");
+        throw new Error("No response from strategy generator");
+      }
+      
+      console.log("Strategy generation response:", data);
+      
+      if (data.mock) {
+        console.log("Using mock strategy data (OpenAI assistant not configured)");
+      }
+      
+      // Invalidate all related queries to ensure fresh data
+      queryClient.invalidateQueries({
+        queryKey: ['strategy_profiles']
+      });
+      
+      queryClient.invalidateQueries({
+        queryKey: ['strategyPlan', userId]
+      });
+      
+      queryClient.invalidateQueries({
+        queryKey: ['planConfirmation', userId]
+      });
+      
+      toast({
+        title: isFirstGeneration ? "Strategy plan generated" : "Strategy plan regenerated",
+        description: "Your content strategy has been updated successfully.",
+      });
+      
+      // Call the success callback to refresh the data
+      if (onSuccess) {
+        setTimeout(() => {
+          onSuccess();
+        }, 1000); // Small delay to ensure DB updates are complete
       }
     } catch (error: any) {
       console.error("Error regenerating strategy:", error);
