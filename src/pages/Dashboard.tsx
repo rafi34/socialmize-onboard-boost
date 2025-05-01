@@ -377,7 +377,12 @@ export default function Dashboard() {
         <div className="max-w-4xl mx-auto">
           <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
           
-          <StrategyOverviewSection onPlanConfirmed={setPlanConfirmed} />
+          <StrategyOverviewSection 
+            strategy={strategy} 
+            loading={loading} 
+            onRegenerateClick={fetchUserData}
+            onPlanConfirmed={setPlanConfirmed} 
+          />
 
           {planConfirmed && (
             <>
