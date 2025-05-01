@@ -8,16 +8,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Brain } from "lucide-react";
+import { Brain, RefreshCw } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface FullStrategyModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onRegenerateClick?: () => void;
   fullPlanText?: string | null;
 }
 
-export const FullStrategyModal = ({ isOpen, onClose, fullPlanText }: FullStrategyModalProps) => {
+export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateClick }: FullStrategyModalProps) => {
   // Function to preserve line breaks in the text
   const formatPlanText = (text?: string | null) => {
     if (!text || text.trim().length === 0) {
@@ -51,7 +52,16 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText }: FullStrateg
           </div>
         </ScrollArea>
 
-        <DialogFooter>
+        <DialogFooter className="flex justify-between flex-col sm:flex-row gap-2">
+          <Button 
+            variant="outline" 
+            onClick={onRegenerateClick}
+            className="sm:order-1"
+            disabled={!onRegenerateClick}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Regenerate Strategy
+          </Button>
           <Button onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>

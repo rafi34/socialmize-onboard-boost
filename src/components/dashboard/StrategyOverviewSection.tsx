@@ -19,6 +19,7 @@ export const StrategyOverviewSection = ({ onPlanConfirmed }: StrategyOverviewSec
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [isFirstGeneration, setIsFirstGeneration] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [fullPlanText, setFullPlanText] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -33,7 +34,7 @@ export const StrategyOverviewSection = ({ onPlanConfirmed }: StrategyOverviewSec
     try {
       const { data, error } = await supabase
         .from('strategy_profiles')
-        .select('id, first_five_scripts')
+        .select('id, first_five_scripts, full_plan_text')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -47,6 +48,10 @@ export const StrategyOverviewSection = ({ onPlanConfirmed }: StrategyOverviewSec
       const hasExistingStrategy = !!data;
       setHasStrategy(hasExistingStrategy);
       setIsFirstGeneration(!hasExistingStrategy);
+      
+      if (data?.full_plan_text) {
+        setFullPlanText(data.full_plan_text);
+      }
       
       // Check if plan is confirmed by looking for first_five_scripts
       const isPlanConfirmed = !!(data?.first_five_scripts && 
@@ -122,7 +127,8 @@ export const StrategyOverviewSection = ({ onPlanConfirmed }: StrategyOverviewSec
   return (
     <>
       <StrategyOverviewCard 
-        onRegenerateClick={handleGenerateClick} 
+        onRegenerateClick={handleGenerateClick}
+        fullPlanText={fullPlanText}
       />
       
       {/* Regenerate/Generate confirmation modal */}

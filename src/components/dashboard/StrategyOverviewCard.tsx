@@ -7,9 +7,10 @@ import { FullStrategyModal } from "./FullStrategyModal";
 
 interface StrategyOverviewCardProps {
   onRegenerateClick: () => void;
+  fullPlanText?: string | null;
 }
 
-export const StrategyOverviewCard = ({ onRegenerateClick }: StrategyOverviewCardProps) => {
+export const StrategyOverviewCard = ({ onRegenerateClick, fullPlanText }: StrategyOverviewCardProps) => {
   const [showFullPlan, setShowFullPlan] = useState(false);
 
   return (
@@ -68,8 +69,9 @@ export const StrategyOverviewCard = ({ onRegenerateClick }: StrategyOverviewCard
 
       <FullStrategyModal 
         isOpen={showFullPlan} 
-        onClose={() => setShowFullPlan(false)} 
+        onClose={() => setShowFullPlan(false)}
         onRegenerateClick={onRegenerateClick}
+        fullPlanText={fullPlanText}
       />
     </>
   );
