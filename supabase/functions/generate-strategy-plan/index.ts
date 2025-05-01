@@ -41,6 +41,7 @@ serve(async (req) => {
 
     console.log(`Generating strategy plan for user ${userId} with assistant ${assistantId}`);
     
+    // Always use the OpenAI API to generate a strategy plan
     // Create thread
     const threadResponse = await fetch('https://api.openai.com/v1/threads', {
       method: 'POST',
@@ -62,10 +63,8 @@ serve(async (req) => {
     const threadId = thread.id;
     console.log(`Created new thread with ID: ${threadId}`);
 
-    // Format onboarding data as a clean message - ONLY send the user's onboarding data
-    console.log('Onboarding data being sent to assistant:', JSON.stringify(onboardingData));
-    
-    // Send only the onboarding data to the assistant without any additional prompting
+    // Create a message with onboarding data
+    const onboardingMessage = createOnboardingDataMessage(onboardingData);
     await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
       method: 'POST',
       headers: {
@@ -75,13 +74,58 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         role: 'user',
-        content: JSON.stringify(onboardingData),
+        content: onboardingMessage,
       }),
     });
     
     console.log("Added onboarding data message to thread");
 
-    // Run the assistant - it already has the proper system instructions
+    // Add a specific request for generating a structured strategy plan with clear JSON-like format
+    const strategyPlanPrompt = `Based on my onboarding information, please generate a comprehensive content strategy plan.
+Your response must follow this exact structure for proper parsing:
+
+SUMMARY: Write a concise paragraph summarizing the overall strategy.
+
+PHASE 1: [Title of the first phase]
+GOAL: [Clear goal description for this phase]
+TACTICS:
+- [Specific tactic 1]
+- [Specific tactic 2]
+- [Additional tactics as needed]
+
+CONTENT PLAN:
+WEEKLY SCHEDULE:
+- [Content type 1]: [frequency per week]
+- [Content type 2]: [frequency per week]
+
+EXAMPLE POST IDEAS:
+- [Example post idea 1]
+- [Example post idea 2]
+- [Example post idea 3]
+
+PHASE 2: [Title of the second phase]
+[... repeat the same structure for phases 2-5]
+
+It's critical that you follow this exact format with the exact headings (SUMMARY, PHASE, GOAL, TACTICS, CONTENT PLAN, etc.) to ensure proper parsing. 
+Do not add any markdown formatting like ###, bullet points other than the ones indicated with -, or any other formatting.
+Include 3-5 phases total, each with clear tactics and content plans.`;
+
+    await fetch(`https://api.openai.com/v1/threads/${threadId}/messages`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+        'OpenAI-Beta': 'assistants=v2',
+      },
+      body: JSON.stringify({
+        role: 'user',
+        content: strategyPlanPrompt,
+      }),
+    });
+
+    console.log("Added strategy plan prompt to thread");
+
+    // Run the assistant
     const runResponse = await fetch(`https://api.openai.com/v1/threads/${threadId}/runs`, {
       method: 'POST',
       headers: {
@@ -169,45 +213,30 @@ serve(async (req) => {
       messageContent = latestAssistantMessage.content[0].text?.value || '';
     }
 
-    console.log('Assistant response received.');
+    console.log('Assistant response received. Processing...');
     console.log('Raw assistant response:', messageContent);
 
-    // Try to parse as JSON directly first, since the assistant is configured to return JSON
-    try {
-      // Attempt to parse the response as JSON
-      let strategyPlan;
-      try {
-        strategyPlan = JSON.parse(messageContent);
-        console.log('Successfully parsed assistant response as JSON');
-      } catch (parseError) {
-        console.error('Failed to parse assistant response as JSON:', parseError);
-        console.log('Falling back to text processing');
-        // Fall back to the text processing if JSON parsing fails
-        strategyPlan = processStrategyPlanFromText(messageContent);
-      }
-      
-      // Log the strategy plan to help with debugging
-      console.log('Processed strategy plan:', JSON.stringify(strategyPlan, null, 2));
-      
-      // Save to both strategy_plans and strategy_profiles tables
-      await saveStrategyPlan(userId, assistantId, strategyPlan.summary, strategyPlan.phases || []);
-      
-      console.log('Strategy plan successfully generated and saved');
-      
-      return new Response(JSON.stringify({
-        success: true,
-        message: 'Strategy plan generated and saved',
-      }), {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        },
-      });
-    } catch (error) {
-      console.error('Error processing or saving strategy plan:', error);
-      throw error;
-    }
+    // Process the message content to extract structured data
+    const strategyPlan = processStrategyPlanFromText(messageContent);
+    
+    // Log the strategy plan to help with debugging
+    console.log('Processed strategy plan:', JSON.stringify(strategyPlan, null, 2));
+    
+    // Save to both strategy_plans and strategy_profiles tables
+    await saveStrategyPlan(userId, assistantId, strategyPlan.summary, strategyPlan.phases);
+    
+    console.log('Strategy plan successfully generated and saved');
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Strategy plan generated and saved',
+    }), {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+      },
+    });
   } catch (error) {
     console.error('Error in generate-strategy-plan function:', error);
     return new Response(JSON.stringify({ error: error.message }), {
@@ -444,9 +473,23 @@ function extractExampleScriptsFromPhases(phases: any[]): { title: string, script
   return scripts;
 }
 
-// Fallback helper function to process and extract structured data from the assistant's response if JSON parsing fails
-function processStrategyPlanFromText(text: string) {
-  console.log("Processing strategy plan from text (fallback mode)...");
+// Helper function to create a message with onboarding data information
+function createOnboardingDataMessage(onboardingData) {
+  let message = 'Here is my onboarding information to help personalize my content strategy:\n\n';
+  
+  for (const [key, value] of Object.entries(onboardingData)) {
+    if (value !== null && value !== undefined) {
+      message += `${key}: ${value}\n`;
+    }
+  }
+  
+  message += '\nPlease use this information to create a personalized content strategy plan for me.';
+  return message;
+}
+
+// Helper function to process and extract structured data from the assistant's response
+function processStrategyPlanFromText(text) {
+  console.log("Processing strategy plan from text...");
   
   try {
     // Extract summary
