@@ -95,6 +95,10 @@ verify_jwt = true
 # Uses SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID for dashboard strategy generation
 verify_jwt = true
 
+[functions.generate-strategy-chat]
+# New function that uses direct OpenAI API calls instead of Assistants API
+verify_jwt = true
+
 [functions.confirm-strategy-plan]
 verify_jwt = true
 

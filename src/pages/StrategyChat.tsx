@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -233,8 +232,8 @@ const StrategyChat = () => {
       // Save user message to Supabase
       await saveMessage(userMessage, currentThreadId);
       
-      // Call the edge function with onboardingData
-      const { data, error } = await supabase.functions.invoke("generate-strategy", {
+      // Call the NEW edge function with onboardingData
+      const { data, error } = await supabase.functions.invoke("generate-strategy-chat", {
         body: {
           userId: user.id,
           userMessage: inputMessage,
