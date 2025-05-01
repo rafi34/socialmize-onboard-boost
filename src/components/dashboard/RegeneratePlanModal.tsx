@@ -69,10 +69,10 @@ export const RegeneratePlanModal = ({
           onboardingData: {
             creator_mission: onboardingAnswers.creator_mission,
             creator_style: onboardingAnswers.creator_style,
-            content_formats: onboardingAnswers.content_formats,
+            content_formats: onboardingAnswers.content_format_preference, // Fixed: using correct property name
             posting_frequency_goal: onboardingAnswers.posting_frequency_goal,
             niche_topic: onboardingAnswers.niche_topic,
-            experience_level: onboardingAnswers.experience_level || "beginner"
+            experience_level: onboardingAnswers.content_format_preference === "tutorials_howto" ? "intermediate" : "beginner" // Fixed: providing a default value
           }
         }
       });
