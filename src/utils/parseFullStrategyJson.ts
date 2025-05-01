@@ -41,6 +41,17 @@ export function parseFullStrategyJson(raw: string | null): any {
 export function getStrategySummary(parsedJson: any, rawText: string | null): string | null {
   if (parsedJson?.summary) return parsedJson.summary;
 
+  // If there's a summary key in the top level, use that
+  if (parsedJson?.summary) return parsedJson.summary;
+  
+  // Try to get summary from phases
+  if (parsedJson?.phases && Array.isArray(parsedJson.phases) && parsedJson.phases.length > 0) {
+    if (parsedJson.phases[0].title) {
+      return `${parsedJson.phases[0].title}: ${parsedJson.phases[0].goal || ''}`;
+    }
+  }
+
+  // Fallback to extracting from raw text
   if (rawText) {
     const firstSentences = rawText.split(/[.!?]/)
       .map(s => s.trim())
@@ -51,4 +62,66 @@ export function getStrategySummary(parsedJson: any, rawText: string | null): str
   }
 
   return null;
+}
+
+/**
+ * Converts a JSON strategy to human-readable text
+ */
+export function strategyJsonToText(parsedJson: any): string | null {
+  if (!parsedJson) return null;
+  
+  let text = '';
+  
+  // Add summary
+  if (parsedJson.summary) {
+    text += `${parsedJson.summary}\n\n`;
+  }
+  
+  // Add phases
+  if (parsedJson.phases && Array.isArray(parsedJson.phases)) {
+    parsedJson.phases.forEach((phase: any, index: number) => {
+      text += `Phase ${index + 1}: ${phase.title || ''}\n`;
+      
+      if (phase.goal) {
+        text += `Goal: ${phase.goal}\n`;
+      }
+      
+      if (phase.tactics && Array.isArray(phase.tactics)) {
+        text += 'Tactics:\n';
+        phase.tactics.forEach((tactic: string, i: number) => {
+          text += `- ${tactic}\n`;
+        });
+      }
+      
+      if (phase.content_plan) {
+        text += '\nContent Plan:\n';
+        
+        if (phase.content_plan.weekly_schedule) {
+          text += 'Weekly Schedule:\n';
+          Object.entries(phase.content_plan.weekly_schedule).forEach(([format, count]) => {
+            text += `- ${format}: ${count}x per week\n`;
+          });
+        }
+        
+        if (phase.content_plan.example_post_ideas && Array.isArray(phase.content_plan.example_post_ideas)) {
+          text += '\nExample Post Ideas:\n';
+          phase.content_plan.example_post_ideas.slice(0, 5).forEach((idea: string) => {
+            text += `- ${idea}\n`;
+          });
+        }
+      }
+      
+      text += '\n';
+    });
+  }
+  
+  // Add topic ideas
+  if (parsedJson.topic_ideas && Array.isArray(parsedJson.topic_ideas)) {
+    text += 'Content Topic Ideas:\n';
+    parsedJson.topic_ideas.forEach((topic: string) => {
+      text += `- ${topic}\n`;
+    });
+  }
+  
+  return text;
 }

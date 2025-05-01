@@ -1,4 +1,3 @@
-
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,9 +20,9 @@ import {
   ReminderCard,
   LevelProgressCard,
   ScriptsSection,
+  StrategyPlanSection,
 } from "@/components/dashboard";
 
-import { StrategyOverviewSection } from "@/components/dashboard/StrategyOverviewSection";
 import { Navigate } from "react-router-dom";
 import {
   Card,
@@ -377,12 +376,8 @@ export default function Dashboard() {
         <div className="max-w-4xl mx-auto">
           <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
           
-          <StrategyOverviewSection 
-            strategy={strategy} 
-            loading={loading} 
-            onRegenerateClick={fetchUserData}
-            onPlanConfirmed={setPlanConfirmed} 
-          />
+          {/* Replace StrategyOverviewSection with StrategyPlanSection */}
+          <StrategyPlanSection />
 
           {planConfirmed && (
             <>

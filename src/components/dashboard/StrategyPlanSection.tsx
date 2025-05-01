@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { RegeneratePlanModal } from "./RegeneratePlanModal";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { strategyJsonToText, parseFullStrategyJson } from "@/utils/parseFullStrategyJson";
 
 interface StrategyPhase {
   title: string;
@@ -26,6 +28,7 @@ interface StrategyPlan {
   phases: StrategyPhase[] | null;
   created_at: string | null;
   confirmed: boolean;
+  full_plan_text?: string | null;
 }
 
 export const StrategyPlanSection = () => {
@@ -35,6 +38,7 @@ export const StrategyPlanSection = () => {
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [isFirstGeneration, setIsFirstGeneration] = useState(false);
   const [planConfirmed, setPlanConfirmed] = useState(false);
+  const [humanReadableStrategy, setHumanReadableStrategy] = useState<string | null>(null);
 
   // Setup React Query for fetching the strategy plan
   const { data: strategyPlan, isLoading: loading, refetch } = useQuery({
@@ -47,7 +51,7 @@ export const StrategyPlanSection = () => {
       // Fetch from the strategy_profiles table
       const { data, error } = await supabase
         .from('strategy_profiles')
-        .select('id, user_id, summary, phases, created_at')
+        .select('id, user_id, summary, phases, created_at, full_plan_text')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .maybeSingle();
@@ -69,6 +73,16 @@ export const StrategyPlanSection = () => {
       }
       
       console.log("Strategy plan data:", data);
+      
+      // Parse the full plan text if available
+      let parsedJson = null;
+      if (data.full_plan_text) {
+        parsedJson = parseFullStrategyJson(data.full_plan_text);
+        
+        // Generate human-readable strategy text
+        const readableText = strategyJsonToText(parsedJson);
+        setHumanReadableStrategy(readableText);
+      }
       
       // Convert the JSON data to the proper type with proper type casting
       const phasesData = data.phases as unknown;
@@ -179,14 +193,9 @@ export const StrategyPlanSection = () => {
       queryClient.invalidateQueries({
         queryKey: ['planConfirmation', user.id]
       });
-      
-      // Scroll down to show the newly unlocked content
-      setTimeout(() => {
-        window.scrollTo({ 
-          top: document.getElementById('strategyPlanSection')?.offsetHeight || 0,
-          behavior: 'smooth'
-        });
-      }, 500);
+
+      // Navigate to strategy chat page
+      navigate('/strategy-chat');
       
     } catch (error) {
       console.error("Error in handleConfirmPlan:", error);
@@ -259,80 +268,89 @@ export const StrategyPlanSection = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Summary section */}
-          {strategyPlan.summary && (
+          {/* Human-readable strategy text */}
+          {humanReadableStrategy ? (
+            <div className="p-4 bg-socialmize-light-purple/20 rounded-lg border border-socialmize-light-purple/30 whitespace-pre-wrap">
+              {humanReadableStrategy}
+            </div>
+          ) : strategyPlan.summary ? (
             <div className="p-4 bg-socialmize-light-purple/50 rounded-lg border border-socialmize-light-purple flex gap-4">
               <FileText className="h-6 w-6 text-socialmize-purple shrink-0 mt-1" />
               <p className="text-sm">{strategyPlan.summary}</p>
             </div>
-          )}
+          ) : null}
 
-          <div className="flex items-center gap-2">
-            <List className="h-5 w-5 text-socialmize-purple" />
-            <h3 className="font-medium text-base">Strategy Phases</h3>
-          </div>
-
-          {/* Phases section */}
-          {strategyPlan.phases && strategyPlan.phases.map((phase, index) => (
-            <div key={index} className="border rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="bg-socialmize-light-purple p-2 rounded-full">
-                  {getPhaseIcon(index)}
-                </div>
-                <div>
-                  <h3 className="font-bold">{phase.title}</h3>
-                  <p className="text-sm text-muted-foreground">{phase.goal}</p>
-                </div>
+          {/* Only show phases section if no human-readable text is available */}
+          {!humanReadableStrategy && strategyPlan.phases && (
+            <>
+              <div className="flex items-center gap-2">
+                <List className="h-5 w-5 text-socialmize-purple" />
+                <h3 className="font-medium text-base">Strategy Phases</h3>
               </div>
 
-              {/* Tactics */}
-              {phase.tactics && phase.tactics.length > 0 && (
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium mb-2">Tactics:</h4>
-                  <ul className="list-disc pl-5 space-y-1">
-                    {phase.tactics.map((tactic, i) => (
-                      <li key={i} className="text-sm">{tactic}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Content Plan */}
-              {phase.content_plan && (
-                <div className="mt-4">
-                  <h4 className="text-sm font-medium mb-2">Content Plan:</h4>
-                  
-                  {/* Weekly Schedule */}
-                  {phase.content_plan.weekly_schedule && 
-                   Object.keys(phase.content_plan.weekly_schedule).length > 0 && (
-                    <div className="mb-3">
-                      <h5 className="text-xs font-medium text-muted-foreground mb-2">Weekly Schedule:</h5>
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                        {Object.entries(phase.content_plan.weekly_schedule).map(([format, count], i) => (
-                          <div key={i} className="bg-muted p-2 rounded text-xs">
-                            <span className="font-medium">{format}</span>: {count}x/week
-                          </div>
-                        ))}
-                      </div>
+              {/* Phases section */}
+              {strategyPlan.phases.map((phase, index) => (
+                <div key={index} className="border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="bg-socialmize-light-purple p-2 rounded-full">
+                      {getPhaseIcon(index)}
                     </div>
-                  )}
-                  
-                  {/* Example Post Ideas */}
-                  {phase.content_plan.example_post_ideas && 
-                   phase.content_plan.example_post_ideas.length > 0 && (
                     <div>
-                      <h5 className="text-xs font-medium text-muted-foreground mb-2">Example Post Ideas:</h5>
+                      <h3 className="font-bold">{phase.title}</h3>
+                      <p className="text-sm text-muted-foreground">{phase.goal}</p>
+                    </div>
+                  </div>
+
+                  {/* Tactics */}
+                  {phase.tactics && phase.tactics.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="text-sm font-medium mb-2">Tactics:</h4>
                       <ul className="list-disc pl-5 space-y-1">
-                        {phase.content_plan.example_post_ideas.slice(0, 5).map((idea, i) => (
-                          <li key={i} className="text-sm">{idea}</li>
+                        {phase.tactics.map((tactic, i) => (
+                          <li key={i} className="text-sm">{tactic}</li>
                         ))}
                       </ul>
                     </div>
                   )}
+
+                  {/* Content Plan */}
+                  {phase.content_plan && (
+                    <div className="mt-4">
+                      <h4 className="text-sm font-medium mb-2">Content Plan:</h4>
+                      
+                      {/* Weekly Schedule */}
+                      {phase.content_plan.weekly_schedule && 
+                      Object.keys(phase.content_plan.weekly_schedule).length > 0 && (
+                        <div className="mb-3">
+                          <h5 className="text-xs font-medium text-muted-foreground mb-2">Weekly Schedule:</h5>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                            {Object.entries(phase.content_plan.weekly_schedule).map(([format, count], i) => (
+                              <div key={i} className="bg-muted p-2 rounded text-xs">
+                                <span className="font-medium">{format}</span>: {count}x/week
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Example Post Ideas */}
+                      {phase.content_plan.example_post_ideas && 
+                      phase.content_plan.example_post_ideas.length > 0 && (
+                        <div>
+                          <h5 className="text-xs font-medium text-muted-foreground mb-2">Example Post Ideas:</h5>
+                          <ul className="list-disc pl-5 space-y-1">
+                            {phase.content_plan.example_post_ideas.slice(0, 5).map((idea, i) => (
+                              <li key={i} className="text-sm">{idea}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+              ))}
+            </>
+          )}
         </CardContent>
         <CardFooter className="flex justify-between gap-4 flex-wrap">
           {!planConfirmed ? (
