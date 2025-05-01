@@ -75,8 +75,43 @@ export function strategyJsonToText(parsedJson: any): string | null {
     text += `${parsedJson.summary}\n\n`;
   }
   
-  // Add phases
-  if (parsedJson.phases && Array.isArray(parsedJson.phases)) {
+  // Handle the new weekly format
+  if (parsedJson.weeks && Array.isArray(parsedJson.weeks)) {
+    parsedJson.weeks.forEach((week: any, index: number) => {
+      text += `Week ${week.week || index + 1}:\n`;
+      
+      // Show schedule
+      if (week.schedule) {
+        text += 'Content Schedule:\n';
+        Object.entries(week.schedule).forEach(([contentType, count]) => {
+          const formattedType = contentType
+            .split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
+          text += `- ${formattedType}: ${count}x per week\n`;
+        });
+        text += '\n';
+      }
+      
+      // Show example post ideas
+      if (week.example_post_ideas) {
+        text += 'Example Post Ideas:\n';
+        Object.entries(week.example_post_ideas).forEach(([contentType, ideas]) => {
+          if (Array.isArray(ideas)) {
+            const formattedType = contentType
+              .split('_')
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(' ');
+            text += `- ${formattedType}: ${(ideas as string[]).join(', ')}\n`;
+          }
+        });
+        text += '\n';
+      }
+    });
+  }
+  
+  // Handle the old phase format for backward compatibility
+  else if (parsedJson.phases && Array.isArray(parsedJson.phases)) {
     parsedJson.phases.forEach((phase: any, index: number) => {
       text += `Phase ${index + 1}: ${phase.title || ''}\n`;
       

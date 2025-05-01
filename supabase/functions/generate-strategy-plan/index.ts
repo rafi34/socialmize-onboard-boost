@@ -7,15 +7,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 // Get environment variables
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const openaiApiKey = Deno.env.get("OPENAI_API_KEY") || "";
 
 console.log("🟢 generate-strategy-plan function initializing");
 
-// Initialize OpenAI client with v2 Assistants API header
+// Initialize OpenAI client
 const openai = new OpenAI({
-  apiKey: Deno.env.get("OPENAI_API_KEY"),
-  defaultHeaders: {
-    "OpenAI-Beta": "assistants=v2"  // This is crucial for v2 compatibility
-  }
+  apiKey: openaiApiKey
 });
 
 // CORS headers for browser requests
@@ -23,6 +21,80 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// The exact GPT instructions for content strategy generation
+const GPT_STRATEGY_INSTRUCTIONS = `You are a world-class content strategist for social media creators. Your job is to return a personalized 4-week (30-day) content plan in JSON format using only the predefined content types provided by the SocialMize platform.
+
+📌 VERY IMPORTANT:
+- ONLY return valid, parsable JSON
+- DO NOT include any conversational text, greetings, markdown, or explanations
+- DO NOT include phases like "Phase 1" or "Phase 2"
+- Your output must be ready to be rendered by a UI as JSON
+
+📋 Use only the following content types:
+- static_meme
+- video_meme
+- duet
+- overlay_music_video
+- talking_head
+- podcast_clip
+- carousel
+- blog_style
+- cta_video
+- lifestyle_image
+- skit_style
+
+🎯 For each week:
+- Pick 3–5 relevant content types based on the user's goals and style
+- Recommend how many times to post each one per week
+- Provide 1–2 example ideas for each content type
+- Also include a "weekly_table" object that lists the content types, labels, and frequency for rendering
+`;
+
+// Expected JSON structure for reference - used in prompt
+const JSON_STRUCTURE = `
+{
+  "summary": "Why this strategy is a good fit...",
+  "weeks": [
+    {
+      "week": 1,
+      "schedule": {
+        "talking_head": 2,
+        "video_meme": 1,
+        "carousel": 1
+      },
+      "weekly_table": [
+        {
+          "content_type": "talking_head",
+          "label": "🎙️ Talking Head",
+          "frequency_per_week": 2
+        },
+        {
+          "content_type": "video_meme",
+          "label": "🎬 Video Meme",
+          "frequency_per_week": 1
+        },
+        {
+          "content_type": "carousel",
+          "label": "📊 Carousel",
+          "frequency_per_week": 1
+        }
+      ],
+      "example_post_ideas": {
+        "talking_head": [
+          "Why your moisturizer isn't working",
+          "3 skincare myths I believed at 19"
+        ],
+        "video_meme": [
+          "When you skip SPF and instantly regret it"
+        ],
+        "carousel": [
+          "Morning vs. Night Skincare Routine"
+        ]
+      }
+    }
+  ]
+}`;
 
 serve(async (req) => {
   console.log("🟢 generate-strategy-plan function triggered");
@@ -57,213 +129,87 @@ serve(async (req) => {
       );
     }
 
-    console.log("🟢 Processing strategy plan generation for user:", userId);
-    
-    // Use the assistant ID from environment or the one provided in the request
-    // Default to SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID but check for the specific assistant ID too
-    const assistantIdRaw = Deno.env.get("SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID") || 
-                         Deno.env.get("ASSISTANT_ID") ||
-                         "asst_7scIyrURGe1S2aJc9tpu0NVZ"; // Fallback to the ID provided in the instructions
-                         
-    const assistantId = assistantIdRaw ? assistantIdRaw.trim() : null;
-    console.log("🧠 Assistant ID loaded:", assistantId ? "present" : "missing", assistantId);
-    
-    if (!assistantId) {
-      console.error("❌ Missing assistant ID environment variable");
-      // Use mock data to allow development without OpenAI setup
+    // Check if OpenAI API key is available
+    if (!openaiApiKey) {
+      console.error("❌ Missing OpenAI API key");
       return createMockStrategyResponse(userId, onboardingData, corsHeaders);
     }
 
+    console.log("🟢 Processing strategy plan generation for user:", userId);
+    
     // Initialize the Supabase client
     console.log("🟢 Initializing Supabase client");
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     console.log("🟢 Supabase client initialized");
     
     try {
-      // Create a thread
-      console.log("🟢 Creating OpenAI thread");
-      const thread = await openai.beta.threads.create().catch(e => {
-        console.error("❌ Failed to create thread:", e.message);
-        throw e;
-      });
-      console.log("🟢 Thread created:", thread.id);
-      
-      // Build a comprehensive system message with the onboarding data
-      const userPrompt = `
-        I need a comprehensive content strategy plan based on my creator profile:
-        
-        ${JSON.stringify(onboardingData, null, 2)}
-        
-        Please provide:
-        1. A summary of the content strategy
-        2. A 4-week content calendar with specific post ideas
-        3. Weekly posting schedule breakdown
-        4. 5-10 content topic ideas to get started
-        
-        Format your response as a valid JSON object - do not include any markdown, text, or code blocks. 
-        Return PURE JSON ONLY with these keys: 
-        - summary: A string with the overall strategy summary
-        - weekly_calendar: An object with days of week and content types
-        - topic_ideas: An array of string topic ideas
-        - phases: An array of strategy phases with title, goal and tactics
+      // Build a comprehensive prompt based on the onboarding data
+      const userProfilePrompt = `
+Creator profile information:
+- Niche/Topic: ${onboardingData.niche_topic || "General content creation"}
+- Creator Style: ${onboardingData.creator_style || "Authentic and engaging"}
+- Content Format Preferences: ${onboardingData.content_formats || "Mixed formats"}
+- Posting Frequency Goal: ${onboardingData.posting_frequency_goal || "3-5 times per week"}
+- Experience Level: ${onboardingData.experience_level || "Beginner"}
+- Creator Mission: ${onboardingData.creator_mission || "To provide valuable and engaging content to their audience"}
+
+Based on this profile, create a personalized 4-week content strategy plan following the format provided.
       `;
       
-      // Create the message in the thread
-      console.log("🟢 Creating message in thread");
-      await openai.beta.threads.messages.create(thread.id, {
-        role: "user",
-        content: userPrompt,
-      }).catch(e => {
-        console.error("❌ Failed to create message:", e.message);
-        throw e;
-      });
-      console.log("🟢 Message created in thread");
-      
-      // Run the assistant
-      console.log("🟢 Running assistant with ID:", assistantId);
-      const run = await openai.beta.threads.runs.create(thread.id, {
-        assistant_id: assistantId,
-        tools: [{
-          type: "function",
-          function: {
-            name: "format_response_as_json",
-            description: "Formats the response as JSON for easier parsing",
-            parameters: {
-              type: "object",
-              properties: {
-                summary: {
-                  type: "string",
-                  description: "A summary of the content strategy"
-                },
-                weekly_calendar: {
-                  type: "object",
-                  description: "A weekly calendar with posting schedule"
-                },
-                topic_ideas: {
-                  type: "array",
-                  description: "An array of topic ideas"
-                },
-                phases: {
-                  type: "array",
-                  description: "An array of strategy phases"
-                }
-              },
-              required: ["summary", "weekly_calendar", "topic_ideas", "phases"]
-            }
-          }
-        }],
+      console.log("🟢 Making direct OpenAI chat completion request");
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: `${GPT_STRATEGY_INSTRUCTIONS}\n\nOutput format should match:\n${JSON_STRUCTURE}` },
+          { role: "user", content: userProfilePrompt }
+        ],
+        temperature: 0.7,
         response_format: { type: "json_object" }
       }).catch(e => {
-        console.error("❌ Failed to create run:", e.message);
+        console.error("❌ OpenAI API Error:", e.message);
         throw e;
       });
       
-      console.log("🟢 Run created:", run.id);
+      console.log("🟢 Received response from OpenAI");
       
-      // Poll for completion
-      let completedRun;
-      let attempts = 0;
-      const maxAttempts = 30; // 30 second timeout (1s * 30)
-      
-      console.log("🟢 Polling for run completion");
-      while (attempts < maxAttempts) {
-        // Check run status
-        console.log(`🟢 Checking run status (attempt ${attempts + 1}/${maxAttempts})`);
-        const runStatus = await openai.beta.threads.runs.retrieve(
-          thread.id,
-          run.id
-        ).catch(e => {
-          console.error(`❌ Failed to retrieve run status (attempt ${attempts + 1}):`, e.message);
-          throw e;
-        });
-        
-        console.log(`🟢 Run status: ${runStatus.status}`);
-        if (runStatus.status === "completed") {
-          console.log("🟢 Run completed successfully");
-          completedRun = runStatus;
-          break;
-        } else if (["failed", "cancelled", "expired"].includes(runStatus.status)) {
-          console.error(`❌ Run ended with status: ${runStatus.status}`);
-          throw new Error(`Run ended with status: ${runStatus.status}`);
-        }
-        
-        // Wait before polling again
-        console.log("🟢 Waiting before next poll...");
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        attempts++;
+      if (!completion.choices || completion.choices.length === 0) {
+        console.error("❌ No completion choices returned");
+        throw new Error("No completion choices returned from OpenAI");
       }
       
-      if (!completedRun) {
-        console.error("❌ Assistant run timed out");
-        throw new Error("Assistant run timed out");
-      }
+      const strategyContent = completion.choices[0].message.content;
+      console.log("🟢 Strategy content length:", strategyContent?.length || 0);
       
-      // Get the messages with the completion
-      console.log("🟢 Retrieving messages");
-      const messages = await openai.beta.threads.messages.list(thread.id).catch(e => {
-        console.error("❌ Failed to list messages:", e.message);
-        throw e;
-      });
-      
-      const assistantMessages = messages.data
-        .filter((message) => message.role === "assistant")
-        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      
-      console.log(`🟢 Found ${assistantMessages.length} assistant messages`);
-      
-      if (assistantMessages.length === 0) {
-        console.error("❌ No assistant messages found");
-        throw new Error("No assistant messages found");
-      }
-      
-      // Get the latest assistant message
-      const latestMessage = assistantMessages[assistantMessages.length - 1];
-      console.log("🟢 Latest message ID:", latestMessage.id);
-      
-      // Check if the message has content
-      if (!latestMessage.content || latestMessage.content.length === 0) {
-        console.error("❌ Latest message has no content");
-        throw new Error("Latest message has no content");
-      }
-      
-      console.log("🟢 Message content type:", latestMessage.content[0].type);
-      
-      const messageContent = latestMessage.content[0].type === "text" 
-        ? latestMessage.content[0].text.value 
-        : "";
-      
-      console.log("🟢 Message content length:", messageContent.length);
-      
-      if (!messageContent || messageContent.trim().length === 0) {
-        console.error("❌ Empty message content");
-        throw new Error("Empty message content");
+      if (!strategyContent || strategyContent.trim().length === 0) {
+        console.error("❌ Empty strategy content");
+        throw new Error("Empty strategy content from OpenAI");
       }
       
       try {
-        // Clean and parse the JSON response
-        console.log("🟢 Attempting to clean and parse message content as JSON");
-        const cleanedContent = cleanJsonContent(messageContent);
-        console.log("🟢 Cleaned content:", cleanedContent.substring(0, 100) + "...");
-        
-        const parsedContent = JSON.parse(cleanedContent);
+        // Parse the JSON response
+        console.log("🟢 Parsing strategy JSON");
+        const parsedStrategy = JSON.parse(strategyContent);
         console.log("🟢 Successfully parsed JSON content");
-        console.log("🟢 JSON keys:", Object.keys(parsedContent));
+        console.log("🟢 JSON keys:", Object.keys(parsedStrategy));
+        
+        // Extract key elements for the database
+        const weeklySummary = extractWeeklySummary(parsedStrategy);
+        const topicIdeas = extractTopicIdeas(parsedStrategy);
         
         // Save to the database using upsert pattern
         console.log("🟢 Saving to database");
         const { data: upsertData, error: upsertError } = await upsertStrategyProfile(supabase, {
           userId,
           data: {
-            summary: parsedContent.summary || null,
-            phases: parsedContent.phases || null,
+            summary: parsedStrategy.summary || null,
             niche_topic: onboardingData.niche_topic || null,
             experience_level: onboardingData.experience_level || "beginner",
             creator_style: onboardingData.creator_style || null,
             posting_frequency: onboardingData.posting_frequency_goal || null,
-            topic_ideas: parsedContent.topic_ideas || [],
-            weekly_calendar: parsedContent.weekly_calendar || null,
-            content_types: parsedContent.content_types || null,
-            full_plan_text: cleanedContent // Store cleaned JSON as full plan text
+            topic_ideas: topicIdeas,
+            weekly_calendar: weeklySummary,
+            content_types: extractContentTypes(parsedStrategy),
+            full_plan_text: strategyContent // Store complete JSON response
           }
         });
         
@@ -283,14 +229,14 @@ serve(async (req) => {
         );
       } catch (parseError) {
         console.error("❌ Error parsing strategy plan:", parseError.message);
-        console.error("❌ Raw content:", messageContent);
+        console.error("❌ Raw content:", strategyContent);
         
         // Save the raw response as fallback
         console.log("🟢 Saving raw response as fallback");
         const { data: upsertData, error: upsertError } = await upsertStrategyProfile(supabase, {
           userId,
           data: {
-            full_plan_text: messageContent,
+            full_plan_text: strategyContent,
             niche_topic: onboardingData.niche_topic || null,
             creator_style: onboardingData.creator_style || null,
             posting_frequency: onboardingData.posting_frequency_goal || null,
@@ -331,28 +277,104 @@ serve(async (req) => {
   }
 });
 
-// Helper function to clean JSON content from potential formatting or markdown
-function cleanJsonContent(content) {
-  // Remove markdown code block indicators
-  let cleaned = content.trim()
-    .replace(/^```json\s*/g, '')
-    .replace(/^```\s*/g, '')
-    .replace(/```$/g, '');
-  
-  // Remove any text before first { and after last }
-  const firstBrace = cleaned.indexOf('{');
-  const lastBrace = cleaned.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace !== -1) {
-    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-  }
-  
-  // Fix common JSON string issues
-  cleaned = cleaned
-    .replace(/\\"/g, '"') // Fix escaped quotes inside already escaped content
-    .replace(/\r\n/g, '\\n')
-    .replace(/\n/g, '\\n');
+// Extract weekly calendar summary from the parsed strategy
+function extractWeeklySummary(parsedStrategy) {
+  try {
+    if (!parsedStrategy.weeks || !Array.isArray(parsedStrategy.weeks)) {
+      return null;
+    }
     
-  return cleaned;
+    // Convert the first week's schedule to a weekly calendar format
+    // that's compatible with the existing code
+    const firstWeek = parsedStrategy.weeks[0];
+    if (!firstWeek || !firstWeek.schedule) {
+      return null;
+    }
+    
+    // Create a simple weekly calendar with all content on Monday, Wednesday, Friday
+    // This maintains compatibility with the existing UI
+    const weeklyCalendar = {
+      "Monday": [],
+      "Wednesday": [],
+      "Friday": []
+    };
+    
+    // Distribute content types across days
+    let dayIndex = 0;
+    const days = ["Monday", "Wednesday", "Friday"];
+    
+    Object.entries(firstWeek.schedule).forEach(([contentType, count]) => {
+      // Add this content type to the current day
+      const day = days[dayIndex % days.length];
+      for (let i = 0; i < Number(count); i++) {
+        weeklyCalendar[day].push(formatContentType(contentType));
+      }
+      dayIndex++;
+    });
+    
+    return weeklyCalendar;
+  } catch (error) {
+    console.error("❌ Error extracting weekly summary:", error);
+    return null;
+  }
+}
+
+// Format content type to be more display-friendly
+function formatContentType(contentType) {
+  // Convert snake_case to Title Case
+  return contentType
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+// Extract topic ideas from the parsed strategy
+function extractTopicIdeas(parsedStrategy) {
+  try {
+    const ideas = [];
+    
+    // Gather ideas from each week's example_post_ideas
+    if (parsedStrategy.weeks && Array.isArray(parsedStrategy.weeks)) {
+      parsedStrategy.weeks.forEach(week => {
+        if (week.example_post_ideas) {
+          Object.values(week.example_post_ideas).forEach(typeIdeas => {
+            if (Array.isArray(typeIdeas)) {
+              ideas.push(...typeIdeas);
+            }
+          });
+        }
+      });
+    }
+    
+    // Limit to 8 ideas to match the mock data format
+    return ideas.slice(0, 8);
+  } catch (error) {
+    console.error("❌ Error extracting topic ideas:", error);
+    return [];
+  }
+}
+
+// Extract unique content types from the strategy
+function extractContentTypes(parsedStrategy) {
+  try {
+    const contentTypes = new Set();
+    
+    // Gather content types from each week's schedule
+    if (parsedStrategy.weeks && Array.isArray(parsedStrategy.weeks)) {
+      parsedStrategy.weeks.forEach(week => {
+        if (week.schedule) {
+          Object.keys(week.schedule).forEach(contentType => {
+            contentTypes.add(formatContentType(contentType));
+          });
+        }
+      });
+    }
+    
+    return Array.from(contentTypes);
+  } catch (error) {
+    console.error("❌ Error extracting content types:", error);
+    return [];
+  }
 }
 
 // Helper function to upsert a strategy profile
@@ -401,47 +423,80 @@ function createMockStrategyResponse(userId, onboardingData, corsHeaders) {
   // Create mock strategy data with more comprehensive structure
   const mockStrategy = {
     summary: "Your personalized content strategy focuses on growing your audience through consistent, high-quality content that showcases your unique perspective and expertise.",
-    phases: [
+    weeks: [
       {
-        title: "Phase 1: Foundation Building",
-        goal: "Establish your presence and find your authentic voice",
-        tactics: [
-          "Create a consistent posting schedule (3-5 times per week)",
-          "Experiment with different content formats to see what resonates",
-          "Analyze engagement metrics to understand your audience better"
-        ],
-        content_plan: {
-          weekly_schedule: {
-            "Talking Head": 2,
-            "Tutorial": 1
+        week: 1,
+        schedule: {
+          talking_head: 2,
+          video_meme: 1,
+          carousel: 1
+        },
+        weekly_table: [
+          {
+            content_type: "talking_head",
+            label: "🎙️ Talking Head",
+            frequency_per_week: 2
+          },
+          {
+            content_type: "video_meme",
+            label: "🎬 Video Meme",
+            frequency_per_week: 1
+          },
+          {
+            content_type: "carousel",
+            label: "📊 Carousel",
+            frequency_per_week: 1
           }
+        ],
+        example_post_ideas: {
+          talking_head: [
+            "Day in the life as a creator",
+            "Behind the scenes of content creation"
+          ],
+          video_meme: [
+            "When your first video goes viral"
+          ],
+          carousel: [
+            "Top 5 tools I use for content creation"
+          ]
         }
       },
       {
-        title: "Phase 2: Growth & Engagement",
-        goal: "Expand reach and build community",
-        tactics: [
-          "Collaborate with complementary creators",
-          "Implement engagement-focused calls to action",
-          "Repurpose successful content across platforms"
-        ]
+        week: 2,
+        schedule: {
+          duet: 1,
+          podcast_clip: 1,
+          static_meme: 1
+        },
+        weekly_table: [
+          {
+            content_type: "duet",
+            label: "🎭 Duet",
+            frequency_per_week: 1
+          },
+          {
+            content_type: "podcast_clip",
+            label: "🎧 Podcast Clip",
+            frequency_per_week: 1
+          },
+          {
+            content_type: "static_meme",
+            label: "🖼️ Static Meme",
+            frequency_per_week: 1
+          }
+        ],
+        example_post_ideas: {
+          duet: [
+            "React to a trending creator in your niche"
+          ],
+          podcast_clip: [
+            "Share an insight from your creative journey"
+          ],
+          static_meme: [
+            "Relatable moment all creators face"
+          ]
+        }
       }
-    ],
-    weekly_calendar: {
-      "Monday": ["Talking Head", "Tutorial"],
-      "Wednesday": ["Storytelling", "Behind the Scenes"],
-      "Friday": ["Q&A", "Trending Topic"]
-    },
-    content_types: ["Talking Head", "Tutorial", "Storytelling", "Q&A", "Trending"],
-    topic_ideas: [
-      "Day in the life as a creator",
-      "Behind the scenes of content creation",
-      "Top tips for your niche area",
-      "Answering common questions in your field",
-      "Breakdown of your creative process",
-      "Tools and tech that help your workflow",
-      "Your biggest lessons learned so far",
-      "Collaboration with another creator"
     ]
   };
   
@@ -452,20 +507,24 @@ function createMockStrategyResponse(userId, onboardingData, corsHeaders) {
   console.log("🟢 Creating Supabase client for mock data");
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
   
+  // Extract data using the same helper functions as real data
+  const weeklySummary = extractWeeklySummary(mockStrategy);
+  const topicIdeas = extractTopicIdeas(mockStrategy);
+  const contentTypes = extractContentTypes(mockStrategy);
+  
   // Save mock data to the database with more fields
   console.log("🟢 Saving mock data to database");
   upsertStrategyProfile(supabase, {
     userId,
     data: {
       summary: mockStrategy.summary,
-      phases: mockStrategy.phases,
       niche_topic: onboardingData?.niche_topic || "Content Creation",
       experience_level: onboardingData?.experience_level || "beginner",
       creator_style: onboardingData?.creator_style || "Authentic",
       posting_frequency: onboardingData?.posting_frequency_goal || "3-5 times per week",
-      topic_ideas: mockStrategy.topic_ideas,
-      weekly_calendar: mockStrategy.weekly_calendar,
-      content_types: mockStrategy.content_types,
+      topic_ideas: topicIdeas,
+      weekly_calendar: weeklySummary,
+      content_types: contentTypes,
       full_plan_text: mockStrategyJson // Store as clean JSON
     }
   }).catch(error => console.error("❌ Error saving mock strategy:", error));
