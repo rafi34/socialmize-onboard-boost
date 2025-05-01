@@ -1,3 +1,4 @@
+
 /**
  * Utility function to parse the strategy JSON from potentially formatted text
  * Handles markdown, escaped characters, and malformed JSON structures

@@ -1,16 +1,23 @@
+
 import { StrategyData } from "@/types/dashboard";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { parseFullStrategyJson } from "@/utils/parseFullStrategyJson";
+import { parseFullStrategyJson, getStrategySummary } from "@/utils/parseFullStrategyJson";
 
 interface StrategyOverviewSectionProps {
   strategy: StrategyData | null;
   loading: boolean;
   onRegenerateClick?: () => void;
+  onPlanConfirmed?: (confirmed: boolean) => void; // Added this prop
 }
 
-export const StrategyOverviewSection = ({ strategy, loading, onRegenerateClick }: StrategyOverviewSectionProps) => {
+export const StrategyOverviewSection = ({ 
+  strategy, 
+  loading, 
+  onRegenerateClick, 
+  onPlanConfirmed 
+}: StrategyOverviewSectionProps) => {
   const [parsedJson, setParsedJson] = useState<any>(null);
 
   useEffect(() => {
@@ -43,7 +50,14 @@ export const StrategyOverviewSection = ({ strategy, loading, onRegenerateClick }
     );
   }
 
-  const summary = strategy.summary || parsedJson?.summary || "Your strategy summary will appear here.";
+  const summary = strategy.summary || parsedJson?.summary || getStrategySummary(parsedJson, strategy.full_plan_text) || "Your strategy summary will appear here.";
+
+  // Add a handler for confirming the plan
+  const handleConfirmPlan = () => {
+    if (onPlanConfirmed) {
+      onPlanConfirmed(true);
+    }
+  };
 
   return (
     <div className="bg-socialmize-light-purple/50 p-6 rounded-lg border border-socialmize-light-purple">
@@ -89,7 +103,31 @@ export const StrategyOverviewSection = ({ strategy, loading, onRegenerateClick }
         </div>
       )}
 
-      {onRegenerateClick && (
+      {/* Add a button to confirm the plan */}
+      {onPlanConfirmed && (
+        <div className="mt-6">
+          <Button 
+            onClick={handleConfirmPlan} 
+            variant="default" 
+            className="flex items-center gap-2 mr-3"
+          >
+            Confirm Strategy
+          </Button>
+          {onRegenerateClick && (
+            <Button 
+              onClick={onRegenerateClick} 
+              variant="outline" 
+              className="flex items-center gap-2 mt-3"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Regenerate Strategy
+            </Button>
+          )}
+        </div>
+      )}
+      
+      {/* Show only Regenerate button if onPlanConfirmed is not provided */}
+      {!onPlanConfirmed && onRegenerateClick && (
         <div className="mt-6">
           <Button onClick={onRegenerateClick} className="flex items-center gap-2">
             <RefreshCw className="h-4 w-4" />

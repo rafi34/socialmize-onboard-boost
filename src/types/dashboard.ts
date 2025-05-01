@@ -1,4 +1,3 @@
-
 // Strategy and planning types
 export interface StrategyData {
   experience_level: string;
@@ -11,6 +10,7 @@ export interface StrategyData {
   full_plan_text?: string;
   niche_topic?: string;
   topic_ideas?: string[];
+  summary?: string; // Added summary property
 }
 
 // Progress and gamification
