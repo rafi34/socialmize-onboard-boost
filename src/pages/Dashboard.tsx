@@ -359,7 +359,7 @@ export default function Dashboard() {
         <div className="max-w-4xl mx-auto">
           <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
           
-          {/* Replace StrategyPlanSection with our custom StrategyOverviewSection */}
+          {/* The StrategyOverviewSection component is now updated to handle plan confirmation */}
           <StrategyOverviewSection onPlanConfirmed={setPlanConfirmed} />
 
           {planConfirmed && (
