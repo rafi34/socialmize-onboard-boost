@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Brain, RefreshCw } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState, useEffect } from "react";
 
 interface FullStrategyModalProps {
   isOpen: boolean;
@@ -19,6 +20,9 @@ interface FullStrategyModalProps {
 }
 
 export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateClick }: FullStrategyModalProps) => {
+  const [parsedJson, setParsedJson] = useState<any>(null);
+  const [isJsonValid, setIsJsonValid] = useState<boolean>(true);
+  
   // Function to clean JSON text that might have markdown backticks
   const cleanJsonText = (text?: string | null): string => {
     if (!text) return "";
@@ -26,27 +30,45 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
     // Remove markdown code block indicators if present
     const cleaned = text.trim()
       .replace(/^```json\s*/g, '')  // Remove opening ```json
+      .replace(/^```\s*/g, '')      // Remove opening ``` without json
       .replace(/```$/g, '');        // Remove closing ```
     
     return cleaned;
   };
-  
-  // Function to format and display the plan text, supporting both JSON and plain text
-  const formatPlanText = (text?: string | null) => {
-    if (!text || text.trim().length === 0) {
-      return <p className="text-muted-foreground">No strategy plan available.</p>;
+
+  // Parse JSON when fullPlanText changes
+  useEffect(() => {
+    if (!fullPlanText || fullPlanText.trim().length === 0) {
+      setParsedJson(null);
+      setIsJsonValid(false);
+      return;
     }
 
     try {
       // Clean text of any markdown formatting before parsing JSON
-      const cleanedText = cleanJsonText(text);
-      console.log("Cleaned text for JSON parsing:", cleanedText.substring(0, 100) + "...");
+      const cleanedText = cleanJsonText(fullPlanText);
+      console.log("Attempting to parse JSON:", cleanedText.substring(0, 100) + "...");
       
       // Try to parse as JSON
-      const parsedJson = JSON.parse(cleanedText);
-      console.log("Parsed JSON plan:", parsedJson);
+      const parsedData = JSON.parse(cleanedText);
+      console.log("Successfully parsed JSON plan:", parsedData);
       
-      // Format JSON content in a structured way
+      setParsedJson(parsedData);
+      setIsJsonValid(true);
+    } catch (e) {
+      console.error("Error parsing JSON plan:", e);
+      setParsedJson(null);
+      setIsJsonValid(false);
+    }
+  }, [fullPlanText]);
+  
+  // Function to format and display the plan text, supporting both JSON and plain text
+  const formatPlanText = () => {
+    if (!fullPlanText || fullPlanText.trim().length === 0) {
+      return <p className="text-muted-foreground">No strategy plan available.</p>;
+    }
+
+    if (isJsonValid && parsedJson) {
       return (
         <div className="space-y-6">
           {/* Summary Section */}
@@ -62,7 +84,7 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
             <div className="space-y-8">
               <h3 className="font-medium text-lg">Weekly Content Plan</h3>
               
-              {parsedJson.weeks.map((week, index) => (
+              {parsedJson.weeks.map((week: any, index: number) => (
                 <div key={index} className="border rounded-lg p-4">
                   <h4 className="font-bold text-md mb-4">Week {week.week}</h4>
                   
@@ -77,7 +99,7 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
                           </tr>
                         </thead>
                         <tbody>
-                          {week.weekly_table.map((item, i) => (
+                          {week.weekly_table.map((item: any, i: number) => (
                             <tr key={i} className="border-b last:border-0">
                               <td className="p-2">{item.label}</td>
                               <td className="p-2">{item.frequency_per_week}x per week</td>
@@ -99,7 +121,7 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
                               {contentType.replace(/_/g, ' ')}
                             </h6>
                             <ul className="list-disc pl-5 space-y-1">
-                              {Array.isArray(ideas) && ideas.map((idea, j) => (
+                              {Array.isArray(ideas) && ideas.map((idea: any, j: number) => (
                                 <li key={j}>{idea}</li>
                               ))}
                             </ul>
@@ -117,7 +139,7 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
           {parsedJson.phases && Array.isArray(parsedJson.phases) && (
             <div className="space-y-4">
               <h3 className="font-medium text-lg">Strategy Phases</h3>
-              {parsedJson.phases.map((phase, i) => (
+              {parsedJson.phases.map((phase: any, i: number) => (
                 <div key={i} className="border rounded-lg p-4">
                   <h4 className="font-bold">{phase.title}</h4>
                   <p className="text-muted-foreground mb-2">{phase.goal}</p>
@@ -126,7 +148,7 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
                     <div className="mt-2">
                       <h5 className="font-medium text-sm mb-1">Tactics:</h5>
                       <ul className="list-disc pl-5">
-                        {phase.tactics.map((tactic, j) => (
+                        {phase.tactics.map((tactic: string, j: number) => (
                           <li key={j}>{tactic}</li>
                         ))}
                       </ul>
@@ -142,33 +164,76 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
             <div>
               <h3 className="font-medium text-lg mb-2">Topic Ideas</h3>
               <ul className="list-disc pl-5 grid grid-cols-1 md:grid-cols-2 gap-2">
-                {parsedJson.topic_ideas.map((topic, i) => (
+                {parsedJson.topic_ideas.map((topic: string, i: number) => (
                   <li key={i}>{topic}</li>
                 ))}
               </ul>
             </div>
           )}
           
-          {/* Additional sections - handle if JSON structure is different */}
+          {/* Fallback for unknown JSON structure */}
           {!parsedJson.weeks && !parsedJson.phases && !parsedJson.topic_ideas && !parsedJson.summary && (
             <div>
-              <h3 className="font-medium text-lg mb-2">Full Strategy Plan</h3>
-              <pre className="whitespace-pre-wrap text-sm bg-secondary/10 p-4 rounded-md overflow-auto">
-                {JSON.stringify(parsedJson, null, 2)}
-              </pre>
+              <h3 className="font-medium text-lg mb-2">Strategy Plan</h3>
+              <div className="space-y-4">
+                {Object.entries(parsedJson).map(([key, value]) => {
+                  // Skip internal or technical fields
+                  if (key.startsWith('_') || key === 'id') return null;
+                  
+                  return (
+                    <div key={key} className="border p-3 rounded-md">
+                      <h4 className="font-medium capitalize mb-1">{key.replace(/_/g, ' ')}</h4>
+                      {renderJsonValue(key, value)}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
       );
-    } catch (e) {
-      console.error("Error parsing JSON plan:", e);
+    } else {
       // Not valid JSON, display as plain text with line breaks
-      return text.split("\n").map((line, index) => (
+      return fullPlanText.split("\n").map((line, index) => (
         <p key={index} className={`${line.trim().length === 0 ? 'my-4' : 'my-2'}`}>
           {line || "\u00A0"}
         </p>
       ));
     }
+  };
+  
+  // Helper function to render different types of JSON values
+  const renderJsonValue = (key: string, value: any) => {
+    if (value === null || value === undefined) {
+      return <span className="text-muted-foreground">Not specified</span>;
+    }
+    
+    if (Array.isArray(value)) {
+      return (
+        <ul className="list-disc pl-5 space-y-1">
+          {value.map((item, i) => (
+            <li key={i}>{typeof item === 'object' ? JSON.stringify(item) : item}</li>
+          ))}
+        </ul>
+      );
+    }
+    
+    if (typeof value === 'object') {
+      return (
+        <div className="pl-3 border-l-2 border-muted mt-2">
+          {Object.entries(value).map(([subKey, subValue]) => (
+            <div key={subKey} className="mb-2">
+              <span className="font-medium">{subKey.replace(/_/g, ' ')}:</span>{' '}
+              {typeof subValue === 'object' ? 
+                JSON.stringify(subValue, null, 2) : 
+                subValue?.toString()}
+            </div>
+          ))}
+        </div>
+      );
+    }
+    
+    return <p>{value.toString()}</p>;
   };
 
   return (
@@ -186,7 +251,7 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
         
         <ScrollArea className="flex-grow my-4 max-h-[50vh]">
           <div className="px-1 space-y-4">
-            {formatPlanText(fullPlanText)}
+            {formatPlanText()}
           </div>
         </ScrollArea>
 

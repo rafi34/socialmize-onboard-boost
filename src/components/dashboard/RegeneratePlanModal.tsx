@@ -63,6 +63,9 @@ export const RegeneratePlanModal = ({
         throw new Error("Onboarding data is missing. Please complete the onboarding flow.");
       }
 
+      // Log onboarding data to help with debugging
+      console.log("Onboarding data for strategy generation:", onboardingAnswers);
+
       const { error } = await supabase.functions.invoke("generate-strategy-plan", {
         body: {
           userId,

@@ -40,7 +40,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a professional social media content writer. You create engaging scripts for social media posts based on content ideas. Your scripts should include a hook, main content, and call-to-action.'
+            content: 'You are a professional social media content writer. You create engaging scripts for social media posts based on content ideas. Your scripts should include a hook, main content, and call-to-action. ALWAYS return valid JSON that can be parsed directly without needing additional processing.'
           },
           {
             role: 'user',
@@ -48,6 +48,7 @@ serve(async (req) => {
           }
         ],
         temperature: 0.7,
+        response_format: { type: "json_object" }, // Ensure we get a properly formatted JSON response
       }),
     });
 
@@ -62,12 +63,9 @@ serve(async (req) => {
     // Parse the JSON response
     let parsedContent;
     try {
-      // Handle the case where the API might return markdown-formatted JSON
-      const jsonMatch = generatedContent.match(/```json\s*([\s\S]*?)\s*```/) || 
-                        generatedContent.match(/{[\s\S]*}/);
-      
-      const jsonString = jsonMatch ? jsonMatch[0].replace(/```json|```/g, '').trim() : generatedContent;
-      parsedContent = JSON.parse(jsonString);
+      // First try direct parsing since we requested json_object format
+      parsedContent = JSON.parse(generatedContent);
+      console.log("Successfully parsed JSON response");
     } catch (e) {
       console.error('Error parsing JSON from OpenAI response:', e);
       // Fallback: extract content by regex
@@ -82,6 +80,8 @@ serve(async (req) => {
         content: contentMatch ? contentMatch[1].replace(/\\n/g, '\n') : 'No content provided',
         format_type: formatMatch ? formatMatch[1] : 'Talking Head'
       };
+      
+      console.log("Used regex fallback to parse content");
     }
 
     // Save to database using Supabase REST API
