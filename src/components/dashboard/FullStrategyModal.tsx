@@ -291,8 +291,8 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl h-[85vh] flex flex-col overflow-hidden p-0">
+        <DialogHeader className="p-6 pb-2">
           <div className="flex items-center gap-2">
             <Brain className="h-6 w-6 text-primary" />
             <DialogTitle className="text-xl">Your Full Strategy Plan</DialogTitle>
@@ -302,17 +302,17 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
           </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="flex-grow my-4 max-h-[50vh]">
-          <div className="px-1 space-y-4">
+        <ScrollArea className="flex-grow px-6 pb-6">
+          <div className="space-y-6">
             {formatPlanText()}
           </div>
         </ScrollArea>
 
-        <DialogFooter className="flex justify-between flex-col sm:flex-row gap-2">
+        <DialogFooter className="flex justify-between p-6 pt-4 border-t">
           <Button 
             variant="outline" 
             onClick={onRegenerateClick}
-            className="sm:order-1"
+            className="mr-auto"
             disabled={!onRegenerateClick}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
