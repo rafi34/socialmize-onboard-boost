@@ -35,6 +35,16 @@ export function useContentGenerator() {
         throw new Error("User not authenticated");
       }
 
+      // Store the topic as used if one was provided
+      if (topic) {
+        try {
+          await storeUsedTopic(userId, topic, type);
+        } catch (topicError) {
+          console.error("Error storing used topic:", topicError);
+          // Continue with content generation even if topic storage fails
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke("generate-content", {
         body: {
           user_id: userId,
@@ -70,6 +80,22 @@ export function useContentGenerator() {
       return null;
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  // Helper function to store used topics
+  const storeUsedTopic = async (userId: string, topic: string, contentType: ContentType) => {
+    const { error } = await supabase
+      .from('used_topics')
+      .insert({
+        user_id: userId,
+        topic,
+        content_type: contentType
+      });
+
+    if (error) {
+      console.error("Error storing used topic:", error);
+      throw error;
     }
   };
 

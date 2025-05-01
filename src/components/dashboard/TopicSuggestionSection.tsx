@@ -1,11 +1,10 @@
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Badge } from "@/components/ui/badge";
+import { RefreshCw, Sparkles } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
 interface TopicSuggestionSectionProps {
@@ -14,115 +13,60 @@ interface TopicSuggestionSectionProps {
 
 export const TopicSuggestionSection = ({ onSelectTopic }: TopicSuggestionSectionProps) => {
   const [topics, setTopics] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      fetchTopics();
+    }
+  }, [user]);
 
   const fetchTopics = async () => {
     if (!user) return;
     
     setLoading(true);
     try {
-      // Fetch strategy profile to get topic ideas
-      const { data, error } = await supabase
-        .from('strategy_profiles')
-        .select('topic_ideas, niche_topic')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      const { data, error } = await supabase.functions.invoke("refresh-topics", {
+        body: { userId: user.id }
+      });
       
       if (error) {
         console.error("Error fetching topics:", error);
-        setTopics([]);
-      } else if (data) {
-        // Ensure topic_ideas is an array and convert all items to strings
-        const topicIdeas: string[] = [];
-        
-        if (Array.isArray(data.topic_ideas)) {
-          // Convert all items to strings
-          data.topic_ideas.forEach((topic: any) => {
-            topicIdeas.push(String(topic));
-          });
-        }
-        
-        // If we have a niche topic, add it to the list
-        if (data.niche_topic && typeof data.niche_topic === 'string' && !topicIdeas.includes(data.niche_topic)) {
-          topicIdeas.unshift(data.niche_topic);
-        }
-        
-        try {
-          // Get used topics to filter them out
-          const { data: usedTopics } = await supabase
-            .from('used_topics')
-            .select('topic')
-            .eq('user_id', user.id);
-            
-          if (usedTopics) {
-            const usedTopicsList = usedTopics.map(item => item.topic);
-            // Filter out used topics but keep a few of them (max 3)
-            const unusedTopics = topicIdeas.filter((topic: string) => !usedTopicsList.includes(topic));
-            const someUsedTopics = topicIdeas
-              .filter((topic: string) => usedTopicsList.includes(topic))
-              .slice(0, 3);
-            
-            setTopics([...unusedTopics, ...someUsedTopics]);
-          } else {
-            setTopics(topicIdeas);
-          }
-        } catch (e) {
-          console.error("Error fetching used topics:", e);
-          setTopics(topicIdeas);
-        }
+        toast({
+          title: "Error",
+          description: "Failed to load topic suggestions",
+          variant: "destructive",
+        });
+        return;
       }
-    } catch (error) {
-      console.error("Error in fetchTopics:", error);
+      
+      if (data.topics && data.topics.length > 0) {
+        // Get a random selection of 3 topics
+        const shuffled = [...data.topics].sort(() => 0.5 - Math.random());
+        setTopics(shuffled.slice(0, 3));
+      } else {
+        setTopics([]);
+      }
+    } catch (err) {
+      console.error("Error in fetchTopics:", err);
     } finally {
       setLoading(false);
     }
   };
-
+  
   const refreshTopics = async () => {
     setRefreshing(true);
-    try {
-      // Call the edge function to regenerate topics
-      if (user) {
-        const { data, error } = await supabase.functions.invoke('refresh-topics', {
-          body: { user_id: user.id }
-        });
-        
-        if (error) {
-          throw error;
-        }
-        
-        if (data.success) {
-          toast({
-            title: "Topics Refreshed",
-            description: "New topic ideas have been generated for you!",
-          });
-          await fetchTopics();
-        }
-      }
-    } catch (error: any) {
-      toast({
-        title: "Failed to Refresh Topics",
-        description: error.message || "An error occurred refreshing topics",
-        variant: "destructive",
-      });
-    } finally {
-      setRefreshing(false);
-    }
+    await fetchTopics();
+    setRefreshing(false);
   };
-
-  useEffect(() => {
-    fetchTopics();
-  }, [user]);
 
   const handleSelectTopic = (topic: string) => {
     onSelectTopic(topic);
     toast({
-      title: "Topic Selected",
-      description: `Your content will now be about: ${topic}`,
+      title: "Topic selected",
+      description: `"${topic}" has been selected as your content topic`,
     });
   };
 
@@ -130,11 +74,35 @@ export const TopicSuggestionSection = ({ onSelectTopic }: TopicSuggestionSection
     return (
       <Card className="mb-6">
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Suggested Topics</CardTitle>
+          <CardTitle className="text-lg">Topic Suggestions</CardTitle>
         </CardHeader>
-        <CardContent className="text-center py-6">
-          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-          <p className="text-sm text-muted-foreground mt-2">Loading topic suggestions...</p>
+        <CardContent>
+          <div className="flex items-center justify-center h-24">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-socialmize-purple"></div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (topics.length === 0) {
+    return (
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">Topic Suggestions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-4">
+            <p className="text-muted-foreground mb-4">No topic suggestions available</p>
+            <Button 
+              onClick={refreshTopics} 
+              className="bg-socialmize-purple hover:bg-socialmize-dark-purple"
+              disabled={refreshing}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Get Topic Ideas'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -142,35 +110,37 @@ export const TopicSuggestionSection = ({ onSelectTopic }: TopicSuggestionSection
 
   return (
     <Card className="mb-6">
-      <CardHeader className="pb-2 flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">Suggested Topics</CardTitle>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={refreshTopics}
-          disabled={refreshing}
-        >
-          {refreshing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
-          Refresh
-        </Button>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg">Topic Suggestions</CardTitle>
       </CardHeader>
       <CardContent>
-        {topics.length === 0 ? (
-          <p className="text-center text-muted-foreground">No topic suggestions available.</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {topics.map((topic, index) => (
-              <Badge 
-                key={index} 
-                variant="outline" 
-                className="px-3 py-1 cursor-pointer hover:bg-accent"
+              <Button
+                key={index}
+                variant="outline"
+                className="justify-start h-auto py-3 text-left"
                 onClick={() => handleSelectTopic(topic)}
               >
-                <Plus className="h-3 w-3 mr-1" /> {topic}
-              </Badge>
+                <Sparkles className="h-4 w-4 mr-2 text-socialmize-purple" />
+                <span className="truncate">{topic}</span>
+              </Button>
             ))}
           </div>
-        )}
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={refreshTopics}
+              disabled={refreshing}
+              className="text-muted-foreground"
+            >
+              <RefreshCw className={`mr-2 h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh topics'}
+            </Button>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
