@@ -23,10 +23,16 @@ serve(async (req) => {
     // Get secrets directly in the Edge Function
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
     
-    // Trim any whitespace from the assistant ID to avoid issues with newlines
+    // Get and clean the Assistant ID - handle potential whitespace or newlines
+    let assistantId = null;
     const assistantIdRaw = Deno.env.get('SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID') || 
                            Deno.env.get('ASSISTANT_ID');
-    const assistantId = assistantIdRaw ? assistantIdRaw.trim() : null;
+                           
+    if (assistantIdRaw) {
+      // Trim any whitespace, newlines, etc.
+      assistantId = assistantIdRaw.trim();
+      console.log(`Using Assistant ID (cleaned): ${assistantId}`);
+    }
 
     if (!openaiApiKey) {
       console.error('OpenAI API key not configured');
@@ -35,7 +41,7 @@ serve(async (req) => {
 
     if (!assistantId) {
       console.error('Assistant ID not configured');
-      console.error('Available env variables:', Object.keys(Deno.env.toObject()).map(key => `${key}: ${Deno.env.get(key)?.substring(0, 10)}...`));
+      console.error('Available env variables:', Object.keys(Deno.env.toObject()));
       throw new Error('Assistant ID not configured');
     }
 
@@ -62,7 +68,7 @@ serve(async (req) => {
     const threadId = thread.id;
     console.log(`Created new thread with ID: ${threadId}`);
 
-    // Format onboarding data as a clean message - ONLY send the user's onboarding data
+    // Format onboarding data as clean JSON - ONLY send the user's onboarding data
     console.log('Onboarding data being sent to assistant:', JSON.stringify(onboardingData));
     
     // Send only the onboarding data to the assistant without any additional prompting

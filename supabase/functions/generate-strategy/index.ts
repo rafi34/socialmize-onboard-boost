@@ -3,8 +3,16 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-// Use the same environment variable as generate-strategy-plan
-const assistantId = Deno.env.get('SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID');
+// Get and clean the Assistant ID - handle potential whitespace or newlines
+let assistantId = null;
+const assistantIdRaw = Deno.env.get('SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID') || 
+                       Deno.env.get('ASSISTANT_ID');
+                       
+if (assistantIdRaw) {
+  // Trim any whitespace, newlines, etc.
+  assistantId = assistantIdRaw.trim();
+  console.log(`Using Assistant ID (cleaned): ${assistantId}`);
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,6 +44,7 @@ serve(async (req) => {
     }
 
     console.log(`Processing request for user ${userId}, message: "${userMessage.substring(0, 30)}..."`);
+    console.log(`Using Assistant ID: ${assistantId}`);
     
     // Log onboarding data if available
     if (onboardingData) {

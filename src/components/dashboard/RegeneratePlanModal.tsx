@@ -93,6 +93,31 @@ export const RegeneratePlanModal = ({
       if (data?.error) {
         throw new Error(data.error);
       }
+
+      // Update the strategy_profiles table with creator_style and posting_frequency
+      if (onboardingData.creator_style || onboardingData.posting_frequency_goal) {
+        const updateData: any = {};
+        
+        if (onboardingData.creator_style) {
+          updateData.creator_style = onboardingData.creator_style;
+        }
+        
+        if (onboardingData.posting_frequency_goal) {
+          updateData.posting_frequency = onboardingData.posting_frequency_goal;
+        }
+        
+        const { error: updateError } = await supabase
+          .from('strategy_profiles')
+          .update(updateData)
+          .eq('user_id', userId);
+          
+        if (updateError) {
+          console.error("Error updating strategy profile with style/frequency:", updateError);
+          // Not throwing error here as this is a secondary update
+        } else {
+          console.log("Updated strategy profile with creator_style and posting_frequency");
+        }
+      }
       
       if (data?.mock) {
         toast({
