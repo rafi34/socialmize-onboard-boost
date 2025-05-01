@@ -31,9 +31,11 @@ import {
   CardTitle,
   CardContent,
 } from "@/components/ui/card";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [strategy, setStrategy] = useState<StrategyData | null>(null);
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [reminder, setReminder] = useState<ReminderData | null>(null);
@@ -253,6 +255,11 @@ export default function Dashboard() {
         description: "Your personalized content strategy is ready!",
       });
 
+      // Invalidate queries to refresh strategy data
+      queryClient.invalidateQueries({
+        queryKey: ['strategyPlan', user.id]
+      });
+      
       await fetchUserData();
     } catch (error) {
       console.error("Error generating strategy:", error);

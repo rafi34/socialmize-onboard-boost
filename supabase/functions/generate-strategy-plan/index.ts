@@ -117,24 +117,46 @@ serve(async (req) => {
         // Parse the JSON response
         const parsedContent = JSON.parse(messageContent);
         
-        // Save the strategy plan to the database
-        const { data: strategyData, error: strategyError } = await supabase
-          .from("strategy_profiles")
-          .insert({
-            user_id: userId,
-            summary: parsedContent.summary || null,
-            phases: parsedContent.phases || null,
-            niche_topic: onboardingData.niche_topic || null,
-            experience_level: onboardingData.experience_level || "beginner",
-            creator_style: onboardingData.creator_style || null,
-            posting_frequency: onboardingData.posting_frequency_goal || null,
-            topic_ideas: parsedContent.topic_ideas || [],
-            full_plan_text: messageContent
-          });
+        // First, check if a profile exists
+        const { data: existingProfile } = await supabase
+          .from('strategy_profiles')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+          
+        // Prepare the data to insert/update
+        const strategyData = {
+          user_id: userId,
+          summary: parsedContent.summary || null,
+          phases: parsedContent.phases || null,
+          niche_topic: onboardingData.niche_topic || null,
+          experience_level: onboardingData.experience_level || "beginner",
+          creator_style: onboardingData.creator_style || null,
+          posting_frequency: onboardingData.posting_frequency_goal || null,
+          topic_ideas: parsedContent.topic_ideas || [],
+          full_plan_text: messageContent
+        };
         
-        if (strategyError) {
-          console.error("Error saving strategy plan:", strategyError);
-          throw strategyError;
+        let response;
+        
+        if (existingProfile) {
+          // Update the existing profile
+          response = await supabase
+            .from('strategy_profiles')
+            .update(strategyData)
+            .eq('id', existingProfile.id)
+            .select();
+        } else {
+          // Create a new profile
+          response = await supabase
+            .from('strategy_profiles')
+            .insert(strategyData)
+            .select();
+        }
+        
+        if (response.error) {
+          console.error("Error saving strategy plan:", response.error);
+          throw response.error;
         }
         
         console.log("Strategy plan generated and saved successfully");
@@ -150,19 +172,42 @@ serve(async (req) => {
         console.error("Error parsing strategy plan:", parseError);
         
         // Save the raw response as fallback
-        const { data: strategyData, error: strategyError } = await supabase
-          .from("strategy_profiles")
-          .insert({
-            user_id: userId,
-            full_plan_text: messageContent,
-            niche_topic: onboardingData.niche_topic || null,
-            creator_style: onboardingData.creator_style || null,
-            posting_frequency: onboardingData.posting_frequency_goal || null,
-          });
+        // First, check if a profile exists
+        const { data: existingProfile } = await supabase
+          .from('strategy_profiles')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        // Prepare the data to insert/update
+        const rawData = {
+          user_id: userId,
+          full_plan_text: messageContent,
+          niche_topic: onboardingData.niche_topic || null,
+          creator_style: onboardingData.creator_style || null,
+          posting_frequency: onboardingData.posting_frequency_goal || null,
+        };
         
-        if (strategyError) {
-          console.error("Error saving raw strategy plan:", strategyError);
-          throw strategyError;
+        let response;
+        
+        if (existingProfile) {
+          // Update the existing profile
+          response = await supabase
+            .from('strategy_profiles')
+            .update(rawData)
+            .eq('id', existingProfile.id)
+            .select();
+        } else {
+          // Create a new profile
+          response = await supabase
+            .from('strategy_profiles')
+            .insert(rawData)
+            .select();
+        }
+        
+        if (response.error) {
+          console.error("Error saving raw strategy plan:", response.error);
+          throw response.error;
         }
         
         return new Response(

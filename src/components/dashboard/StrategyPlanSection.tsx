@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
 import { RegeneratePlanModal } from "./RegeneratePlanModal";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface StrategyPhase {
   title: string;
@@ -31,21 +32,20 @@ interface StrategyPlan {
 export const StrategyPlanSection = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [strategyPlan, setStrategyPlan] = useState<StrategyPlan | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
   const [isFirstGeneration, setIsFirstGeneration] = useState(false);
   const [planConfirmed, setPlanConfirmed] = useState(false);
 
-  // Define fetchStrategyPlan function
-  const fetchStrategyPlan = async () => {
-    if (!user) return;
-    
-    setLoading(true);
-    try {
+  // Setup React Query for fetching the strategy plan
+  const { data: strategyPlan, isLoading: loading, refetch } = useQuery({
+    queryKey: ['strategyPlan', user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      
       console.log("Fetching strategy plan for user:", user.id);
       
-      // Updated to fetch from the strategy_profiles table
+      // Fetch from the strategy_profiles table
       const { data, error } = await supabase
         .from('strategy_profiles')
         .select('id, user_id, summary, phases, created_at')
@@ -60,88 +60,83 @@ export const StrategyPlanSection = () => {
           description: "Unable to load your strategy plan. Please try again.",
           variant: "destructive",
         });
-      } else if (data) {
-        console.log("Strategy plan data:", data);
-        
-        // Convert the JSON data to the proper type with proper type casting
-        const phasesData = data.phases as unknown;
-        const parsedData: StrategyPlan = {
-          ...data,
-          phases: Array.isArray(phasesData) 
-            ? phasesData.map(phase => ({
-                title: phase.title || "",
-                goal: phase.goal || "",
-                tactics: Array.isArray(phase.tactics) ? phase.tactics : [],
-                content_plan: phase.content_plan ? {
-                  weekly_schedule: phase.content_plan.weekly_schedule || {},
-                  example_post_ideas: Array.isArray(phase.content_plan.example_post_ideas) 
-                    ? phase.content_plan.example_post_ideas 
-                    : []
-                } : undefined
-              }))
-            : null,
-          confirmed: false // Default to not confirmed
-        };
-        setStrategyPlan(parsedData);
-        setIsFirstGeneration(false);
-
-        // Check if plan has been confirmed by looking for the presence of first_five_scripts
-        checkPlanConfirmation(user.id);
-
-      } else {
+        return null;
+      } 
+      
+      if (!data) {
         console.log("No strategy plan found");
-        setStrategyPlan(null);
         setIsFirstGeneration(true);
-        setPlanConfirmed(false);
-      }
-    } catch (error) {
-      console.error("Error in fetchStrategyPlan:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const checkPlanConfirmation = async (userId: string) => {
-    try {
-      // Check if first_five_scripts exists to determine if plan has been confirmed
-      const { data, error } = await supabase
-        .from('strategy_profiles')
-        .select('first_five_scripts')
-        .eq('user_id', userId)
-        .maybeSingle();
-        
-      if (error) {
-        console.error("Error checking plan confirmation:", error);
-        return;
+        return null;
       }
       
-      // If first_five_scripts exists and is not null, plan has been confirmed
-      const confirmed = !!(data?.first_five_scripts && 
-        Array.isArray(data.first_five_scripts) && 
-        data.first_five_scripts.length > 0);
+      console.log("Strategy plan data:", data);
+      
+      // Convert the JSON data to the proper type with proper type casting
+      const phasesData = data.phases as unknown;
+      const parsedData: StrategyPlan = {
+        ...data,
+        phases: Array.isArray(phasesData) 
+          ? phasesData.map(phase => ({
+              title: phase.title || "",
+              goal: phase.goal || "",
+              tactics: Array.isArray(phase.tactics) ? phase.tactics : [],
+              content_plan: phase.content_plan ? {
+                weekly_schedule: phase.content_plan.weekly_schedule || {},
+                example_post_ideas: Array.isArray(phase.content_plan.example_post_ideas) 
+                  ? phase.content_plan.example_post_ideas 
+                  : []
+              } : undefined
+            }))
+          : null,
+        confirmed: false // Default to not confirmed
+      };
+      
+      setIsFirstGeneration(false);
+      return parsedData;
+    },
+    enabled: !!user,
+  });
+
+  // Check if plan has been confirmed
+  const { data: confirmationStatus } = useQuery({
+    queryKey: ['planConfirmation', user?.id],
+    queryFn: async () => {
+      if (!user) return false;
+      
+      try {
+        // Check if first_five_scripts exists to determine if plan has been confirmed
+        const { data, error } = await supabase
+          .from('strategy_profiles')
+          .select('first_five_scripts')
+          .eq('user_id', user.id)
+          .maybeSingle();
+          
+        if (error) {
+          console.error("Error checking plan confirmation:", error);
+          return false;
+        }
         
-      setPlanConfirmed(confirmed);
-      console.log("Plan confirmation status:", confirmed);
-    } catch (error) {
-      console.error("Error in checkPlanConfirmation:", error);
-    }
-  };
-
-  // Use useEffect to fetch data on component mount and when user changes
+        // If first_five_scripts exists and is not null, plan has been confirmed
+        const confirmed = !!(data?.first_five_scripts && 
+          Array.isArray(data.first_five_scripts) && 
+          data.first_five_scripts.length > 0);
+          
+        setPlanConfirmed(confirmed);
+        console.log("Plan confirmation status:", confirmed);
+        return confirmed;
+      } catch (error) {
+        console.error("Error in checkPlanConfirmation:", error);
+        return false;
+      }
+    },
+    enabled: !!user,
+  });
+  
   useEffect(() => {
-    fetchStrategyPlan();
-  }, [user]); // Add user as dependency
-
-  const getPhaseIcon = (index: number) => {
-    const icons = [
-      <Brain className="h-5 w-5 text-socialmize-purple" />,
-      <Wrench className="h-5 w-5 text-socialmize-purple" />,
-      <TrendingUp className="h-5 w-5 text-socialmize-purple" />,
-      <Package className="h-5 w-5 text-socialmize-purple" />,
-      <Megaphone className="h-5 w-5 text-socialmize-purple" />
-    ];
-    return icons[index % icons.length];
-  };
+    if (confirmationStatus !== undefined) {
+      setPlanConfirmed(confirmationStatus);
+    }
+  }, [confirmationStatus]);
 
   const handleGenerateClick = () => {
     if (user) {
@@ -182,9 +177,10 @@ export const StrategyPlanSection = () => {
         description: "Your starter scripts and weekly calendar are now available.",
       });
       
-      // Refresh data
-      setPlanConfirmed(true);
-      fetchStrategyPlan();
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({
+        queryKey: ['planConfirmation', user.id]
+      });
       
       // Scroll down to show the newly unlocked content
       setTimeout(() => {
@@ -375,10 +371,39 @@ export const StrategyPlanSection = () => {
           isOpen={showRegenerateModal}
           onClose={() => setShowRegenerateModal(false)}
           userId={user.id}
-          onSuccess={fetchStrategyPlan}
+          onSuccess={() => {
+            // Refetch strategy plan data after regeneration
+            refetch();
+            // Also invalidate the plan confirmation status
+            queryClient.invalidateQueries({
+              queryKey: ['planConfirmation', user.id]
+            });
+          }}
           isFirstGeneration={isFirstGeneration}
+          onGenerationStart={() => {
+            // This will be called when generation starts
+            // We'll setup a retry mechanism to check for the new plan
+            const checkForNewPlan = () => {
+              refetch();
+            };
+            
+            // Check after a reasonable timeout to allow for generation
+            setTimeout(checkForNewPlan, 30000);
+          }}
         />
       )}
     </>
   );
+};
+
+// Helper function to get phase icon
+const getPhaseIcon = (index: number) => {
+  const icons = [
+    <Brain className="h-5 w-5 text-socialmize-purple" />,
+    <Wrench className="h-5 w-5 text-socialmize-purple" />,
+    <TrendingUp className="h-5 w-5 text-socialmize-purple" />,
+    <Package className="h-5 w-5 text-socialmize-purple" />,
+    <Megaphone className="h-5 w-5 text-socialmize-purple" />
+  ];
+  return icons[index % icons.length];
 };
