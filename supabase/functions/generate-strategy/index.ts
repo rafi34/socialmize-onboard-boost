@@ -94,6 +94,8 @@ serve(async (req) => {
           run.id
         );
         
+        console.log("Run status:", runStatus.status);
+        
         if (runStatus.status === "completed") {
           completedRun = runStatus;
           break;

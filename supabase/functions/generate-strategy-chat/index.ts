@@ -108,6 +108,10 @@ ${Object.entries(contextData)
           role: "user",
           content: `Here's my profile information for context:\n${contextMessage}\n\nI'm ready to start building my content strategy.`,
         });
+        
+        console.log("Added context message to new thread");
+      } else {
+        console.log("Using existing thread:", currentThreadId);
       }
       
       // Add the user message to the thread
@@ -115,6 +119,8 @@ ${Object.entries(contextData)
         role: "user",
         content: userMessage,
       });
+      
+      console.log("Added user message to thread");
       
       // Run the assistant
       const run = await openai.beta.threads.runs.create(currentThreadId, {
@@ -125,18 +131,22 @@ ${Object.entries(contextData)
       
       // Poll for completion
       let completedRun;
+      let runStatus;
+      
       while (true) {
         // Check run status
-        const runStatus = await openai.beta.threads.runs.retrieve(
+        runStatus = await openai.beta.threads.runs.retrieve(
           currentThreadId,
           run.id
         );
+        
+        console.log("Current run status:", runStatus.status);
         
         if (runStatus.status === "completed") {
           completedRun = runStatus;
           break;
         } else if (["failed", "cancelled", "expired"].includes(runStatus.status)) {
-          throw new Error(`Run ended with status: ${runStatus.status}`);
+          throw new Error(`Run ended with status: ${runStatus.status}, error: ${JSON.stringify(runStatus.last_error || {})}`);
         }
         
         // Wait before polling again
@@ -155,9 +165,14 @@ ${Object.entries(contextData)
       
       // Get the latest assistant message
       const latestMessage = assistantMessages[0];
-      const messageContent = latestMessage.content[0].type === "text" 
-        ? latestMessage.content[0].text.value 
-        : "";
+      let messageContent = "";
+      
+      if (latestMessage.content && latestMessage.content.length > 0 && latestMessage.content[0].type === "text") {
+        messageContent = latestMessage.content[0].text.value;
+      } else {
+        console.warn("Unexpected message format:", JSON.stringify(latestMessage.content));
+        messageContent = "I'm having trouble generating a response right now. Please try again.";
+      }
       
       // Check for completion markers in the message
       const isCompleted = messageContent.includes("[content_ideas_ready]") || 
