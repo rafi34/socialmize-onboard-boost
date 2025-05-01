@@ -1,4 +1,3 @@
-
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -234,30 +233,23 @@ export default function Dashboard() {
     try {
       await generateWaitingMessage();
 
-      const { data, error } = await supabase.functions.invoke(
-        "generate-strategy-plan",
-        {
-          body: { userId: user.id, onboardingData },
-        }
-      );
-
-      if (error || !data?.success) {
-        toast({
-          title: "Strategy Generation Failed",
-          description: "We couldn't generate your content strategy. Try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
+      // Direct fetch to the Supabase Function as requested
+      await fetch("/functions/generate-strategy-plan", {
+        method: "POST",
+        body: JSON.stringify({ 
+          userId: user.id, 
+          onboardingData 
+        }),
+      });
+      
+      // Invalidate queries to refresh strategy data
+      queryClient.invalidateQueries({
+        queryKey: ['strategy_profiles']
+      });
+      
       toast({
         title: "Strategy Generated",
         description: "Your personalized content strategy is ready!",
-      });
-
-      // Invalidate queries to refresh strategy data
-      queryClient.invalidateQueries({
-        queryKey: ['strategyPlan', user.id]
       });
       
       await fetchUserData();
