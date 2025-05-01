@@ -1,19 +1,19 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
+// supabase/functions/generate-strategy/index.ts
+import { serve } from "https://deno.land/std@0.195.0/http/server.ts";
+import OpenAI from "https://esm.sh/openai@4.28.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
-const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-// Get and clean the Assistant ID - handle potential whitespace or newlines
-let assistantId = null;
-const assistantIdRaw = Deno.env.get('SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID') || 
-                       Deno.env.get('ASSISTANT_ID');
-                       
-if (assistantIdRaw) {
-  // Trim any whitespace, newlines, etc.
-  assistantId = assistantIdRaw.trim();
-  console.log(`Using Assistant ID (cleaned): ${assistantId}`);
-}
+// Get environment variables
+const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: Deno.env.get("OPENAI_API_KEY"),
+});
+
+// CORS headers for browser requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -26,406 +26,141 @@ serve(async (req) => {
   }
 
   try {
+    // Parse request body
     const { userId, userMessage, threadId, onboardingData } = await req.json();
 
     if (!userId || !userMessage) {
-      throw new Error('Missing required parameters');
+      return new Response(
+        JSON.stringify({ success: false, error: "User ID and message are required" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
     }
 
-    if (!openaiApiKey) {
-      console.error('OpenAI API key not configured');
-      throw new Error('OpenAI API key not configured');
-    }
-
+    console.log("Processing strategy chat for user:", userId);
+    
+    // Get the assistant ID - specifically using ASSISTANT_ID for strategy chat
+    const assistantIdRaw = Deno.env.get("ASSISTANT_ID");
+    const assistantId = assistantIdRaw ? assistantIdRaw.trim() : null;
+    
     if (!assistantId) {
-      console.error('Assistant ID not configured');
-      console.error('Available env variables:', Object.keys(Deno.env.toObject()));
-      throw new Error('Assistant ID not configured');
+      console.error("Missing ASSISTANT_ID environment variable");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "ASSISTANT_ID not configured",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    console.log(`Processing request for user ${userId}, message: "${userMessage.substring(0, 30)}..."`);
-    console.log(`Using Assistant ID: ${assistantId}`);
+    // Initialize the Supabase client
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Log onboarding data if available
-    if (onboardingData) {
-      console.log('User onboarding data:', JSON.stringify(onboardingData, null, 2));
-    }
-
-    // Create or retrieve thread
-    let currentThreadId = threadId;
-    if (!currentThreadId) {
-      console.log("Creating new thread...");
-      const threadResponse = await fetch('https://api.openai.com/v1/threads', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          'Content-Type': 'application/json',
-          'OpenAI-Beta': 'assistants=v2', // Updated to v2
-        },
-        body: JSON.stringify({}),
+    try {
+      // Create or retrieve a thread
+      let currentThreadId = threadId;
+      
+      if (!currentThreadId) {
+        // Create a new thread
+        const thread = await openai.beta.threads.create();
+        currentThreadId = thread.id;
+        console.log("New thread created:", currentThreadId);
+      } else {
+        console.log("Using existing thread:", currentThreadId);
+      }
+      
+      // Create the message in the thread
+      await openai.beta.threads.messages.create(currentThreadId, {
+        role: "user",
+        content: userMessage,
       });
-
-      if (!threadResponse.ok) {
-        const error = await threadResponse.json();
-        console.error('Error creating thread:', error);
-        throw new Error(`Failed to create thread: ${error.error?.message || 'Unknown error'}`);
-      }
-
-      const thread = await threadResponse.json();
-      currentThreadId = thread.id;
-      console.log(`Created new thread with ID: ${currentThreadId}`);
-
-      // If this is a new thread and we have onboarding data, send it as the first message
-      if (onboardingData) {
-        // Create a message that summarizes the user's onboarding answers
-        const onboardingMessage = createOnboardingDataMessage(onboardingData);
-        
-        await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/messages`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${openaiApiKey}`,
-            'Content-Type': 'application/json',
-            'OpenAI-Beta': 'assistants=v2',
-          },
-          body: JSON.stringify({
-            role: 'user',
-            content: onboardingMessage,
-          }),
-        });
-        
-        console.log("Added onboarding data message to thread");
-      }
-    } else {
-      console.log(`Using existing thread with ID: ${currentThreadId}`);
-    }
-
-    // Add message to thread
-    console.log(`Adding user message to thread...`);
-    
-    // If we have onboarding data and it's not a new thread, augment the message with onboarding context
-    let finalUserMessage = userMessage;
-    if (onboardingData && threadId) {
-      finalUserMessage = `${userMessage}\n\nFor context, here's a reminder of my preferences from onboarding: ${formatOnboardingContext(onboardingData)}`;
-    }
-    
-    const messageResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/messages`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v2', // Updated to v2
-      },
-      body: JSON.stringify({
-        role: 'user',
-        content: finalUserMessage,
-      }),
-    });
-
-    if (!messageResponse.ok) {
-      const error = await messageResponse.json();
-      console.error('Error adding message:', error);
-      throw new Error(`Failed to add message: ${error.error?.message || 'Unknown error'}`);
-    }
-
-    // Run the assistant
-    console.log(`Running assistant ${assistantId} on thread...`);
-    const runResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/runs`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v2', // Updated to v2
-      },
-      body: JSON.stringify({
+      
+      // Run the assistant
+      const run = await openai.beta.threads.runs.create(currentThreadId, {
         assistant_id: assistantId,
-      }),
-    });
-
-    if (!runResponse.ok) {
-      const error = await runResponse.json();
-      console.error('Error running assistant:', error);
-      throw new Error(`Failed to run assistant: ${error.error?.message || 'Unknown error'}`);
-    }
-
-    const run = await runResponse.json();
-    const runId = run.id;
-    console.log(`Started run ${runId}`);
-
-    // Poll for the run completion
-    let runStatus = run.status;
-    let attempts = 0;
-    const maxAttempts = 60; // Maximum 60 attempts (10 minutes with 10-second intervals)
-    
-    while (runStatus !== 'completed' && runStatus !== 'failed' && attempts < maxAttempts) {
-      console.log(`Checking run status (attempt ${attempts + 1})...`);
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for 2 seconds
-      
-      const runCheckResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/runs/${runId}`, {
-        headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          'Content-Type': 'application/json',
-          'OpenAI-Beta': 'assistants=v2', // Updated to v2
-        },
       });
-
-      if (!runCheckResponse.ok) {
-        const error = await runCheckResponse.json();
-        console.error('Error checking run:', error);
-        throw new Error(`Failed to check run: ${error.error?.message || 'Unknown error'}`);
-      }
-
-      const runCheck = await runCheckResponse.json();
-      runStatus = runCheck.status;
-      attempts++;
-
-      console.log(`Current run status: ${runStatus}`);
       
-      if (runStatus === 'requires_action') {
-        console.log("Run requires action, not handling function calls in this version");
-        // Here you could implement function calling if needed
-        break;
-      }
-    }
-
-    if (runStatus !== 'completed') {
-      throw new Error(`Run did not complete successfully. Status: ${runStatus}`);
-    }
-
-    // Get messages (newest first)
-    console.log(`Retrieving messages from thread...`);
-    const messagesResponse = await fetch(`https://api.openai.com/v1/threads/${currentThreadId}/messages`, {
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'assistants=v2', // Updated to v2
-      },
-    });
-
-    if (!messagesResponse.ok) {
-      const error = await messagesResponse.json();
-      console.error('Error retrieving messages:', error);
-      throw new Error(`Failed to retrieve messages: ${error.error?.message || 'Unknown error'}`);
-    }
-
-    const messages = await messagesResponse.json();
-    
-    // Get the latest assistant message
-    const assistantMessages = messages.data.filter(msg => msg.role === 'assistant');
-    const latestAssistantMessage = assistantMessages[0];
-    
-    if (!latestAssistantMessage) {
-      throw new Error('No assistant message found');
-    }
-
-    // Extract content text from the message
-    let messageContent = '';
-    let isCompleted = false;
-    let contentIdeas = [];
-
-    if (latestAssistantMessage.content && latestAssistantMessage.content.length > 0) {
-      messageContent = latestAssistantMessage.content[0].text?.value || '';
+      console.log("Run created:", run.id);
       
-      // Check if message contains completion marker
-      if (messageContent.includes('[content_ideas_ready]') || 
-          messageContent.toLowerCase().includes('content ideas:')) {
-        isCompleted = true;
+      // Poll for completion
+      let completedRun;
+      while (true) {
+        // Check run status
+        const runStatus = await openai.beta.threads.runs.retrieve(
+          currentThreadId,
+          run.id
+        );
         
-        // Try to extract content ideas if they exist
+        if (runStatus.status === "completed") {
+          completedRun = runStatus;
+          break;
+        } else if (["failed", "cancelled", "expired"].includes(runStatus.status)) {
+          throw new Error(`Run ended with status: ${runStatus.status}`);
+        }
+        
+        // Wait before polling again
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+      
+      // Get the messages with the completion
+      const messages = await openai.beta.threads.messages.list(currentThreadId);
+      const assistantMessages = messages.data
+        .filter((message) => message.role === "assistant")
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      
+      if (assistantMessages.length === 0) {
+        throw new Error("No assistant messages found");
+      }
+      
+      // Get the latest assistant message
+      const latestMessage = assistantMessages[0];
+      const messageContent = latestMessage.content[0].type === "text" 
+        ? latestMessage.content[0].text.value 
+        : "";
+      
+      // Check for completion markers in the message
+      const isCompleted = messageContent.includes("[COMPLETED]") || 
+                        messageContent.includes("[STRATEGY_COMPLETE]") || 
+                        messageContent.includes("[CONTENT_IDEAS]");
+      
+      // Extract content ideas if present
+      let contentIdeas = [];
+      if (isCompleted) {
         try {
-          // Look for content ideas in the form of a list
-          const ideasMatch = messageContent.match(/content ideas:.*?((?:\d+\.\s+.+?[\n\r])+)/is);
+          // Look for content ideas in the message
+          const ideasMatch = messageContent.match(/\[CONTENT_IDEAS\]([\s\S]*?)(?:\[|$)/);
           if (ideasMatch && ideasMatch[1]) {
-            const ideasText = ideasMatch[1];
-            const ideaLines = ideasText.split(/[\n\r]+/).filter(line => line.trim());
-            
-            contentIdeas = ideaLines.map(line => {
-              // Remove the number and any leading symbols
-              return line.replace(/^\d+[\.\)\s]+/, '').trim();
-            }).filter(idea => idea.length > 0);
-          }
-          
-          // If we found content ideas, save them to the database
-          if (contentIdeas.length > 0) {
-            console.log(`Found ${contentIdeas.length} content ideas, saving to database...`);
-            
-            // Create objects for insertion
-            const ideasToInsert = contentIdeas.map(idea => ({
-              user_id: userId,
-              idea: idea,
-              selected: false,
-              generated_at: new Date().toISOString()
-            }));
-            
-            // Insert into Supabase using the Supabase REST API
-            const supabaseUrl = Deno.env.get('SUPABASE_URL');
-            const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-            
-            if (!supabaseUrl || !supabaseServiceKey) {
-              console.error('Supabase URL or service key not configured');
-            } else {
-              const insertResponse = await fetch(`${supabaseUrl}/rest/v1/content_ideas`, {
-                method: 'POST',
-                headers: {
-                  'apikey': supabaseServiceKey,
-                  'Authorization': `Bearer ${supabaseServiceKey}`,
-                  'Content-Type': 'application/json',
-                  'Prefer': 'return=minimal'
-                },
-                body: JSON.stringify(ideasToInsert)
-              });
-              
-              if (!insertResponse.ok) {
-                const error = await insertResponse.text();
-                console.error('Error inserting content ideas:', error);
-              } else {
-                console.log('Content ideas inserted successfully');
-              }
-            }
+            contentIdeas = ideasMatch[1]
+              .split('\n')
+              .filter(line => line.trim().length > 0)
+              .map(line => line.replace(/^-\s*/, '').trim());
           }
         } catch (error) {
-          console.error('Error parsing or saving content ideas:', error);
+          console.error("Error extracting content ideas:", error);
         }
       }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          threadId: currentThreadId,
+          message: messageContent,
+          completed: isCompleted,
+          contentIdeas: contentIdeas
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+      
+    } catch (openaiError) {
+      console.error("OpenAI API Error:", openaiError);
+      throw openaiError;
     }
-
-    console.log(`Retrieved assistant message, completion status: ${isCompleted}`);
-    if (isCompleted) {
-      console.log(`Found ${contentIdeas.length} content ideas`);
-    }
-
-    return new Response(JSON.stringify({
-      threadId: currentThreadId,
-      message: messageContent,
-      completed: isCompleted,
-      contentIdeas: contentIdeas,
-    }), {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json',
-      },
-    });
   } catch (error) {
-    console.error('Error in generate-strategy function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json',
-      },
-    });
+    console.error("Error in generate-strategy:", error);
+    
+    return new Response(
+      JSON.stringify({ success: false, error: error.message || "An unexpected error occurred" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+    );
   }
 });
-
-// Helper function to create a message with onboarding data information
-function createOnboardingDataMessage(onboardingData) {
-  // Create a message that summarizes the user's preferences
-  let message = 'Here is my onboarding information to help personalize my content strategy:\n\n';
-  
-  if (onboardingData.creator_mission) {
-    message += `My creator mission: ${formatMission(onboardingData.creator_mission)}\n`;
-  }
-  
-  if (onboardingData.creator_style) {
-    message += `My content style: ${formatStyle(onboardingData.creator_style)}\n`;
-  }
-  
-  if (onboardingData.content_format_preference) {
-    message += `My preferred content format: ${formatContentFormat(onboardingData.content_format_preference)}\n`;
-  }
-  
-  if (onboardingData.posting_frequency_goal) {
-    message += `My posting frequency goal: ${formatFrequency(onboardingData.posting_frequency_goal)}\n`;
-  }
-  
-  if (onboardingData.existing_content !== undefined) {
-    message += `I ${onboardingData.existing_content === 'true' ? 'do' : 'do not'} have existing content\n`;
-  }
-  
-  if (onboardingData.niche_topic) {
-    message += `My niche topic: ${onboardingData.niche_topic}\n`;
-  }
-  
-  if (onboardingData.shooting_preference) {
-    message += `My shooting preference: ${formatShootingPreference(onboardingData.shooting_preference)}\n`;
-  }
-  
-  message += '\nPlease use this information to personalize my content strategy.';
-  return message;
-}
-
-// Helper function for a shorter context reminder format
-function formatOnboardingContext(onboardingData) {
-  const contextParts = [];
-  
-  if (onboardingData.creator_mission) {
-    contextParts.push(`mission: ${formatMission(onboardingData.creator_mission)}`);
-  }
-  
-  if (onboardingData.creator_style) {
-    contextParts.push(`style: ${formatStyle(onboardingData.creator_style)}`);
-  }
-  
-  if (onboardingData.content_format_preference) {
-    contextParts.push(`format: ${formatContentFormat(onboardingData.content_format_preference)}`);
-  }
-  
-  if (onboardingData.niche_topic) {
-    contextParts.push(`niche: ${onboardingData.niche_topic}`);
-  }
-  
-  return contextParts.join(', ');
-}
-
-// Helper functions to format values in human-readable form
-function formatMission(mission) {
-  const missions = {
-    'gain_followers': 'Gain followers',
-    'get_leads': 'Get leads',
-    'grow_personal_brand': 'Grow personal brand',
-    'go_viral': 'Go viral',
-    'build_community': 'Build community'
-  };
-  return missions[mission] || mission;
-}
-
-function formatStyle(style) {
-  const styles = {
-    'bold_energetic': 'Bold & energetic',
-    'calm_motivational': 'Calm & motivational',
-    'funny_relatable': 'Funny & relatable',
-    'inspirational_wise': 'Inspirational & wise',
-    'raw_authentic': 'Raw & authentic'
-  };
-  return styles[style] || style;
-}
-
-function formatContentFormat(format) {
-  const formats = {
-    'talking_to_camera': 'Talking to camera',
-    'voiceovers': 'Voiceovers',
-    'skits_storytelling': 'Skits & storytelling',
-    'tutorials_howto': 'Tutorials & how-to',
-    'lifestyle_documentary': 'Lifestyle & documentary'
-  };
-  return formats[format] || format;
-}
-
-function formatFrequency(frequency) {
-  const frequencies = {
-    'multiple_daily': 'Multiple times daily',
-    'daily': 'Daily',
-    'three_to_five_weekly': '3-5 times weekly',
-    'one_to_two_weekly': '1-2 times weekly',
-    'warming_up': 'Just warming up'
-  };
-  return frequencies[frequency] || frequency;
-}
-
-function formatShootingPreference(preference) {
-  const preferences = {
-    'bulk_shooting': 'Bulk shooting',
-    'single_video': 'Single video at a time'
-  };
-  return preferences[preference] || preference;
-}

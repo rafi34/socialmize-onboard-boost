@@ -73,6 +73,7 @@ export const RegeneratePlanModal = ({
       console.log("Calling generate-strategy-plan with userId:", userId);
       
       // Call the Supabase Edge Function to regenerate the strategy plan
+      // This function uses SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID for the dashboard
       const { data, error: functionError } = await supabase.functions.invoke(
         'generate-strategy-plan', 
         {
