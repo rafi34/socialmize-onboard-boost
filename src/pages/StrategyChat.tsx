@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -10,7 +9,7 @@ import { ChatBubble } from "@/components/strategy-chat/ChatBubble";
 import { ConfettiExplosion } from "@/components/strategy-chat/ConfettiExplosion";
 import { CompletionModal } from "@/components/strategy-chat/CompletionModal";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Sparkles, Send, ArrowLeft } from "lucide-react";
+import { Sparkles, Send, ArrowLeft, AlertCircle } from "lucide-react";
 import { Json } from "@/integrations/supabase/types";
 
 interface ChatMessage {
@@ -58,6 +57,7 @@ const StrategyChat = () => {
   const [contentIdeas, setContentIdeas] = useState<string[]>([]);
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const [strategyData, setStrategyData] = useState<StrategyProfileData | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -262,6 +262,7 @@ const StrategyChat = () => {
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || !user || isLoading) return;
     
+    setErrorMessage(null);
     const userMessage: Omit<ChatMessage, 'id' | 'created_at'> = {
       role: "user",
       message: inputMessage
@@ -296,6 +297,10 @@ const StrategyChat = () => {
         throw error;
       }
       
+      if (!data.success) {
+        throw new Error(data.error || "An error occurred while processing your message.");
+      }
+      
       // Get the thread ID from the response and store it
       if (data.threadId) {
         setThreadId(data.threadId);
@@ -324,11 +329,16 @@ const StrategyChat = () => {
           await saveContentIdeas(data.contentIdeas);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
+      
+      // Set error message for display
+      setErrorMessage(error.message || "There was a problem sending your message. Please try again.");
+      
+      // Show toast with error
       toast({
         title: "Error",
-        description: "There was a problem sending your message. Please try again.",
+        description: error.message || "There was a problem sending your message. Please try again.",
         variant: "destructive"
       });
       
@@ -389,6 +399,26 @@ const StrategyChat = () => {
               isLoading={isLoading && message.id.includes('temp-assistant')}
             />
           ))}
+          
+          {/* Error message display */}
+          {errorMessage && (
+            <div className="rounded-md bg-destructive/15 p-4 mb-4 flex items-start">
+              <AlertCircle className="h-5 w-5 text-destructive mr-2 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-medium text-destructive">Error</p>
+                <p className="text-sm text-destructive/90">{errorMessage}</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                  onClick={() => setErrorMessage(null)}
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+          )}
+          
           <div ref={messagesEndRef} />
         </div>
       </div>

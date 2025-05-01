@@ -8,11 +8,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
-// Initialize OpenAI client
+// Initialize OpenAI client with v2 header
 const openai = new OpenAI({
   apiKey: Deno.env.get("OPENAI_API_KEY"),
   defaultHeaders: {
-    "OpenAI-Beta": "assistants=v2" // Add this header to use v2 of Assistants API
+    "OpenAI-Beta": "assistants=v2" // Set v2 header for Assistants API
   }
 });
 
@@ -56,6 +56,8 @@ serve(async (req) => {
       );
     }
 
+    console.log("Using Assistant ID:", assistantId);
+
     // Initialize the Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
@@ -78,6 +80,8 @@ serve(async (req) => {
         content: userMessage,
       });
       
+      console.log("Added user message to thread");
+      
       // Run the assistant
       const run = await openai.beta.threads.runs.create(currentThreadId, {
         assistant_id: assistantId,
@@ -88,23 +92,28 @@ serve(async (req) => {
       // Poll for completion
       let completedRun;
       while (true) {
-        // Check run status
-        const runStatus = await openai.beta.threads.runs.retrieve(
-          currentThreadId,
-          run.id
-        );
-        
-        console.log("Run status:", runStatus.status);
-        
-        if (runStatus.status === "completed") {
-          completedRun = runStatus;
-          break;
-        } else if (["failed", "cancelled", "expired"].includes(runStatus.status)) {
-          throw new Error(`Run ended with status: ${runStatus.status}`);
+        try {
+          // Check run status
+          const runStatus = await openai.beta.threads.runs.retrieve(
+            currentThreadId,
+            run.id
+          );
+          
+          console.log("Run status:", runStatus.status);
+          
+          if (runStatus.status === "completed") {
+            completedRun = runStatus;
+            break;
+          } else if (["failed", "cancelled", "expired"].includes(runStatus.status)) {
+            throw new Error(`Run ended with status: ${runStatus.status}, error: ${JSON.stringify(runStatus.last_error || {})}`);
+          }
+          
+          // Wait before polling again
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        } catch (pollError) {
+          console.error("Error during polling:", pollError);
+          throw pollError;
         }
-        
-        // Wait before polling again
-        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
       
       // Get the messages with the completion
@@ -119,9 +128,14 @@ serve(async (req) => {
       
       // Get the latest assistant message
       const latestMessage = assistantMessages[0];
-      const messageContent = latestMessage.content[0].type === "text" 
-        ? latestMessage.content[0].text.value 
-        : "";
+      let messageContent = "";
+      
+      if (latestMessage.content && latestMessage.content.length > 0 && latestMessage.content[0].type === "text") {
+        messageContent = latestMessage.content[0].text.value;
+      } else {
+        console.warn("Unexpected message format:", JSON.stringify(latestMessage.content));
+        messageContent = "I'm having trouble generating a response right now. Please try again.";
+      }
       
       // Check for completion markers in the message
       const isCompleted = messageContent.includes("[COMPLETED]") || 
@@ -158,7 +172,23 @@ serve(async (req) => {
       
     } catch (openaiError) {
       console.error("OpenAI API Error:", openaiError);
-      throw openaiError;
+      
+      // Try to provide more specific error information
+      let errorMessage = "An error occurred with the AI service.";
+      if (openaiError.error?.message) {
+        errorMessage = openaiError.error.message;
+      } else if (typeof openaiError.message === 'string') {
+        errorMessage = openaiError.message;
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: errorMessage,
+          threadId: currentThreadId,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
     }
   } catch (error) {
     console.error("Error in generate-strategy:", error);
