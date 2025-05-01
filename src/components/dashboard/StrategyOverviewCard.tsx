@@ -21,11 +21,14 @@ export const StrategyOverviewCard = ({
     if (!fullPlanText) return null;
     
     try {
-      // Try to parse as JSON first
-      const parsedPlan = JSON.parse(fullPlanText);
+      // Try to clean and parse as JSON first
+      const cleanedText = cleanJsonText(fullPlanText);
+      const parsedPlan = JSON.parse(cleanedText);
+      
+      // If we have a summary in the JSON, return it
       if (parsedPlan.summary) return parsedPlan.summary;
       
-      // If no summary in JSON, extract the first paragraph
+      // If no summary in JSON, return null to fall back to other methods
       return null;
     } catch {
       // Not valid JSON, extract the first few sentences
@@ -43,6 +46,26 @@ export const StrategyOverviewCard = ({
     }
   };
 
+  // Function to clean JSON text that might have formatting
+  const cleanJsonText = (text?: string | null): string => {
+    if (!text) return "";
+    
+    // Remove markdown code block indicators
+    let cleaned = text.trim()
+      .replace(/^```json\s*/g, '')  // Remove opening ```json
+      .replace(/^```\s*/g, '')      // Remove opening ``` without json
+      .replace(/```$/g, '');        // Remove closing ```
+    
+    // Try to find JSON object boundaries if there's other text
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+    }
+    
+    return cleaned;
+  };
+  
   const summary = getSummaryFromFullPlan();
 
   return (

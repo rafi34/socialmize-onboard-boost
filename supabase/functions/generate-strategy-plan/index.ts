@@ -100,7 +100,8 @@ serve(async (req) => {
         3. Weekly posting schedule breakdown
         4. 5-10 content topic ideas to get started
         
-        Format the response as a JSON object with these keys: 
+        Format your response as a valid JSON object - do not include any markdown, text, or code blocks. 
+        Return PURE JSON ONLY with these keys: 
         - summary: A string with the overall strategy summary
         - weekly_calendar: An object with days of week and content types
         - topic_ideas: An array of string topic ideas
@@ -122,6 +123,36 @@ serve(async (req) => {
       console.log("🟢 Running assistant with ID:", assistantId);
       const run = await openai.beta.threads.runs.create(thread.id, {
         assistant_id: assistantId,
+        tools: [{
+          type: "function",
+          function: {
+            name: "format_response_as_json",
+            description: "Formats the response as JSON for easier parsing",
+            parameters: {
+              type: "object",
+              properties: {
+                summary: {
+                  type: "string",
+                  description: "A summary of the content strategy"
+                },
+                weekly_calendar: {
+                  type: "object",
+                  description: "A weekly calendar with posting schedule"
+                },
+                topic_ideas: {
+                  type: "array",
+                  description: "An array of topic ideas"
+                },
+                phases: {
+                  type: "array",
+                  description: "An array of strategy phases"
+                }
+              },
+              required: ["summary", "weekly_calendar", "topic_ideas", "phases"]
+            }
+          }
+        }],
+        response_format: { type: "json_object" }
       }).catch(e => {
         console.error("❌ Failed to create run:", e.message);
         throw e;
@@ -209,9 +240,12 @@ serve(async (req) => {
       }
       
       try {
-        // Parse the JSON response
-        console.log("🟢 Attempting to parse message content as JSON");
-        const parsedContent = JSON.parse(messageContent);
+        // Clean and parse the JSON response
+        console.log("🟢 Attempting to clean and parse message content as JSON");
+        const cleanedContent = cleanJsonContent(messageContent);
+        console.log("🟢 Cleaned content:", cleanedContent.substring(0, 100) + "...");
+        
+        const parsedContent = JSON.parse(cleanedContent);
         console.log("🟢 Successfully parsed JSON content");
         console.log("🟢 JSON keys:", Object.keys(parsedContent));
         
@@ -229,7 +263,7 @@ serve(async (req) => {
             topic_ideas: parsedContent.topic_ideas || [],
             weekly_calendar: parsedContent.weekly_calendar || null,
             content_types: parsedContent.content_types || null,
-            full_plan_text: messageContent
+            full_plan_text: cleanedContent // Store cleaned JSON as full plan text
           }
         });
         
@@ -249,6 +283,7 @@ serve(async (req) => {
         );
       } catch (parseError) {
         console.error("❌ Error parsing strategy plan:", parseError.message);
+        console.error("❌ Raw content:", messageContent);
         
         // Save the raw response as fallback
         console.log("🟢 Saving raw response as fallback");
@@ -295,6 +330,30 @@ serve(async (req) => {
     );
   }
 });
+
+// Helper function to clean JSON content from potential formatting or markdown
+function cleanJsonContent(content) {
+  // Remove markdown code block indicators
+  let cleaned = content.trim()
+    .replace(/^```json\s*/g, '')
+    .replace(/^```\s*/g, '')
+    .replace(/```$/g, '');
+  
+  // Remove any text before first { and after last }
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+  
+  // Fix common JSON string issues
+  cleaned = cleaned
+    .replace(/\\"/g, '"') // Fix escaped quotes inside already escaped content
+    .replace(/\r\n/g, '\\n')
+    .replace(/\n/g, '\\n');
+    
+  return cleaned;
+}
 
 // Helper function to upsert a strategy profile
 async function upsertStrategyProfile(supabase, { userId, data }) {
@@ -386,6 +445,9 @@ function createMockStrategyResponse(userId, onboardingData, corsHeaders) {
     ]
   };
   
+  // Convert mock strategy to pure JSON string
+  const mockStrategyJson = JSON.stringify(mockStrategy);
+  
   // Create client to save mock data
   console.log("🟢 Creating Supabase client for mock data");
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -404,7 +466,7 @@ function createMockStrategyResponse(userId, onboardingData, corsHeaders) {
       topic_ideas: mockStrategy.topic_ideas,
       weekly_calendar: mockStrategy.weekly_calendar,
       content_types: mockStrategy.content_types,
-      full_plan_text: JSON.stringify(mockStrategy)
+      full_plan_text: mockStrategyJson // Store as clean JSON
     }
   }).catch(error => console.error("❌ Error saving mock strategy:", error));
   

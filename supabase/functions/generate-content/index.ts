@@ -40,7 +40,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a professional social media content writer. You create engaging scripts for social media posts based on content ideas. Your scripts should include a hook, main content, and call-to-action. ALWAYS return valid JSON that can be parsed directly without needing additional processing.'
+            content: 'You are a professional social media content writer. You create engaging scripts for social media posts based on content ideas. Your scripts should include a hook, main content, and call-to-action. You MUST return valid JSON that can be parsed directly. Do not include any text, markdown formatting, or code blocks around your response. The output should be pure JSON only.'
           },
           {
             role: 'user',
@@ -68,20 +68,31 @@ serve(async (req) => {
       console.log("Successfully parsed JSON response");
     } catch (e) {
       console.error('Error parsing JSON from OpenAI response:', e);
-      // Fallback: extract content by regex
-      const titleMatch = generatedContent.match(/"title":\s*"([^"]*)"/);
-      const hookMatch = generatedContent.match(/"hook":\s*"([^"]*)"/);
-      const contentMatch = generatedContent.match(/"content":\s*"([^"]*)"/);
-      const formatMatch = generatedContent.match(/"format_type":\s*"([^"]*)"/);
+      console.error('Raw content received:', generatedContent);
       
-      parsedContent = {
-        title: titleMatch ? titleMatch[1] : 'Untitled Content',
-        hook: hookMatch ? hookMatch[1] : 'No hook provided',
-        content: contentMatch ? contentMatch[1].replace(/\\n/g, '\n') : 'No content provided',
-        format_type: formatMatch ? formatMatch[1] : 'Talking Head'
-      };
-      
-      console.log("Used regex fallback to parse content");
+      // Try to clean the content before parsing
+      const cleanedContent = cleanJsonContent(generatedContent);
+      try {
+        parsedContent = JSON.parse(cleanedContent);
+        console.log("Successfully parsed JSON after cleaning");
+      } catch (cleanError) {
+        console.error('Still unable to parse JSON after cleaning:', cleanError);
+        
+        // Fallback: extract content by regex
+        const titleMatch = generatedContent.match(/"title":\s*"([^"]*)"/);
+        const hookMatch = generatedContent.match(/"hook":\s*"([^"]*)"/);
+        const contentMatch = generatedContent.match(/"content":\s*"([^"]*)"/);
+        const formatMatch = generatedContent.match(/"format_type":\s*"([^"]*)"/);
+        
+        parsedContent = {
+          title: titleMatch ? titleMatch[1] : 'Untitled Content',
+          hook: hookMatch ? hookMatch[1] : 'No hook provided',
+          content: contentMatch ? contentMatch[1].replace(/\\n/g, '\n') : 'No content provided',
+          format_type: formatMatch ? formatMatch[1] : 'Talking Head'
+        };
+        
+        console.log("Used regex fallback to parse content");
+      }
     }
 
     // Save to database using Supabase REST API
@@ -142,3 +153,27 @@ serve(async (req) => {
     });
   }
 });
+
+// Helper function to clean JSON content from potential formatting or markdown
+function cleanJsonContent(content) {
+  // Remove markdown code block indicators
+  let cleaned = content.trim()
+    .replace(/^```json\s*/g, '')
+    .replace(/^```\s*/g, '')
+    .replace(/```$/g, '');
+  
+  // Remove any text before first { and after last }
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+  
+  // Fix common JSON string issues
+  cleaned = cleaned
+    .replace(/\\"/g, '"') // Fix escaped quotes inside already escaped content
+    .replace(/\r\n/g, '\\n')
+    .replace(/\n/g, '\\n');
+    
+  return cleaned;
+}

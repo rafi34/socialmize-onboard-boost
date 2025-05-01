@@ -22,16 +22,30 @@ interface FullStrategyModalProps {
 export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateClick }: FullStrategyModalProps) => {
   const [parsedJson, setParsedJson] = useState<any>(null);
   const [isJsonValid, setIsJsonValid] = useState<boolean>(true);
+  const [jsonError, setJsonError] = useState<string | null>(null);
   
   // Function to clean JSON text that might have markdown backticks
   const cleanJsonText = (text?: string | null): string => {
     if (!text) return "";
     
-    // Remove markdown code block indicators if present
-    const cleaned = text.trim()
+    // Remove markdown code block indicators
+    let cleaned = text.trim()
       .replace(/^```json\s*/g, '')  // Remove opening ```json
       .replace(/^```\s*/g, '')      // Remove opening ``` without json
       .replace(/```$/g, '');        // Remove closing ```
+    
+    // Try to find JSON object boundaries if there's other text
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+    }
+    
+    // Fix common escaping issues
+    cleaned = cleaned
+      .replace(/\\"/g, '"') // Fix escaped quotes inside already escaped content
+      .replace(/\r\n/g, '\\n')
+      .replace(/\n/g, '\\n');
     
     return cleaned;
   };
@@ -41,6 +55,7 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
     if (!fullPlanText || fullPlanText.trim().length === 0) {
       setParsedJson(null);
       setIsJsonValid(false);
+      setJsonError("No strategy plan text available");
       return;
     }
 
@@ -55,10 +70,15 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
       
       setParsedJson(parsedData);
       setIsJsonValid(true);
+      setJsonError(null);
     } catch (e) {
       console.error("Error parsing JSON plan:", e);
       setParsedJson(null);
       setIsJsonValid(false);
+      setJsonError(`Failed to parse as JSON: ${e.message}`);
+      
+      // Log the raw text for debugging
+      console.log("Raw strategy text:", fullPlanText?.substring(0, 200));
     }
   }, [fullPlanText]);
   
@@ -135,7 +155,28 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
             </div>
           )}
           
-          {/* Phases data structure (alternative format) */}
+          {/* Weekly Calendar (alternative format) */}
+          {parsedJson.weekly_calendar && typeof parsedJson.weekly_calendar === 'object' && (
+            <div className="space-y-4">
+              <h3 className="font-medium text-lg">Weekly Calendar</h3>
+              <div className="border rounded-lg p-4">
+                {Object.entries(parsedJson.weekly_calendar).map(([day, contentTypes], i) => (
+                  <div key={i} className="mb-3 last:mb-0">
+                    <h4 className="font-medium">{day}</h4>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {Array.isArray(contentTypes) && contentTypes.map((type: string, j: number) => (
+                        <span key={j} className="bg-secondary/30 px-2 py-1 text-sm rounded">
+                          {type}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Phases data structure */}
           {parsedJson.phases && Array.isArray(parsedJson.phases) && (
             <div className="space-y-4">
               <h3 className="font-medium text-lg">Strategy Phases</h3>
@@ -148,7 +189,7 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
                     <div className="mt-2">
                       <h5 className="font-medium text-sm mb-1">Tactics:</h5>
                       <ul className="list-disc pl-5">
-                        {phase.tactics.map((tactic: string, j: number) => (
+                        {Array.isArray(phase.tactics) && phase.tactics.map((tactic: string, j: number) => (
                           <li key={j}>{tactic}</li>
                         ))}
                       </ul>
@@ -172,7 +213,7 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
           )}
           
           {/* Fallback for unknown JSON structure */}
-          {!parsedJson.weeks && !parsedJson.phases && !parsedJson.topic_ideas && !parsedJson.summary && (
+          {!parsedJson.weeks && !parsedJson.phases && !parsedJson.topic_ideas && !parsedJson.summary && !parsedJson.weekly_calendar && (
             <div>
               <h3 className="font-medium text-lg mb-2">Strategy Plan</h3>
               <div className="space-y-4">
@@ -193,12 +234,24 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
         </div>
       );
     } else {
-      // Not valid JSON, display as plain text with line breaks
-      return fullPlanText.split("\n").map((line, index) => (
-        <p key={index} className={`${line.trim().length === 0 ? 'my-4' : 'my-2'}`}>
-          {line || "\u00A0"}
-        </p>
-      ));
+      // Not valid JSON, display as plain text with line breaks and JSON error
+      return (
+        <div className="space-y-4">
+          {jsonError && (
+            <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-amber-800 text-sm">
+              <p className="font-medium">Could not parse as JSON</p>
+              <p className="text-xs mt-1">Displaying as plain text instead</p>
+            </div>
+          )}
+          <div className="whitespace-pre-wrap">
+            {fullPlanText.split("\n").map((line, index) => (
+              <p key={index} className={`${line.trim().length === 0 ? 'my-4' : 'my-2'}`}>
+                {line || "\u00A0"}
+              </p>
+            ))}
+          </div>
+        </div>
+      );
     }
   };
   
