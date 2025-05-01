@@ -74,7 +74,7 @@ export const RegeneratePlanModal = ({
       console.log("Onboarding data fetched successfully:", onboardingData);
       console.log("Calling generate-strategy-plan with userId:", userId);
       
-      // Use supabase.functions.invoke instead of direct fetch for better error handling
+      // Call the generate-strategy-plan edge function
       const { data, error } = await supabase.functions.invoke('generate-strategy-plan', {
         body: { 
           userId, 

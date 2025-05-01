@@ -14,7 +14,7 @@ console.log("🟢 generate-strategy-plan function initializing");
 const openai = new OpenAI({
   apiKey: Deno.env.get("OPENAI_API_KEY"),
   defaultHeaders: {
-    "OpenAI-Beta": "assistants=v2"  // Add this header for v2 compatibility
+    "OpenAI-Beta": "assistants=v2"  // This is crucial for v2 compatibility
   }
 });
 
@@ -59,13 +59,17 @@ serve(async (req) => {
 
     console.log("🟢 Processing strategy plan generation for user:", userId);
     
-    // Get the assistant ID - using specifically SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID for dashboard
-    const assistantIdRaw = Deno.env.get("SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID");
+    // Use the assistant ID from environment or the one provided in the request
+    // Default to SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID but check for the specific assistant ID too
+    const assistantIdRaw = Deno.env.get("SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID") || 
+                         Deno.env.get("ASSISTANT_ID") ||
+                         "asst_7scIyrURGe1S2aJc9tpu0NVZ"; // Fallback to the ID provided in the instructions
+                         
     const assistantId = assistantIdRaw ? assistantIdRaw.trim() : null;
-    console.log("🧠 Assistant ID loaded:", assistantId ? "present" : "missing");
+    console.log("🧠 Assistant ID loaded:", assistantId ? "present" : "missing", assistantId);
     
     if (!assistantId) {
-      console.error("❌ Missing SOCIALMIZE_AFTER_ONBOARDING_ASSISTANT_ID environment variable");
+      console.error("❌ Missing assistant ID environment variable");
       // Use mock data to allow development without OpenAI setup
       return createMockStrategyResponse(userId, onboardingData, corsHeaders);
     }
@@ -84,11 +88,30 @@ serve(async (req) => {
       });
       console.log("🟢 Thread created:", thread.id);
       
+      // Build a comprehensive system message with the onboarding data
+      const userPrompt = `
+        I need a comprehensive content strategy plan based on my creator profile:
+        
+        ${JSON.stringify(onboardingData, null, 2)}
+        
+        Please provide:
+        1. A summary of the content strategy
+        2. A 4-week content calendar with specific post ideas
+        3. Weekly posting schedule breakdown
+        4. 5-10 content topic ideas to get started
+        
+        Format the response as a JSON object with these keys: 
+        - summary: A string with the overall strategy summary
+        - weekly_calendar: An object with days of week and content types
+        - topic_ideas: An array of string topic ideas
+        - phases: An array of strategy phases with title, goal and tactics
+      `;
+      
       // Create the message in the thread
       console.log("🟢 Creating message in thread");
       await openai.beta.threads.messages.create(thread.id, {
         role: "user",
-        content: `I need a content strategy plan based on my profile data: ${JSON.stringify(onboardingData)}`,
+        content: userPrompt,
       }).catch(e => {
         console.error("❌ Failed to create message:", e.message);
         throw e;
@@ -204,6 +227,8 @@ serve(async (req) => {
             creator_style: onboardingData.creator_style || null,
             posting_frequency: onboardingData.posting_frequency_goal || null,
             topic_ideas: parsedContent.topic_ideas || [],
+            weekly_calendar: parsedContent.weekly_calendar || null,
+            content_types: parsedContent.content_types || null,
             full_plan_text: messageContent
           }
         });
@@ -314,17 +339,17 @@ async function upsertStrategyProfile(supabase, { userId, data }) {
 function createMockStrategyResponse(userId, onboardingData, corsHeaders) {
   console.log("🟢 Using mock strategy plan data");
   
-  // Create mock strategy data
+  // Create mock strategy data with more comprehensive structure
   const mockStrategy = {
-    summary: "Your personalized content strategy focuses on growing your audience through consistent, high-quality content that showcases your unique perspective.",
+    summary: "Your personalized content strategy focuses on growing your audience through consistent, high-quality content that showcases your unique perspective and expertise.",
     phases: [
       {
         title: "Phase 1: Foundation Building",
-        goal: "Establish your presence and find your voice",
+        goal: "Establish your presence and find your authentic voice",
         tactics: [
-          "Create a consistent posting schedule",
-          "Experiment with different content formats",
-          "Analyze what resonates with your audience"
+          "Create a consistent posting schedule (3-5 times per week)",
+          "Experiment with different content formats to see what resonates",
+          "Analyze engagement metrics to understand your audience better"
         ],
         content_plan: {
           weekly_schedule: {
@@ -343,11 +368,21 @@ function createMockStrategyResponse(userId, onboardingData, corsHeaders) {
         ]
       }
     ],
+    weekly_calendar: {
+      "Monday": ["Talking Head", "Tutorial"],
+      "Wednesday": ["Storytelling", "Behind the Scenes"],
+      "Friday": ["Q&A", "Trending Topic"]
+    },
+    content_types: ["Talking Head", "Tutorial", "Storytelling", "Q&A", "Trending"],
     topic_ideas: [
       "Day in the life as a creator",
       "Behind the scenes of content creation",
       "Top tips for your niche area",
-      "Answering common questions in your field"
+      "Answering common questions in your field",
+      "Breakdown of your creative process",
+      "Tools and tech that help your workflow",
+      "Your biggest lessons learned so far",
+      "Collaboration with another creator"
     ]
   };
   
@@ -355,7 +390,7 @@ function createMockStrategyResponse(userId, onboardingData, corsHeaders) {
   console.log("🟢 Creating Supabase client for mock data");
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
   
-  // Save mock data to the database
+  // Save mock data to the database with more fields
   console.log("🟢 Saving mock data to database");
   upsertStrategyProfile(supabase, {
     userId,
@@ -367,6 +402,8 @@ function createMockStrategyResponse(userId, onboardingData, corsHeaders) {
       creator_style: onboardingData?.creator_style || "Authentic",
       posting_frequency: onboardingData?.posting_frequency_goal || "3-5 times per week",
       topic_ideas: mockStrategy.topic_ideas,
+      weekly_calendar: mockStrategy.weekly_calendar,
+      content_types: mockStrategy.content_types,
       full_plan_text: JSON.stringify(mockStrategy)
     }
   }).catch(error => console.error("❌ Error saving mock strategy:", error));
