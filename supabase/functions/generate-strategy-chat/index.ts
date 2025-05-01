@@ -29,7 +29,7 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const { userId, userMessage, threadId, onboardingData } = await req.json();
+    const { userId, userMessage, threadId, onboardingData, strategyData } = await req.json();
 
     if (!userId || !userMessage) {
       return new Response(
@@ -56,7 +56,7 @@ serve(async (req) => {
     
     try {
       // Fetch the user's strategy profile data
-      const { data: strategyData, error: strategyError } = await supabase
+      const { data: strategyProfileData, error: strategyError } = await supabase
         .from('strategy_profiles')
         .select('*')
         .eq('user_id', userId)
@@ -68,7 +68,7 @@ serve(async (req) => {
         console.error("Error fetching strategy profile:", strategyError);
       }
       
-      console.log("Strategy profile data retrieved:", strategyData ? "yes" : "no");
+      console.log("Strategy profile data retrieved:", strategyProfileData ? "yes" : "no");
       
       // Create or retrieve a thread
       let currentThreadId = threadId;
@@ -82,7 +82,7 @@ serve(async (req) => {
         // If this is a new thread, add context info about the user's profile
         const contextData = {
           ...onboardingData,
-          ...(strategyData || {})
+          ...(strategyProfileData || {})
         };
         
         // Create a context message with combined data
@@ -90,7 +90,13 @@ serve(async (req) => {
 User Profile Information:
 ${Object.entries(contextData)
   .filter(([key, value]) => value !== null && value !== undefined && !key.includes('id') && key !== 'created_at' && key !== 'updated_at')
-  .map(([key, value]) => `- ${key.replace(/_/g, ' ')}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
+  .map(([key, value]) => {
+    // Format JSON values to be more readable
+    const formattedValue = typeof value === 'object' 
+      ? JSON.stringify(value, null, 2) 
+      : value;
+    return `- ${key.replace(/_/g, ' ')}: ${formattedValue}`;
+  })
   .join('\n')}
 `;
 

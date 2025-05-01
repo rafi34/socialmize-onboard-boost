@@ -11,6 +11,7 @@ import { ConfettiExplosion } from "@/components/strategy-chat/ConfettiExplosion"
 import { CompletionModal } from "@/components/strategy-chat/CompletionModal";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sparkles, Send, ArrowLeft } from "lucide-react";
+import { Json } from "@/integrations/supabase/types";
 
 interface ChatMessage {
   id: string;
@@ -33,15 +34,18 @@ interface StrategyProfileData {
   id?: string;
   user_id?: string;
   summary?: string;
-  phases?: any;
-  weekly_calendar?: any;
-  content_types?: string[];
-  topic_ideas?: string[];
+  phases?: Json;
+  weekly_calendar?: Json;
+  content_types?: Json; // Updated: Accept Json type from Supabase
+  topic_ideas?: Json; // Updated: Accept Json type from Supabase
   experience_level?: string;
   creator_style?: string;
   posting_frequency?: string;
   niche_topic?: string;
   full_plan_text?: string;
+  created_at?: string; // Added missing field
+  updated_at?: string; // Added missing field
+  first_five_scripts?: Json; // Added missing field
 }
 
 const StrategyChat = () => {
@@ -138,6 +142,7 @@ const StrategyChat = () => {
       
       if (data) {
         console.log('Fetched strategy profile data:', data);
+        // Directly set the data as is - our interface now matches the structure
         setStrategyData(data);
       }
     } catch (error) {
