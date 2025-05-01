@@ -48,13 +48,15 @@ export const StrategyPlanSection = () => {
       
       console.log("Fetching strategy plan for user:", user.id);
       
-      // Fetch from the strategy_profiles table
+      // Fetch from the strategy_profiles table - use order by created_at and limit 1
+      // to always get the most recent strategy plan
       const { data, error } = await supabase
         .from('strategy_profiles')
         .select('id, user_id, summary, phases, created_at, full_plan_text')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .maybeSingle();
+        .limit(1)
+        .single();
       
       if (error) {
         console.error("Error fetching strategy plan:", error);
@@ -110,7 +112,7 @@ export const StrategyPlanSection = () => {
     enabled: !!user,
   });
 
-  // Check if plan has been confirmed
+  // Check if plan has been confirmed - fix the query to handle multiple rows
   const { data: confirmationStatus } = useQuery({
     queryKey: ['planConfirmation', user?.id],
     queryFn: async () => {
@@ -118,11 +120,14 @@ export const StrategyPlanSection = () => {
       
       try {
         // Check if weekly_calendar exists to determine if plan has been confirmed
+        // Get only the most recent strategy profile
         const { data, error } = await supabase
           .from('strategy_profiles')
           .select('weekly_calendar')
           .eq('user_id', user.id)
-          .maybeSingle();
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
           
         if (error) {
           console.error("Error checking plan confirmation:", error);

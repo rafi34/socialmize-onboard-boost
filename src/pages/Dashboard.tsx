@@ -1,3 +1,4 @@
+
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -376,7 +377,6 @@ export default function Dashboard() {
         <div className="max-w-4xl mx-auto">
           <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
           
-          {/* Replace StrategyOverviewSection with StrategyPlanSection */}
           <StrategyPlanSection />
 
           {planConfirmed && (

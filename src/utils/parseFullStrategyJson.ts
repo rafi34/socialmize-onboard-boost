@@ -39,8 +39,6 @@ export function parseFullStrategyJson(raw: string | null): any {
  * Attempts to extract a summary string from parsed JSON or fallback from raw text
  */
 export function getStrategySummary(parsedJson: any, rawText: string | null): string | null {
-  if (parsedJson?.summary) return parsedJson.summary;
-
   // If there's a summary key in the top level, use that
   if (parsedJson?.summary) return parsedJson.summary;
   
