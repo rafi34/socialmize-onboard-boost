@@ -96,7 +96,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.generate-strategy-chat]
-# New function that uses direct OpenAI API calls instead of Assistants API
+# Uses ASSISTANT_ID for the strategy chat feature
 verify_jwt = true
 
 [functions.confirm-strategy-plan]

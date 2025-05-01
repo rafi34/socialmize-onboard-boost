@@ -8,6 +8,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const openaiApiKey = Deno.env.get("OPENAI_API_KEY") || "";
+const assistantId = Deno.env.get("ASSISTANT_ID") || "";
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -19,20 +20,6 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-// System message for content strategy
-const STRATEGY_SYSTEM_MESSAGE = `You are an expert content strategist for social media creators. 
-Your job is to help the creator develop a personalized content strategy and plan.
-
-IMPORTANT GUIDELINES:
-- Be conversational, encouraging, and supportive
-- Ask clarifying questions to understand their goals, audience, and style preferences
-- Provide specific, actionable advice that they can implement right away
-- Focus on helping them build an effective content strategy for their chosen platforms
-- When the conversation is complete and you've provided a full strategy, include [STRATEGY_COMPLETE] in your response.
-- When suggesting content ideas, provide a list with the [CONTENT_IDEAS] tag followed by the ideas.
-
-Assume you're speaking with a content creator who wants to grow their audience and needs guidance.`;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -53,106 +40,176 @@ serve(async (req) => {
 
     console.log("Processing strategy chat for user:", userId);
     
+    if (!assistantId) {
+      console.error("Missing ASSISTANT_ID environment variable");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "ASSISTANT_ID not configured",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Initialize the Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     try {
-      // Create or retrieve conversation history
-      let messageHistory = [];
+      // Fetch the user's strategy profile data
+      const { data: strategyData, error: strategyError } = await supabase
+        .from('strategy_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+      if (strategyError) {
+        console.error("Error fetching strategy profile:", strategyError);
+      }
+      
+      console.log("Strategy profile data retrieved:", strategyData ? "yes" : "no");
+      
+      // Create or retrieve a thread
       let currentThreadId = threadId;
       
-      // If there's a threadId, fetch previous messages from Supabase
-      if (currentThreadId) {
-        console.log("Using existing thread:", currentThreadId);
-        const { data: historyData, error: historyError } = await supabase
-          .from('ai_messages')
-          .select('*')
-          .eq('thread_id', currentThreadId)
-          .eq('user_id', userId)
-          .order('created_at', { ascending: true });
-          
-        if (historyError) {
-          console.error("Error fetching message history:", historyError);
-        } else if (historyData) {
-          // Format the messages for OpenAI API
-          messageHistory = historyData.map(msg => ({
-            role: msg.role,
-            content: msg.message
-          }));
-        }
-      } else {
-        // Generate a new thread ID
-        currentThreadId = crypto.randomUUID();
-        console.log("Created new thread ID:", currentThreadId);
+      if (!currentThreadId) {
+        // Create a new thread
+        const thread = await openai.beta.threads.create();
+        currentThreadId = thread.id;
+        console.log("New thread created:", currentThreadId);
         
-        // Add system message at the beginning of a new conversation
-        messageHistory.push({
-          role: "system",
-          content: STRATEGY_SYSTEM_MESSAGE
-        });
-      }
-      
-      // Add the user's current message
-      messageHistory.push({
-        role: "user",
-        content: userMessage
-      });
-      
-      // If onboarding data is provided, add a context message
-      if (onboardingData && Object.keys(onboardingData).length > 0 && messageHistory.length <= 3) {
-        // Create a context message from onboarding data
+        // If this is a new thread, add context info about the user's profile
+        const contextData = {
+          ...onboardingData,
+          ...(strategyData || {})
+        };
+        
+        // Create a context message with combined data
         const contextMessage = `
-Creator profile information:
-- Niche/Topic: ${onboardingData.niche_topic || "General content creation"}
-- Creator Style: ${onboardingData.creator_style || "Authentic and engaging"}
-- Content Format Preferences: ${onboardingData.content_format_preference || "Mixed formats"} 
-- Posting Frequency Goal: ${onboardingData.posting_frequency_goal || "3-5 times per week"}
-- Creator Mission: ${onboardingData.creator_mission || "To provide valuable content"}
-- Shooting Preference: ${onboardingData.shooting_preference || "Not specified"}
-        `;
-        
-        // Insert context message after system message but before user messages
-        messageHistory.splice(1, 0, {
-          role: "system",
-          content: `Here is additional information about the creator to help you provide better guidance: ${contextMessage}`
+User Profile Information:
+${Object.entries(contextData)
+  .filter(([key, value]) => value !== null && value !== undefined && !key.includes('id') && key !== 'created_at' && key !== 'updated_at')
+  .map(([key, value]) => `- ${key.replace(/_/g, ' ')}: ${typeof value === 'object' ? JSON.stringify(value) : value}`)
+  .join('\n')}
+`;
+
+        // Add initial context message to the thread
+        await openai.beta.threads.messages.create(currentThreadId, {
+          role: "user",
+          content: `Here's my profile information for context:\n${contextMessage}\n\nI'm ready to start building my content strategy.`,
         });
       }
       
-      console.log("Sending messages to OpenAI:", messageHistory.length);
-      
-      // Call OpenAI API
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini", // Using the modern API with a cost-effective model
-        messages: messageHistory,
-        temperature: 0.7,
-        max_tokens: 1000,
+      // Add the user message to the thread
+      await openai.beta.threads.messages.create(currentThreadId, {
+        role: "user",
+        content: userMessage,
       });
       
-      if (!completion.choices || completion.choices.length === 0) {
-        throw new Error("No response from OpenAI");
+      // Run the assistant
+      const run = await openai.beta.threads.runs.create(currentThreadId, {
+        assistant_id: assistantId,
+      });
+      
+      console.log("Run created:", run.id);
+      
+      // Poll for completion
+      let completedRun;
+      while (true) {
+        // Check run status
+        const runStatus = await openai.beta.threads.runs.retrieve(
+          currentThreadId,
+          run.id
+        );
+        
+        if (runStatus.status === "completed") {
+          completedRun = runStatus;
+          break;
+        } else if (["failed", "cancelled", "expired"].includes(runStatus.status)) {
+          throw new Error(`Run ended with status: ${runStatus.status}`);
+        }
+        
+        // Wait before polling again
+        await new Promise((resolve) => setTimeout(resolve, 1000));
       }
       
-      const assistantMessage = completion.choices[0].message.content;
+      // Get the messages with the completion
+      const messages = await openai.beta.threads.messages.list(currentThreadId);
+      const assistantMessages = messages.data
+        .filter((message) => message.role === "assistant")
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       
-      // Check if message contains completion markers
-      const isCompleted = assistantMessage.includes("[STRATEGY_COMPLETE]") || 
-                         assistantMessage.includes("[COMPLETED]") || 
-                         assistantMessage.includes("[CONTENT_IDEAS]");
+      if (assistantMessages.length === 0) {
+        throw new Error("No assistant messages found");
+      }
       
+      // Get the latest assistant message
+      const latestMessage = assistantMessages[0];
+      const messageContent = latestMessage.content[0].type === "text" 
+        ? latestMessage.content[0].text.value 
+        : "";
+      
+      // Check for completion markers in the message
+      const isCompleted = messageContent.includes("[content_ideas_ready]") || 
+                          messageContent.includes("[CONTENT_IDEAS]") ||
+                          messageContent.includes("[STRATEGY_COMPLETE]") ||
+                          messageContent.includes("[COMPLETED]");
+
       // Extract content ideas if present
       let contentIdeas = [];
+      let jsonMatch = null;
+      
       if (isCompleted) {
         try {
-          // Look for content ideas in the message
-          const ideasMatch = assistantMessage.match(/\[CONTENT_IDEAS\]([\s\S]*?)(?:\[|$)/);
-          if (ideasMatch && ideasMatch[1]) {
-            contentIdeas = ideasMatch[1]
-              .split('\n')
-              .filter(line => line.trim().length > 0)
-              .map(line => line.replace(/^-\s*/, '').trim());
+          // First look for JSON structure in the message
+          jsonMatch = messageContent.match(/```json([\s\S]*?)```/);
+          
+          if (jsonMatch && jsonMatch[1]) {
+            try {
+              const jsonData = JSON.parse(jsonMatch[1].trim());
+              if (jsonData.content_ideas && Array.isArray(jsonData.content_ideas)) {
+                contentIdeas = jsonData.content_ideas;
+                console.log("Content ideas extracted from JSON:", contentIdeas.length);
+              }
+            } catch (jsonError) {
+              console.error("Error parsing JSON content ideas:", jsonError);
+            }
+          }
+          
+          // If no JSON was found or parsing failed, try alternative formats
+          if (contentIdeas.length === 0) {
+            // Look for content ideas in various formats
+            const ideasMatch = messageContent.match(/\[CONTENT_IDEAS\]([\s\S]*?)(?:\[|$)/);
+            if (ideasMatch && ideasMatch[1]) {
+              contentIdeas = ideasMatch[1]
+                .split('\n')
+                .filter(line => line.trim().length > 0)
+                .map(line => line.replace(/^-\s*/, '').trim());
+              console.log("Content ideas extracted from markup:", contentIdeas.length);
+            }
+          }
+          
+          // Save content ideas to the database if we have them
+          if (contentIdeas.length > 0) {
+            const ideaObjects = contentIdeas.map(idea => ({
+              user_id: userId,
+              idea: idea,
+              selected: false
+            }));
+            
+            const { error: saveError } = await supabase
+              .from('content_ideas')
+              .insert(ideaObjects);
+              
+            if (saveError) {
+              console.error("Error saving content ideas:", saveError);
+            } else {
+              console.log("Successfully saved content ideas to database");
+            }
           }
         } catch (error) {
-          console.error("Error extracting content ideas:", error);
+          console.error("Error processing content ideas:", error);
         }
       }
       
@@ -169,14 +226,14 @@ Creator profile information:
         user_id: userId,
         thread_id: currentThreadId,
         role: "assistant",
-        message: assistantMessage
+        message: messageContent
       });
       
       return new Response(
         JSON.stringify({ 
           success: true, 
           threadId: currentThreadId,
-          message: assistantMessage,
+          message: messageContent,
           completed: isCompleted,
           contentIdeas: contentIdeas
         }),

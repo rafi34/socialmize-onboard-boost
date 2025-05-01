@@ -188,25 +188,60 @@ const ReviewIdeas = () => {
     
     try {
       toast({
-        title: "Generating your content plan",
-        description: "We're creating your personalized content strategy based on your selections."
+        title: "Finalizing your content strategy",
+        description: "We're updating your personalized content strategy based on your selections."
       });
       
       // Get selected ideas
       const selectedIdeas = ideas.filter(idea => idea.selected);
       console.log("Selected ideas for content plan:", selectedIdeas);
       
-      // Navigate to dashboard after a short delay to give the impression of processing
+      // Update the strategy profile with the selected ideas
+      const { data: strategyData, error: fetchError } = await supabase
+        .from('strategy_profiles')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+      if (fetchError) {
+        throw fetchError;
+      }
+      
+      if (strategyData) {
+        // Update the strategy profile with the selected ideas
+        const updatedTopicIdeas = selectedIdeas.map(idea => idea.idea);
+        
+        const { error: updateError } = await supabase
+          .from('strategy_profiles')
+          .update({ 
+            topic_ideas: updatedTopicIdeas,
+          })
+          .eq('id', strategyData.id);
+          
+        if (updateError) {
+          throw updateError;
+        }
+        
+        toast({
+          title: "Content strategy updated!",
+          description: "Your content plan has been updated with your selected ideas."
+        });
+      }
+      
+      // Navigate to dashboard after a short delay
       setTimeout(() => {
         navigate('/dashboard');
       }, 1500);
     } catch (error) {
-      console.error('Error generating scripts:', error);
+      console.error('Error generating content plan:', error);
       toast({
-        title: "Error generating scripts",
-        description: "There was a problem generating your scripts.",
+        title: "Error finalizing content plan",
+        description: "There was a problem updating your content strategy.",
         variant: "destructive"
       });
+    } finally {
       setSaving(false);
     }
   };
@@ -244,7 +279,7 @@ const ReviewIdeas = () => {
             className="min-w-[200px] bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Generate My Content
+            Finalize My Strategy
           </Button>
         </div>
         
@@ -341,7 +376,7 @@ const ReviewIdeas = () => {
             className="bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity"
           >
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Generate My Content Plan
+            Finalize My Strategy
           </Button>
         </div>
       </div>

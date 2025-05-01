@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,6 +29,21 @@ interface OnboardingData {
   shooting_preference?: string;
 }
 
+interface StrategyProfileData {
+  id?: string;
+  user_id?: string;
+  summary?: string;
+  phases?: any;
+  weekly_calendar?: any;
+  content_types?: string[];
+  topic_ideas?: string[];
+  experience_level?: string;
+  creator_style?: string;
+  posting_frequency?: string;
+  niche_topic?: string;
+  full_plan_text?: string;
+}
+
 const StrategyChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -37,6 +53,7 @@ const StrategyChat = () => {
   const [completionModalOpen, setCompletionModalOpen] = useState(false);
   const [contentIdeas, setContentIdeas] = useState<string[]>([]);
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
+  const [strategyData, setStrategyData] = useState<StrategyProfileData | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -49,6 +66,9 @@ const StrategyChat = () => {
       
       // Fetch onboarding data
       await fetchOnboardingData();
+      
+      // Fetch strategy profile data
+      await fetchStrategyData();
       
       const initialMessage: ChatMessage = {
         id: "welcome",
@@ -95,6 +115,33 @@ const StrategyChat = () => {
       }
     } catch (error) {
       console.error('Error in fetchOnboardingData:', error);
+    }
+  };
+
+  // Fetch user's strategy profile data
+  const fetchStrategyData = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('strategy_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+      if (error) {
+        console.error('Error fetching strategy data:', error);
+        return;
+      }
+      
+      if (data) {
+        console.log('Fetched strategy profile data:', data);
+        setStrategyData(data);
+      }
+    } catch (error) {
+      console.error('Error in fetchStrategyData:', error);
     }
   };
 
@@ -229,16 +276,14 @@ const StrategyChat = () => {
       // Get or create a thread ID
       const currentThreadId = threadId || "";
       
-      // Save user message to Supabase
-      await saveMessage(userMessage, currentThreadId);
-      
-      // Call the NEW edge function with onboardingData
+      // Call the edge function with onboarding and strategy data
       const { data, error } = await supabase.functions.invoke("generate-strategy-chat", {
         body: {
           userId: user.id,
           userMessage: inputMessage,
           threadId: currentThreadId,
-          onboardingData: onboardingData // Pass onboarding data to the edge function
+          onboardingData: onboardingData,
+          strategyData: strategyData
         }
       });
       
@@ -262,9 +307,6 @@ const StrategyChat = () => {
       setMessages(prev => prev.map(msg => 
         msg.id === tempAssistantId ? { ...assistantMessage, id: `assistant-${Date.now()}` } : msg
       ));
-      
-      // Save assistant message to Supabase
-      await saveMessage(assistantMessage, data.threadId);
       
       // Check for completion
       if (data.completed) {
@@ -293,7 +335,7 @@ const StrategyChat = () => {
   };
   
   const handleViewContentIdeas = () => {
-    // Navigate to the content ideas review page (to be implemented)
+    // Navigate to the content ideas review page
     navigate('/review-ideas');
     setCompletionModalOpen(false);
   };
