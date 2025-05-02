@@ -1,78 +1,55 @@
 
-import React from "react";
+import React, { useState } from "react";
+import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Bot, User } from "lucide-react";
 
 interface ChatBubbleProps {
-  role: string;
+  role: "user" | "assistant" | "system";
   message: string;
   isLoading?: boolean;
 }
 
-export const ChatBubble: React.FC<ChatBubbleProps> = ({ role, message, isLoading = false }) => {
-  // Parse message to handle potential Markdown formatting
-  const formattedMessage = message.split('\n').map((line, i) => (
-    <React.Fragment key={i}>
-      {line}
-      {i < message.split('\n').length - 1 && <br />}
-    </React.Fragment>
-  ));
+export const ChatBubble = ({ role, message, isLoading = false }: ChatBubbleProps) => {
+  const [expanded, setExpanded] = useState(true);
+  const isLongMessage = message.length > 300;
   
+  const toggleExpanded = () => setExpanded(!expanded);
+
   return (
     <div
       className={cn(
-        "flex w-full",
-        role === "user" ? "justify-end" : "justify-start",
-        "my-4 animate-fade-in" // Added vertical spacing and animation
+        "rounded-lg p-4 flex flex-col",
+        role === "user" ? "bg-muted/60 ml-auto max-w-[85%] md:max-w-[70%] shadow-sm" : 
+        role === "assistant" ? "bg-gradient-to-br from-background/80 to-background/30 border border-border/30 mr-auto max-w-[85%] md:max-w-[70%] shadow-lg" : 
+        "bg-background/50 border border-border/30 mx-auto max-w-[90%] text-muted-foreground"
       )}
     >
-      <div
-        className={cn(
-          "flex max-w-[85%] sm:max-w-[75%]",
-          role === "user" ? "flex-row-reverse" : "flex-row",
-          "items-start gap-3" // Increased gap for better spacing
-        )}
-      >
-        {role === "assistant" ? (
-          <Avatar className="mt-0.5 h-9 w-9 border border-primary/10 bg-gradient-to-br from-socialmize-purple to-socialmize-dark-purple shadow-md">
-            <AvatarImage 
-              src="/lovable-uploads/195faaef-b539-44ba-a94a-d2449f0cd0c3.png" 
-              alt="AI Assistant" 
-              className="h-full w-full" 
-              style={{backgroundColor: "transparent"}}
-            />
-            <AvatarFallback className="text-primary-foreground">
-              <Bot size={18} />
-            </AvatarFallback>
-          </Avatar>
-        ) : (
-          <Avatar className="mt-0.5 h-9 w-9 border border-primary/10 bg-gradient-to-br from-socialmize-green to-socialmize-blue shadow-md">
-            <AvatarFallback className="text-primary-foreground">
-              <User size={18} />
-            </AvatarFallback>
-          </Avatar>
-        )}
-        
-        <div
-          className={cn(
-            "rounded-2xl px-4 py-3 text-sm md:text-base shadow-md", // Increased padding and rounded corners
-            role === "user"
-              ? "bg-gradient-to-br from-socialmize-purple to-socialmize-dark-purple text-white"
-              : "glass-panel border border-border/30 text-foreground",
-            isLoading && "animate-pulse"
-          )}
-        >
-          <div className="leading-relaxed">
-            {formattedMessage}
+      {/* Message Content */}
+      <div className={cn("prose prose-sm dark:prose-invert max-w-none", !expanded && isLongMessage && "line-clamp-3")}>
+        {isLoading ? (
+          <div className="flex items-center space-x-2">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <span className="text-muted-foreground">{message}</span>
           </div>
-          {isLoading && (
-            <span className="inline-block ml-1">
-              <span className="dot-typing"></span>
-            </span>
-          )}
-        </div>
+        ) : (
+          <ReactMarkdown>{message}</ReactMarkdown>
+        )}
       </div>
+      
+      {/* Expand/Collapse Button for long messages */}
+      {isLongMessage && (
+        <button 
+          className="text-xs text-muted-foreground hover:text-foreground flex items-center self-end mt-2"
+          onClick={toggleExpanded}
+        >
+          {expanded ? (
+            <>Show less <ChevronUp className="h-3 w-3 ml-1" /></>
+          ) : (
+            <>Show more <ChevronDown className="h-3 w-3 ml-1" /></>
+          )}
+        </button>
+      )}
     </div>
   );
 };
