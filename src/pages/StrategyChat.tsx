@@ -379,8 +379,8 @@ const StrategyChat = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-br from-socialmize-dark-purple to-socialmize-purple bg-clip-text text-transparent flex items-center">
-              <Sparkles className="h-5 w-5 mr-2 text-socialmize-purple" />
+            <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-br from-[#0540F2] to-[#446FF2] bg-clip-text text-transparent flex items-center">
+              <Sparkles className="h-5 w-5 mr-2 text-[#446FF2]" />
               Strategy Session
             </h1>
             <p className="text-sm md:text-base text-muted-foreground">Let's build your personalized content strategy</p>
@@ -431,7 +431,7 @@ const StrategyChat = () => {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               placeholder="Type your message..."
-              className="resize-none min-h-[60px] md:min-h-[80px] premium-input border-0 focus-visible:ring-1 focus-visible:ring-socialmize-purple/50 bg-transparent rounded-tl-lg rounded-tr-lg"
+              className="resize-none min-h-[60px] md:min-h-[80px] premium-input border-0 focus-visible:ring-1 focus-visible:ring-[#0540F2]/50 bg-transparent rounded-tl-lg rounded-tr-lg"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -444,7 +444,7 @@ const StrategyChat = () => {
               <Button 
                 onClick={handleSendMessage}
                 disabled={isLoading || !inputMessage.trim()}
-                className="bg-gradient-to-br from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-all shadow-md"
+                className="bg-gradient-to-br from-[#1FBF57] to-[#1CB955] hover:opacity-90 transition-all shadow-md"
                 size={isMobile ? "sm" : "default"}
               >
                 <Send className={`h-4 w-4 ${isMobile ? 'mr-0' : 'mr-2'}`} />
