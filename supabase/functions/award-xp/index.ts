@@ -39,6 +39,9 @@ serve(async (req) => {
         case 'CONTENT_MISSION_COMPLETED':
           xpAmount = 50;
           break;
+        case 'CONTENT_IDEA_COMPLETED':
+          xpAmount = 25;
+          break;
         case 'RECORD_REMINDER':
           xpAmount = 25;
           break;

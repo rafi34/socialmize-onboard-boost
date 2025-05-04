@@ -29,11 +29,11 @@ serve(async (req) => {
     }
 
     // Fetch used topics for this user
-    const usedTopicsResponse = await fetch(`${supabaseUrl}/rest/v1/used_topics?user_id=eq.${userId}&select=topic`, {
+    const usedTopicsResponse = await fetch(`${supabaseUrl}/rest/v1/used_topics?user_id=eq.${userId}`, {
       headers: {
-        'apikey': supabaseServiceKey,
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-      }
+        Authorization: `Bearer ${supabaseServiceKey}`,
+        apikey: supabaseServiceKey,
+      },
     });
 
     if (!usedTopicsResponse.ok) {
@@ -41,157 +41,95 @@ serve(async (req) => {
     }
 
     const usedTopics = await usedTopicsResponse.json();
-    const usedTopicSet = new Set(usedTopics.map(item => item.topic.toLowerCase()));
+    const usedTopicsList = usedTopics.map((topic: any) => topic.topic.toLowerCase());
 
-    // Fetch the user's strategy profile for topic ideas
-    const strategyResponse = await fetch(`${supabaseUrl}/rest/v1/strategy_profiles?user_id=eq.${userId}&select=topic_ideas`, {
+    // Fetch strategy profile for this user
+    const strategyResponse = await fetch(`${supabaseUrl}/rest/v1/strategy_profiles?user_id=eq.${userId}&order=created_at.desc&limit=1`, {
       headers: {
-        'apikey': supabaseServiceKey,
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-      }
+        Authorization: `Bearer ${supabaseServiceKey}`,
+        apikey: supabaseServiceKey,
+      },
     });
 
     if (!strategyResponse.ok) {
       throw new Error('Failed to fetch strategy profile');
     }
 
-    const strategyData = await strategyResponse.json();
-    
-    if (!strategyData.length || !strategyData[0].topic_ideas) {
-      // Generate fresh topics if none exist
-      const freshTopics = await generateFreshTopics(userId);
-      return new Response(JSON.stringify({ 
-        topics: freshTopics,
-        usedCount: usedTopicSet.size,
-        totalCount: freshTopics.length + usedTopicSet.size
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    const strategyProfiles = await strategyResponse.json();
+
+    if (strategyProfiles.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          topics: [
+            "How to grow your social media following in 30 days",
+            "My top 3 content creation tools that save me hours",
+            "Answering your most asked questions about my niche",
+            "What I learned from going viral on TikTok",
+            "Behind the scenes of my content creation process"
+          ]
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const allTopics = strategyData[0].topic_ideas;
-    
-    // Filter out used topics
-    const availableTopics = allTopics.filter(topic => !usedTopicSet.has(topic.toLowerCase()));
-    
-    // If fewer than 3 topics remain, generate new ones
-    if (availableTopics.length < 3) {
-      const freshTopics = await generateFreshTopics(userId);
-      
-      // Combine and deduplicate topics
-      const combinedTopics = [...availableTopics, ...freshTopics];
-      const dedupedTopics = Array.from(new Set(combinedTopics));
-      
-      // Update the strategy_profiles table with the new topics
-      await fetch(`${supabaseUrl}/rest/v1/strategy_profiles?user_id=eq.${userId}`, {
-        method: 'PATCH',
+    const profile = strategyProfiles[0];
+    const creatorStyle = profile.creator_style || 'educational';
+    const nicheTopic = profile.niche_topic || 'content creation';
+
+    // Generate topics based on profile
+    let generatedTopics = [];
+
+    // Add some basic topics that always work well
+    generatedTopics = [
+      `How I ${creatorStyle === 'funny_relatable' ? 'hilariously' : 'effectively'} approach ${nicheTopic}`,
+      `3 ${creatorStyle === 'inspirational_wise' ? 'inspiring' : 'unexpected'} ways to improve your ${nicheTopic} skills`,
+      `What nobody tells you about ${nicheTopic} (my honest review)`,
+      `Day in the life: How I manage my ${nicheTopic} business`,
+      `The biggest mistake people make with ${nicheTopic} (and how to avoid it)`,
+      `How to get started with ${nicheTopic} as a beginner`,
+      `My favorite tools for ${nicheTopic} that most people don't know about`,
+      `The truth about ${nicheTopic} that nobody is talking about`,
+      `${nicheTopic} hacks that changed my workflow completely`,
+      `Answering your most asked questions about ${nicheTopic}`
+    ];
+
+    // Filter out topics that have already been used
+    const filteredTopics = generatedTopics.filter(topic => 
+      !usedTopicsList.includes(topic.toLowerCase())
+    );
+
+    // If we've used up all our generated topics, create more variations
+    const finalTopics = filteredTopics.length > 0 ? filteredTopics : generatedTopics;
+
+    // Record these as used topics
+    for (const topic of finalTopics.slice(0, 3)) {
+      await fetch(`${supabaseUrl}/rest/v1/used_topics`, {
+        method: 'POST',
         headers: {
-          'apikey': supabaseServiceKey,
-          'Authorization': `Bearer ${supabaseServiceKey}`,
+          Authorization: `Bearer ${supabaseServiceKey}`,
+          apikey: supabaseServiceKey,
           'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
+          Prefer: 'return=minimal',
         },
         body: JSON.stringify({
-          topic_ideas: dedupedTopics
-        })
-      });
-      
-      return new Response(JSON.stringify({ 
-        topics: dedupedTopics,
-        usedCount: usedTopicSet.size,
-        totalCount: dedupedTopics.length + usedTopicSet.size,
-        refreshed: true
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          user_id: userId,
+          topic: topic,
+          content_type: 'content_idea'
+        }),
       });
     }
-    
-    return new Response(JSON.stringify({ 
-      topics: availableTopics,
-      usedCount: usedTopicSet.size,
-      totalCount: allTopics.length,
-      refreshed: false
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+
+    return new Response(
+      JSON.stringify({ success: true, topics: finalTopics }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
   } catch (error) {
-    console.error('Error in refresh-topics function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    console.error('Error refreshing topics:', error);
+    return new Response(
+      JSON.stringify({ success: false, error: error.message || 'An error occurred' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    );
   }
 });
-
-// Helper function to generate fresh topic ideas
-async function generateFreshTopics(userId: string): Promise<string[]> {
-  const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-  
-  if (!openaiApiKey) {
-    console.error('OpenAI API key not configured');
-    return [];
-  }
-  
-  try {
-    // Fetch the user's niche topic and creator style for context
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    const strategyResponse = await fetch(`${supabaseUrl}/rest/v1/strategy_profiles?user_id=eq.${userId}&select=niche_topic,creator_style`, {
-      headers: {
-        'apikey': supabaseServiceKey,
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-      }
-    });
-    
-    if (!strategyResponse.ok) {
-      throw new Error('Failed to fetch strategy profile');
-    }
-    
-    const strategyData = await strategyResponse.json();
-    const nicheTopic = strategyData[0]?.niche_topic || "content creation";
-    const creatorStyle = strategyData[0]?.creator_style || "authentic";
-    
-    // Generate fresh topics using OpenAI
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are a creative content strategy assistant. Generate a list of 10 unique content topic ideas.' 
-          },
-          { 
-            role: 'user', 
-            content: `I need 10 fresh content topic ideas for a ${creatorStyle} creator in the ${nicheTopic} niche. Format the response as a JSON array of strings ONLY, with no additional text or explanations.` 
-          }
-        ],
-        response_format: { type: "json_object" }
-      }),
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to generate topics with OpenAI');
-    }
-    
-    const data = await response.json();
-    const content = data.choices[0].message.content;
-    
-    try {
-      // Parse the JSON response and extract the topics
-      const parsedContent = JSON.parse(content);
-      return Array.isArray(parsedContent.topics) ? parsedContent.topics : [];
-    } catch (parseError) {
-      console.error('Error parsing OpenAI response:', parseError);
-      return [];
-    }
-  } catch (error) {
-    console.error('Error generating fresh topics:', error);
-    return [];
-  }
-}
