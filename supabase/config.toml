@@ -76,4 +76,4 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.get-content-idea-details]
-verify_jwt = true
+verify_jwt = false

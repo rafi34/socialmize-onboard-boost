@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -17,7 +18,9 @@ export const WeeklyConsistencyCard = () => {
   const weekStart = new Date(today.setDate(diff));
   
   useEffect(() => {
-    fetchWeeklyXp();
+    if (user) {
+      fetchWeeklyXp();
+    }
   }, [user]);
 
   const fetchWeeklyXp = async () => {
@@ -33,8 +36,8 @@ export const WeeklyConsistencyCard = () => {
       
       if (error) throw error;
       
-      setWeeklyXp(data.weeklyXp || 0);
-      setStreak(data.streak || 0);
+      setWeeklyXp(data?.xp || 0);
+      setStreak(data?.streak || 0);
     } catch (err) {
       console.error('Error fetching weekly XP:', err);
     } finally {

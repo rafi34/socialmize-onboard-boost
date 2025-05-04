@@ -140,7 +140,7 @@ serve(async (req) => {
     }
     
     // If a reminder ID was provided, mark it as completed
-    if (reminderId) {
+    if (reminderId && type === 'REMINDER_COMPLETED') {
       const { error: reminderUpdateError } = await supabase
         .from('reminders')
         .update({ 
@@ -153,6 +153,19 @@ serve(async (req) => {
       if (reminderUpdateError) {
         console.error("Error updating reminder:", reminderUpdateError);
         // Continue execution even if reminder update fails
+      }
+    } 
+    // If this is for a content idea completion and we have a reminderId (which is the idea ID)
+    else if (type === 'CONTENT_IDEA_COMPLETED' && reminderId) {
+      const { error: ideaUpdateError } = await supabase
+        .from('content_ideas')
+        .update({ selected: true })
+        .eq('id', reminderId)
+        .eq('user_id', userId);
+      
+      if (ideaUpdateError) {
+        console.error("Error updating content idea:", ideaUpdateError);
+        // Continue execution even if content idea update fails
       }
     }
     

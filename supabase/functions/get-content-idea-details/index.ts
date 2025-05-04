@@ -55,11 +55,11 @@ serve(async (req) => {
 
     // Generate hooks based on format and content
     let hook = '';
-    if (format === 'talking_head') {
+    if (format === 'talking_head' || format === 'Talking Head') {
       hook = `Have you ever wondered ${content.toLowerCase().includes('how') ? content.toLowerCase() : 'how to ' + content.toLowerCase()}? In this video, I'm going to show you exactly how I do it...`;
-    } else if (format === 'carousel') {
+    } else if (format === 'carousel' || format === 'Carousel') {
       hook = `${content} - Follow these ${Math.floor(Math.random() * 5) + 3} steps to see amazing results!`;
-    } else if (format === 'meme') {
+    } else if (format === 'meme' || format === 'Meme') {
       hook = `When people try ${content} for the first time... 😂`;
     } else {
       hook = `Want to know the secrets behind ${content}? Let me break it down for you...`;
@@ -76,11 +76,11 @@ serve(async (req) => {
 
     // Generate call-to-action based on format
     let cta = '';
-    if (format === 'talking_head') {
+    if (format === 'talking_head' || format === 'Talking Head') {
       cta = `Drop a comment below with your biggest question about ${content}!`;
-    } else if (format === 'carousel') {
+    } else if (format === 'carousel' || format === 'Carousel') {
       cta = `Save this post for later and tag someone who needs to see this!`;
-    } else if (format === 'meme') {
+    } else if (format === 'meme' || format === 'Meme') {
       cta = `Tag a friend who can relate to this! 😂`;
     } else {
       cta = `Like if this was helpful and follow for more content about ${content}`;
@@ -88,11 +88,11 @@ serve(async (req) => {
 
     // Generate shooting tips based on format and difficulty
     let shootTips = '';
-    if (format === 'talking_head') {
+    if (format === 'talking_head' || format === 'Talking Head') {
       shootTips = `Film in good lighting with clear audio. Keep it under ${difficulty === 'Easy' ? '60' : '90'} seconds. Start with an attention-grabbing question.`;
-    } else if (format === 'carousel') {
+    } else if (format === 'carousel' || format === 'Carousel') {
       shootTips = `Use consistent templates for each slide. Limit text to 1-2 sentences per slide. Include a compelling cover image.`;
-    } else if (format === 'meme') {
+    } else if (format === 'meme' || format === 'Meme') {
       shootTips = `Keep it simple and relatable. Use trending formats but add your unique twist. Ensure text is easy to read.`;
     } else {
       shootTips = `Plan your shots beforehand. Use a tripod for stability. Consider adding captions to improve accessibility.`;
@@ -105,7 +105,7 @@ serve(async (req) => {
       talking_points: talkingPoints,
       cta,
       shoot_tips: shootTips,
-      edit_help_link: format === 'talking_head' ? 'https://support.socialmize.app/editing-tutorial' : null
+      edit_help_link: format === 'talking_head' || format === 'Talking Head' ? 'https://support.socialmize.app/editing-tutorial' : null
     };
 
     return new Response(

@@ -60,7 +60,7 @@ export const MissionCard = ({
         const { data, error } = await supabase.functions.invoke('award-xp', {
           body: { 
             userId: user.id, 
-            type: 'CONTENT_MISSION_COMPLETED', 
+            type: 'CONTENT_IDEA_COMPLETED', 
             amount: xpReward 
           }
         });
@@ -178,11 +178,11 @@ export const MissionCard = ({
                 id={`mission-${id}`}
                 disabled={completing}
                 className={selected ? "text-socialmize-purple border-socialmize-purple" : ""}
+                onClick={handleMarkComplete}
               />
               <label
                 htmlFor={`mission-${id}`}
                 className="text-xs cursor-pointer"
-                onClick={handleMarkComplete}
               >
                 {selected ? "Completed" : "Complete"}
               </label>

@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
@@ -63,18 +62,19 @@ export function ContentIdeaModal({
         setIsSelected(true);
       } else {
         // Otherwise handle it here
-        const { data, error } = await supabase
+        const { error: updateError } = await supabase
           .from('content_ideas')
           .update({ selected: true })
           .eq('id', idea.id)
           .eq('user_id', user.id);
 
-        if (error) throw error;
+        if (updateError) throw updateError;
         
         // Award XP for completing
         const { data: xpData, error: xpError } = await supabase.functions.invoke('award-xp', {
           body: { 
             userId: user.id, 
+            reminderId: idea.id,
             type: 'CONTENT_IDEA_COMPLETED', 
             amount: idea.xp_reward || 25 
           }
