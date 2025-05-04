@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { subDays, differenceInDays } from "date-fns";
 
 interface WeeklyXPResponse {
-  success: boolean;
+  success?: boolean;
   xp: number;
   source?: string;
   error?: string;
@@ -41,6 +41,7 @@ export const WeeklyConsistencyCard = () => {
 
         if (remindersError) throw remindersError;
 
+        // Explicitly define the return type of the invoke function
         const { data: xpData, error: xpError } = await supabase.functions.invoke<WeeklyXPResponse>('get-weekly-xp', {
           body: {
             userId: user.id,
@@ -143,3 +144,4 @@ export const WeeklyConsistencyCard = () => {
     </Card>
   );
 };
+

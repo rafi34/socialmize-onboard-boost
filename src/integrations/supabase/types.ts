@@ -68,25 +68,34 @@ export type Database = {
       }
       content_ideas: {
         Row: {
+          difficulty: string | null
+          format_type: string | null
           generated_at: string | null
           id: string
           idea: string
           selected: boolean | null
           user_id: string
+          xp_reward: number | null
         }
         Insert: {
+          difficulty?: string | null
+          format_type?: string | null
           generated_at?: string | null
           id?: string
           idea: string
           selected?: boolean | null
           user_id: string
+          xp_reward?: number | null
         }
         Update: {
+          difficulty?: string | null
+          format_type?: string | null
           generated_at?: string | null
           id?: string
           idea?: string
           selected?: boolean | null
           user_id?: string
+          xp_reward?: number | null
         }
         Relationships: []
       }

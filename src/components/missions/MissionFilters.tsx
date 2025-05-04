@@ -33,7 +33,9 @@ export const MissionFilters = ({
             <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
             <TabsTrigger value="Video" className="text-xs">Video</TabsTrigger>
             <TabsTrigger value="Carousel" className="text-xs">Carousel</TabsTrigger>
-            <TabsTrigger value="Talking Head" className="text-xs">Talking Head</TabsTrigger>
+            <TabsTrigger value="Talking Head" className="text-xs whitespace-nowrap">Talking</TabsTrigger>
+            <TabsTrigger value="Meme" className="text-xs">Meme</TabsTrigger>
+            <TabsTrigger value="Duet" className="text-xs">Duet</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>

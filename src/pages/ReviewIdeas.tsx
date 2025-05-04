@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,6 +16,8 @@ interface ContentIdea {
   format_type?: string;
   difficulty?: string;
   xp_reward?: number;
+  generated_at?: string;
+  user_id: string;
 }
 
 const ReviewIdeas = () => {
@@ -144,15 +145,11 @@ const ReviewIdeas = () => {
 
       // Call the edge function to generate new topics
       const { data, error } = await supabase.functions.invoke('refresh-topics', {
-        body: { user_id: user.id }
+        body: { userId: user.id } // Changed from user_id to userId to match function parameter
       });
       
       if (error) {
         throw error;
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || "Failed to generate content ideas");
       }
 
       // Get the topics from the response
