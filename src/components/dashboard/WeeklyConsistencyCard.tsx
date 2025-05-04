@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, CalendarCheck, Flame } from "lucide-react";
@@ -8,7 +9,10 @@ import { format, subDays, differenceInDays } from "date-fns";
 
 // Define the type for the edge function response
 interface WeeklyXPResponse {
+  success: boolean;
   xp: number;
+  source?: string;
+  error?: string;
 }
 
 export const WeeklyConsistencyCard = () => {
@@ -40,7 +44,7 @@ export const WeeklyConsistencyCard = () => {
         if (remindersError) throw remindersError;
         
         // For XP events, explicitly type the response
-        const { data: xpData, error: xpError } = await supabase.functions.invoke<WeeklyXPResponse>('get-weekly-xp', {
+        const { data: xpResponse, error: xpError } = await supabase.functions.invoke<WeeklyXPResponse>('get-weekly-xp', {
           body: {
             userId: user.id,
             startDate: startOfWeek.toISOString()
@@ -77,8 +81,8 @@ export const WeeklyConsistencyCard = () => {
           }
         }
         
-        // Calculate total XP gained this week
-        const weeklyXP = xpData?.xp || 0; // Use the result from the edge function
+        // Calculate total XP gained this week using the properly typed response
+        const weeklyXP = xpResponse?.xp || 0;
         
         setWeeklyData({
           completedTasks: completedReminders ? completedReminders.length : 0,
