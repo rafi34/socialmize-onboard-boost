@@ -41,8 +41,8 @@ export const WeeklyConsistencyCard = () => {
 
         if (remindersError) throw remindersError;
 
-        // Explicitly define the return type of the invoke function
-        const { data: xpData, error: xpError } = await supabase.functions.invoke<WeeklyXPResponse>('get-weekly-xp', {
+        // Remove the explicit generic type parameter to avoid the excessive type depth error
+        const { data: xpData, error: xpError } = await supabase.functions.invoke('get-weekly-xp', {
           body: {
             userId: user.id,
             startDate: startOfWeek.toISOString()
@@ -144,4 +144,3 @@ export const WeeklyConsistencyCard = () => {
     </Card>
   );
 };
-
