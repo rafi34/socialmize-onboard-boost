@@ -120,15 +120,13 @@ const ReminderSettings = ({ settings, setSettings, loading }: ReminderSettingsPr
     
     setSaving(true);
     try {
-      // Use a PATCH operation instead of upsert to update only the specific fields
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          google_calendar_sync: preferences.googleCalendarSync,
-          preferred_recording_days: preferences.preferredRecordingDays,
-          preferred_reminder_time: preferences.preferredReminderTime + ':00' // Add seconds
-        })
-        .eq('id', user.id);
+      // Use RPC to safely update profiles with these new fields
+      const { error } = await supabase.rpc('update_profile_preferences', {
+        user_id: user.id,
+        calendar_sync: preferences.googleCalendarSync,
+        recording_days: preferences.preferredRecordingDays,
+        reminder_time: preferences.preferredReminderTime + ':00' // Add seconds
+      });
       
       if (error) throw error;
       
