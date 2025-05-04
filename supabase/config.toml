@@ -85,7 +85,7 @@ secret = ""
 redirect_uri = ""
 url = ""
 
-# Configure Edge Functions - commenting to highlight which function uses which Assistant ID
+# Configure Edge Functions
 [functions]
 [functions.generate-strategy]
 # Uses ASSISTANT_ID for the strategy chat feature
@@ -109,4 +109,13 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.refresh-topics]
+verify_jwt = true
+
+[functions.award-xp]
+verify_jwt = true
+
+[functions.generate-reminders]
+verify_jwt = true
+
+[functions.get-weekly-xp]
 verify_jwt = true

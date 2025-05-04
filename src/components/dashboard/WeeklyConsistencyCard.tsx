@@ -35,14 +35,16 @@ export const WeeklyConsistencyCard = () => {
           
         if (remindersError) throw remindersError;
         
-        // Get XP gained this week
-        const { data: xpData, error: xpError } = await supabase
-          .from('xp_events')
-          .select('amount')
-          .eq('user_id', user.id)
-          .gte('created_at', startOfWeek.toISOString());
-          
-        if (xpError) throw xpError;
+        // For XP events, we'll use direct RPC call since the table might not be in the types
+        const { data: xpData, error: xpError } = await supabase.rpc('get_weekly_xp', { 
+          user_id_param: user.id, 
+          start_date_param: startOfWeek.toISOString() 
+        });
+        
+        if (xpError) {
+          console.error("XP data error:", xpError);
+          // Fallback to zero XP if we can't fetch it
+        }
         
         // Get streak information from progress tracking
         const { data: progressData, error: progressError } = await supabase
@@ -70,7 +72,7 @@ export const WeeklyConsistencyCard = () => {
         }
         
         // Calculate total XP gained this week
-        const weeklyXP = xpData ? xpData.reduce((sum, event) => sum + event.amount, 0) : 0;
+        const weeklyXP = xpData || 0; // Use the result from the RPC call
         
         setWeeklyData({
           completedTasks: completedReminders ? completedReminders.length : 0,

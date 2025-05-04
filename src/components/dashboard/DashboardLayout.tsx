@@ -11,7 +11,7 @@ import { WeeklyConsistencyCard } from "./WeeklyConsistencyCard";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { StrategyData, ProgressData, ReminderData } from "@/types/dashboard";
+import { StrategyData, ProgressData, ReminderData, GeneratedScript } from "@/types/dashboard";
 
 export const DashboardLayout = () => {
   const [loading, setLoading] = useState(true);
@@ -19,6 +19,7 @@ export const DashboardLayout = () => {
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [reminder, setReminder] = useState<ReminderData | null>(null);
   const [activeTab, setActiveTab] = useState("today");
+  const [scripts, setScripts] = useState<GeneratedScript[] | null>(null);
   const { user } = useAuth();
   
   useEffect(() => {
@@ -66,6 +67,16 @@ export const DashboardLayout = () => {
       
       if (reminderError) throw reminderError;
       
+      // Fetch recent scripts
+      const { data: scriptsData, error: scriptsError } = await supabase
+        .from('generated_scripts')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+        
+      if (scriptsError) throw scriptsError;
+      
       // Prepare data for components
       if (strategyData) {
         setStrategy({
@@ -97,6 +108,10 @@ export const DashboardLayout = () => {
         setReminder(reminderData as ReminderData);
       }
       
+      if (scriptsData) {
+        setScripts(scriptsData as GeneratedScript[]);
+      }
+      
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -123,7 +138,7 @@ export const DashboardLayout = () => {
 
   return (
     <div className="container mx-auto py-10 px-4 max-w-7xl">
-      <CreatorSummaryHeader loading={loading} />
+      <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
       
       <div className="flex flex-col md:flex-row gap-6 mt-8">
         <div className="w-full md:w-2/3 space-y-6">
@@ -153,7 +168,7 @@ export const DashboardLayout = () => {
               <div className="space-y-6">
                 <TodaysMissionCard strategy={strategy} loading={loading} />
                 <WeeklyCalendarGrid strategy={strategy} loading={loading} />
-                <ScriptPreviewsSection loading={loading} />
+                <ScriptPreviewsSection scripts={scripts} loading={loading} />
               </div>
             )}
             

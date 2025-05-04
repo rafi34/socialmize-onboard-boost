@@ -401,6 +401,15 @@ export type Database = {
           user_id: string
         }[]
       }
+      update_profile_preferences: {
+        Args: {
+          user_id: string
+          calendar_sync: boolean
+          recording_days: string[]
+          reminder_time: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
