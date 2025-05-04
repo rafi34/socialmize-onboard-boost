@@ -6,6 +6,11 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, differenceInDays } from "date-fns";
 
+// Define the type for the edge function response
+interface WeeklyXPResponse {
+  xp: number;
+}
+
 export const WeeklyConsistencyCard = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -34,9 +39,8 @@ export const WeeklyConsistencyCard = () => {
           
         if (remindersError) throw remindersError;
         
-        // For XP events, we'll use our edge function with explicit type annotations
-        // This fixes the TypeScript error by being explicit about the response type
-        const { data: xpData, error: xpError } = await supabase.functions.invoke<{ xp: number }>('get-weekly-xp', {
+        // For XP events, explicitly type the response
+        const { data: xpData, error: xpError } = await supabase.functions.invoke<WeeklyXPResponse>('get-weekly-xp', {
           body: {
             userId: user.id,
             startDate: startOfWeek.toISOString()
