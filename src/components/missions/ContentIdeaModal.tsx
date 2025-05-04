@@ -1,10 +1,10 @@
+
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CalendarPlus, CheckCircle, Repeat } from "lucide-react";
+import { CalendarPlus, CheckCircle, Loader2, Repeat } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,10 +29,17 @@ interface ContentIdeaModalProps {
   open: boolean;
   onClose: () => void;
   idea: ContentIdea | null;
+  isLoading?: boolean;
   onComplete?: (id: string) => Promise<void>;
 }
 
-export function ContentIdeaModal({ open, onClose, idea, onComplete }: ContentIdeaModalProps) {
+export function ContentIdeaModal({ 
+  open, 
+  onClose, 
+  idea, 
+  isLoading = false, 
+  onComplete 
+}: ContentIdeaModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -143,37 +150,45 @@ export function ContentIdeaModal({ open, onClose, idea, onComplete }: ContentIde
     }, 2000);
   };
 
-  if (!idea) return null;
+  // Loading content for the modal
+  const LoadingContent = (
+    <div className="flex flex-col items-center justify-center py-12">
+      <Loader2 className="h-8 w-8 animate-spin text-socialmize-purple mb-4" />
+      <p className="text-sm text-muted-foreground">Loading content details...</p>
+    </div>
+  );
+
+  if (!idea && !isLoading) return null;
 
   // Content is shared between dialog and drawer
-  const content = (
+  const content = isLoading ? LoadingContent : (
     <>
       <div className="flex flex-wrap gap-2 mb-4">
         <Badge variant="secondary" className="text-socialmize-purple bg-socialmize-purple/10">
-          {idea.format || "Content"}
+          {idea?.format || "Content"}
         </Badge>
         <Badge variant="outline" className={`
-          ${idea.difficulty === "Easy" ? "bg-green-100 text-green-800" : 
-           idea.difficulty === "Medium" ? "bg-yellow-100 text-yellow-800" : 
+          ${idea?.difficulty === "Easy" ? "bg-green-100 text-green-800" : 
+           idea?.difficulty === "Medium" ? "bg-yellow-100 text-yellow-800" : 
            "bg-red-100 text-red-800"}
         `}>
-          {idea.difficulty || "Standard"}
+          {idea?.difficulty || "Standard"}
         </Badge>
         <Badge className="bg-socialmize-purple text-white">
-          +{idea.xp_reward || 25} XP
+          +{idea?.xp_reward || 25} XP
         </Badge>
       </div>
 
-      <p className="text-md font-medium mb-4">{idea.idea}</p>
+      <p className="text-md font-medium mb-4">{idea?.idea}</p>
 
-      {idea.hook && (
+      {idea?.hook && (
         <div className="mb-4">
           <h3 className="font-medium text-sm mb-1">📢 Hook</h3>
           <p className="text-sm text-muted-foreground bg-socialmize-purple/5 p-3 rounded-md">{idea.hook}</p>
         </div>
       )}
 
-      {idea.talking_points && idea.talking_points.length > 0 && (
+      {idea?.talking_points && idea?.talking_points.length > 0 && (
         <div className="mb-4">
           <h3 className="font-medium text-sm mb-1">📝 Talking Points</h3>
           <ul className="list-disc ml-6 text-sm text-muted-foreground">
@@ -184,21 +199,21 @@ export function ContentIdeaModal({ open, onClose, idea, onComplete }: ContentIde
         </div>
       )}
 
-      {idea.cta && (
+      {idea?.cta && (
         <div className="mb-4">
           <h3 className="font-medium text-sm mb-1">🎯 Call to Action</h3>
           <p className="text-sm text-muted-foreground">{idea.cta}</p>
         </div>
       )}
 
-      {idea.shoot_tips && (
+      {idea?.shoot_tips && (
         <div className="mb-4">
           <h3 className="font-medium text-sm mb-1">🎥 Shooting Tips</h3>
           <p className="text-sm text-muted-foreground bg-gray-50 p-3 rounded-md">{idea.shoot_tips}</p>
         </div>
       )}
 
-      {idea.edit_help_link && (
+      {idea?.edit_help_link && (
         <a
           href={idea.edit_help_link}
           target="_blank"
@@ -227,7 +242,7 @@ export function ContentIdeaModal({ open, onClose, idea, onComplete }: ContentIde
             size="sm"
           >
             {isCompleting ? (
-              "Saving..."
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</>
             ) : (
               <><CheckCircle className="h-4 w-4 mr-2" /> Mark Complete</>
             )}
@@ -264,7 +279,7 @@ export function ContentIdeaModal({ open, onClose, idea, onComplete }: ContentIde
         <DrawerContent>
           <DrawerHeader className="border-b pb-2 mb-4">
             <DrawerTitle className="text-lg font-semibold">
-              {idea.title || idea.idea.substring(0, 40) + (idea.idea.length > 40 ? "..." : "")}
+              {isLoading ? "Loading Content..." : (idea?.title || idea?.idea?.substring(0, 40) + (idea?.idea?.length > 40 ? "..." : ""))}
             </DrawerTitle>
           </DrawerHeader>
           <div className="px-4 pb-8">
@@ -280,7 +295,7 @@ export function ContentIdeaModal({ open, onClose, idea, onComplete }: ContentIde
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogTitle className="text-lg font-semibold">
-          {idea.title || idea.idea.substring(0, 40) + (idea.idea.length > 40 ? "..." : "")}
+          {isLoading ? "Loading Content..." : (idea?.title || idea?.idea?.substring(0, 40) + (idea?.idea?.length > 40 ? "..." : ""))}
         </DialogTitle>
         {content}
       </DialogContent>

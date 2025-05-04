@@ -1,9 +1,10 @@
+
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CalendarPlus, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { CalendarPlus, CheckCircle, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,6 +32,8 @@ export const MissionCard = ({
   const [expanded, setExpanded] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [ideaDetails, setIdeaDetails] = useState<any>(null);
   const { user } = useAuth();
   
   const handleToggleExpand = () => {
@@ -84,8 +87,39 @@ export const MissionCard = ({
     }
   };
   
-  const handleShowMore = () => {
-    setShowModal(true);
+  const handleShowMore = async () => {
+    if (!user) return;
+    
+    setLoadingDetails(true);
+    try {
+      // Fetch detailed content for this idea
+      const { data, error } = await supabase.functions.invoke('get-content-idea-details', {
+        body: { 
+          ideaId: id,
+          userId: user.id
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.success && data?.idea) {
+        setIdeaDetails(data.idea);
+        setShowModal(true);
+      } else {
+        throw new Error('Failed to load content details');
+      }
+    } catch (error) {
+      console.error('Error loading content details:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load content details. Please try again.",
+        variant: "destructive"
+      });
+      // Fall back to opening the modal with basic info
+      setShowModal(true);
+    } finally {
+      setLoadingDetails(false);
+    }
   };
   
   const formatIconMap = {
@@ -127,8 +161,11 @@ export const MissionCard = ({
               size="sm" 
               onClick={expanded ? handleToggleExpand : handleShowMore}
               className="text-xs flex items-center gap-1 px-2"
+              disabled={loadingDetails}
             >
-              {expanded ? (
+              {loadingDetails ? (
+                <>Loading <Loader2 className="h-3 w-3 animate-spin" /></>
+              ) : expanded ? (
                 <>Less <ChevronUp className="h-3 w-3" /></>
               ) : (
                 <>More <ChevronDown className="h-3 w-3" /></>
@@ -193,23 +230,15 @@ export const MissionCard = ({
       <ContentIdeaModal
         open={showModal}
         onClose={() => setShowModal(false)}
-        idea={{
+        idea={ideaDetails || {
           id,
           idea,
           format,
           difficulty,
           xp_reward: xpReward,
-          selected,
-          shoot_tips: "Film in good lighting. Keep it under 60 seconds. Ask a question at the end to increase engagement.",
-          hook: "Have you ever wondered how to create viral content consistently? In this video, I'll share my top 3 secrets...",
-          talking_points: [
-            "Introduce the pain point your audience faces",
-            "Share your personal experience with this challenge",
-            "Reveal your solution and how it works",
-            "Show proof of your results"
-          ],
-          cta: "Drop a comment below with your biggest content creation struggle!"
+          selected
         }}
+        isLoading={loadingDetails}
         onComplete={async () => {
           await onToggleSelection(id, selected);
           return Promise.resolve();

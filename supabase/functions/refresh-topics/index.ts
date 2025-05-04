@@ -78,21 +78,52 @@ serve(async (req) => {
     const nicheTopic = profile.niche_topic || 'content creation';
 
     // Generate topics based on profile
-    let generatedTopics = [];
+    let generatedTopics: string[] = [];
 
-    // Add some basic topics that always work well
-    generatedTopics = [
-      `How I ${creatorStyle === 'funny_relatable' ? 'hilariously' : 'effectively'} approach ${nicheTopic}`,
-      `3 ${creatorStyle === 'inspirational_wise' ? 'inspiring' : 'unexpected'} ways to improve your ${nicheTopic} skills`,
-      `What nobody tells you about ${nicheTopic} (my honest review)`,
-      `Day in the life: How I manage my ${nicheTopic} business`,
-      `The biggest mistake people make with ${nicheTopic} (and how to avoid it)`,
-      `How to get started with ${nicheTopic} as a beginner`,
-      `My favorite tools for ${nicheTopic} that most people don't know about`,
-      `The truth about ${nicheTopic} that nobody is talking about`,
-      `${nicheTopic} hacks that changed my workflow completely`,
-      `Answering your most asked questions about ${nicheTopic}`
+    // Add random variations and adjustments to make topics more diverse
+    const prefixes = [
+      "How I", "Why you should", "The ultimate guide to", 
+      "3 ways to", "5 tips for", "What nobody tells you about",
+      "The truth about", "My honest review of", "How to quickly",
+      "The secret to", "I tried", "Why I stopped"
     ];
+    
+    const suffixes = [
+      "that changed everything", "in just 10 minutes a day",
+      "without expensive tools", "like a professional",
+      "and what I learned", "that nobody talks about",
+      "that will blow your mind", "- my honest journey",
+      "for beginners", "for experienced creators",
+      "the easy way", "step by step"
+    ];
+    
+    const contentFormats = [
+      "video", "post", "carousel", "live stream",
+      "challenge", "tutorial", "behind the scenes", 
+      "day in the life", "review", "comparison"
+    ];
+
+    // Generate a variety of topics based on niche + random elements
+    for (let i = 0; i < 15; i++) {
+      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      const suffix = Math.random() > 0.5 ? ` ${suffixes[Math.floor(Math.random() * suffixes.length)]}` : '';
+      const format = contentFormats[Math.floor(Math.random() * contentFormats.length)];
+      
+      // Generate variations of topics
+      if (i % 3 === 0) {
+        // Format-focused topics
+        generatedTopics.push(`${prefix} create a ${format} about ${nicheTopic}${suffix}`);
+      } else if (i % 3 === 1) {
+        // Niche-focused topics
+        generatedTopics.push(`${prefix} ${nicheTopic} ${suffix}`);
+      } else {
+        // Combination topics
+        generatedTopics.push(`My ${format} on ${nicheTopic}: ${prefix.toLowerCase()} it works${suffix}`);
+      }
+    }
+
+    // Ensure we have a diverse set without duplicates
+    generatedTopics = [...new Set(generatedTopics)];
 
     // Filter out topics that have already been used
     const filteredTopics = generatedTopics.filter(topic => 
@@ -121,7 +152,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, topics: finalTopics }),
+      JSON.stringify({ success: true, topics: finalTopics.slice(0, 10) }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
