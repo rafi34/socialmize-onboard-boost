@@ -15,6 +15,7 @@ import NotificationSettings from "@/components/settings/NotificationSettings";
 import IntegrationSettings from "@/components/settings/IntegrationSettings";
 import SecuritySettings from "@/components/settings/SecuritySettings";
 import BillingSettings from "@/components/settings/BillingSettings";
+import ReminderSettings from "@/components/settings/ReminderSettings";
 
 export type UserSettings = {
   profile: {
@@ -172,6 +173,14 @@ const Settings = () => {
           </SettingsAccordion>
           
           <SettingsAccordion 
+            title="Reminders" 
+            value={activeTab === "reminders"} 
+            onToggle={() => setActiveTab(activeTab === "reminders" ? "" : "reminders")}
+          >
+            <ReminderSettings settings={settings} setSettings={setSettings} loading={loading} />
+          </SettingsAccordion>
+          
+          <SettingsAccordion 
             title="Notifications" 
             value={activeTab === "notifications"} 
             onToggle={() => setActiveTab(activeTab === "notifications" ? "" : "notifications")}
@@ -220,6 +229,7 @@ const Settings = () => {
           <TabsList className="flex flex-col h-auto bg-muted p-2 space-y-2">
             <TabsTrigger value="profile" className="justify-start py-3">Profile</TabsTrigger>
             <TabsTrigger value="creator" className="justify-start py-3">Creator Settings</TabsTrigger>
+            <TabsTrigger value="reminders" className="justify-start py-3">Reminders</TabsTrigger>
             <TabsTrigger value="notifications" className="justify-start py-3">Notifications</TabsTrigger>
             <TabsTrigger value="integrations" className="justify-start py-3">Integrations</TabsTrigger>
             <TabsTrigger value="security" className="justify-start py-3">Security & Login</TabsTrigger>
@@ -237,6 +247,12 @@ const Settings = () => {
           <TabsContent value="creator" className="mt-0">
             <Card className="p-6">
               <CreatorSettings settings={settings} setSettings={setSettings} loading={loading} />
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="reminders" className="mt-0">
+            <Card className="p-6">
+              <ReminderSettings settings={settings} setSettings={setSettings} loading={loading} />
             </Card>
           </TabsContent>
           

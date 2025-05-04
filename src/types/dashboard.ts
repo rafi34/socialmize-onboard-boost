@@ -1,3 +1,4 @@
+
 // Strategy and planning types
 export interface StrategyData {
   experience_level: string;
@@ -33,6 +34,11 @@ export interface ReminderData {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  calendar_event_id?: string | null;
+  completed?: boolean;
+  xp_awarded?: boolean;
+  content_format?: string;
+  content_title?: string;
 }
 
 // Content generation types
