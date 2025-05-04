@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -21,6 +20,19 @@ interface ReminderPreferences {
   googleCalendarSync: boolean;
   preferredRecordingDays: string[];
   preferredReminderTime: string;
+}
+
+// Define the profile data structure with our new fields
+interface ProfileData {
+  id: string;
+  email: string;
+  created_at: string;
+  updated_at: string;
+  onboarding_complete: boolean;
+  profile_progress: number;
+  google_calendar_sync?: boolean;
+  preferred_recording_days?: string[];
+  preferred_reminder_time?: string;
 }
 
 const ReminderSettings = ({ settings, setSettings, loading }: ReminderSettingsProps) => {
@@ -48,13 +60,16 @@ const ReminderSettings = ({ settings, setSettings, loading }: ReminderSettingsPr
         
         if (error) throw error;
         
-        if (data) {
+        // Type cast the data to our ProfileData interface
+        const profile = data as ProfileData;
+        
+        if (profile) {
           // Safely access the properties that might not exist yet
-          const googleCalendarSync = data.google_calendar_sync !== undefined ? data.google_calendar_sync : false;
-          const preferredRecordingDays = data.preferred_recording_days || ['Monday', 'Thursday'];
-          const preferredReminderTime = data.preferred_reminder_time ? 
-            (typeof data.preferred_reminder_time === 'string' ? 
-              data.preferred_reminder_time.substring(0, 5) : '10:00') : '10:00';
+          const googleCalendarSync = profile.google_calendar_sync !== undefined ? profile.google_calendar_sync : false;
+          const preferredRecordingDays = profile.preferred_recording_days || ['Monday', 'Thursday'];
+          const preferredReminderTime = profile.preferred_reminder_time ? 
+            (typeof profile.preferred_reminder_time === 'string' ? 
+              profile.preferred_reminder_time.substring(0, 5) : '10:00') : '10:00';
           
           setPreferences({
             googleCalendarSync,
@@ -105,17 +120,15 @@ const ReminderSettings = ({ settings, setSettings, loading }: ReminderSettingsPr
     
     setSaving(true);
     try {
-      // Save to profiles table with upsert to handle the new columns
-      const updateData = {
-        id: user.id,
-        google_calendar_sync: preferences.googleCalendarSync,
-        preferred_recording_days: preferences.preferredRecordingDays,
-        preferred_reminder_time: preferences.preferredReminderTime + ':00' // Add seconds
-      };
-      
+      // Use a PATCH operation instead of upsert to update only the specific fields
       const { error } = await supabase
         .from('profiles')
-        .upsert(updateData);
+        .update({
+          google_calendar_sync: preferences.googleCalendarSync,
+          preferred_recording_days: preferences.preferredRecordingDays,
+          preferred_reminder_time: preferences.preferredReminderTime + ':00' // Add seconds
+        })
+        .eq('id', user.id);
       
       if (error) throw error;
       
