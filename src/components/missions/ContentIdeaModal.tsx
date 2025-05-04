@@ -8,7 +8,7 @@ import { CalendarPlus, CheckCircle, Repeat } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ContentIdea {
   id: string;
@@ -35,7 +35,7 @@ interface ContentIdeaModalProps {
 export function ContentIdeaModal({ open, onClose, idea, onComplete }: ContentIdeaModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const [isCompleting, setIsCompleting] = useState(false);
   const [isSelected, setIsSelected] = useState(idea?.selected || false);
 
