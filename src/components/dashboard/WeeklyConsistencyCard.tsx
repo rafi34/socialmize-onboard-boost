@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, CalendarCheck, Flame } from "lucide-react";
@@ -40,7 +41,7 @@ export const WeeklyConsistencyCard = () => {
 
         if (remindersError) throw remindersError;
 
-        const { data: xpData, error: xpError } = await supabase.functions.invoke('get-weekly-xp', {
+        const { data: xpData, error: xpError } = await supabase.functions.invoke<WeeklyXPResponse>('get-weekly-xp', {
           body: {
             userId: user.id,
             startDate: startOfWeek.toISOString()
@@ -48,7 +49,6 @@ export const WeeklyConsistencyCard = () => {
         });
 
         if (xpError) throw xpError;
-        const xpResponse = xpData as WeeklyXPResponse;
 
         const { data: progressData, error: progressError } = await supabase
           .from('progress_tracking')
@@ -72,7 +72,7 @@ export const WeeklyConsistencyCard = () => {
           totalTasks: 7,
           currentStreak,
           bestStreak: currentStreak,
-          weeklyXP: xpResponse?.xp || 0
+          weeklyXP: xpData?.xp || 0
         });
       } catch (err) {
         console.error("WeeklyConsistency error:", err);

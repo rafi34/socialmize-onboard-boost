@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.195.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
@@ -31,9 +32,23 @@ serve(async (req) => {
     // Initialize the Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Create XP event
-    const xpAmount = amount > 0 ? amount : (type === 'RECORD_REMINDER' ? 25 : 20);
+    // Determine XP amount based on action type
+    let xpAmount = amount;
+    if (amount <= 0) {
+      switch (type) {
+        case 'CONTENT_MISSION_COMPLETED':
+          xpAmount = 50;
+          break;
+        case 'RECORD_REMINDER':
+          xpAmount = 25;
+          break;
+        case 'REMINDER_COMPLETED':
+        default:
+          xpAmount = 20;
+      }
+    }
     
+    // Create XP event
     const { error: xpError } = await supabase
       .from('xp_events')
       .insert([

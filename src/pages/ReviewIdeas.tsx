@@ -5,31 +5,79 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, CheckCircle, RefreshCcw } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { Loader2 } from "lucide-react";
+import { MissionCard } from "@/components/missions/MissionCard";
+import { MissionFilters } from "@/components/missions/MissionFilters";
+import { MissionProgress } from "@/components/missions/MissionProgress";
 
 interface ContentIdea {
   id: string;
   idea: string;
   selected: boolean;
+  format_type?: string;
+  difficulty?: string;
+  xp_reward?: number;
 }
 
 const ReviewIdeas = () => {
   const [ideas, setIdeas] = useState<ContentIdea[]>([]);
+  const [filteredIdeas, setFilteredIdeas] = useState<ContentIdea[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedCount, setSelectedCount] = useState(0);
+  const [formatFilter, setFormatFilter] = useState("all");
+  const [progressData, setProgressData] = useState({
+    currentXp: 0,
+    currentLevel: 1,
+    xpToNextLevel: 100
+  });
+  
   const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (user) {
       loadContentIdeas();
+      loadProgressData();
     }
   }, [user]);
+
+  useEffect(() => {
+    filterIdeas();
+  }, [ideas, formatFilter]);
+
+  const filterIdeas = () => {
+    if (formatFilter === "all") {
+      setFilteredIdeas(ideas);
+    } else {
+      setFilteredIdeas(ideas.filter(idea => idea.format_type === formatFilter));
+    }
+  };
+
+  const loadProgressData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('progress_tracking')
+        .select('current_xp, current_level')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+      if (!error && data) {
+        const xpToNext = (data.current_level || 1) * 100;
+        
+        setProgressData({
+          currentXp: data.current_xp || 0,
+          currentLevel: data.current_level || 1,
+          xpToNextLevel: xpToNext
+        });
+      }
+    } catch (error) {
+      console.error('Error loading progress data:', error);
+    }
+  };
 
   const loadContentIdeas = async () => {
     try {
@@ -45,21 +93,43 @@ const ReviewIdeas = () => {
       }
       
       if (data) {
-        setIdeas(data);
+        const enhancedIdeas = data.map(idea => ({
+          ...idea,
+          format_type: idea.format_type || getRandomFormat(),
+          difficulty: idea.difficulty || getRandomDifficulty(),
+          xp_reward: idea.xp_reward || getRandomXp()
+        }));
+        
+        setIdeas(enhancedIdeas);
+        
         // Count already selected ideas
-        const selected = data.filter(idea => idea.selected).length;
+        const selected = enhancedIdeas.filter(idea => idea.selected).length;
         setSelectedCount(selected);
       }
     } catch (error) {
       console.error('Error loading content ideas:', error);
       toast({
-        title: "Error loading ideas",
-        description: "There was a problem loading your content ideas.",
+        title: "Error loading missions",
+        description: "There was a problem loading your content missions.",
         variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const getRandomFormat = () => {
+    const formats = ["Video", "Carousel", "Talking Head", "Meme", "Duet"];
+    return formats[Math.floor(Math.random() * formats.length)];
+  };
+  
+  const getRandomDifficulty = () => {
+    const difficulties = ["Easy", "Medium", "Hard"];
+    return difficulties[Math.floor(Math.random() * difficulties.length)];
+  };
+  
+  const getRandomXp = () => {
+    return [25, 50, 75, 100][Math.floor(Math.random() * 4)];
   };
 
   const generateContentIdeas = async () => {
@@ -68,8 +138,8 @@ const ReviewIdeas = () => {
     try {
       setGenerating(true);
       toast({
-        title: "Generating content ideas",
-        description: "We're creating fresh content ideas for you. This might take a moment..."
+        title: "Generating content missions",
+        description: "We're creating fresh mission ideas for you. This might take a moment..."
       });
 
       // Call the edge function to generate new topics
@@ -93,7 +163,10 @@ const ReviewIdeas = () => {
         const ideaObjects = topicIdeas.map((idea: string) => ({
           user_id: user.id,
           idea: idea,
-          selected: false
+          selected: false,
+          format_type: getRandomFormat(),
+          difficulty: getRandomDifficulty(),
+          xp_reward: getRandomXp()
         }));
         
         // Save the content ideas to the database
@@ -106,23 +179,23 @@ const ReviewIdeas = () => {
         }
         
         toast({
-          title: "Content ideas generated!",
-          description: `${topicIdeas.length} new content ideas have been created.`
+          title: "Content missions generated!",
+          description: `${topicIdeas.length} new mission ideas have been created.`
         });
         
         // Reload the content ideas
         await loadContentIdeas();
       } else {
         toast({
-          title: "No new ideas generated",
+          title: "No new missions generated",
           description: "Try updating your strategy profile with more specific information."
         });
       }
     } catch (error: any) {
       console.error('Error generating content ideas:', error);
       toast({
-        title: "Error generating ideas",
-        description: error.message || "There was a problem generating your content ideas.",
+        title: "Error generating missions",
+        description: error.message || "There was a problem generating your content missions.",
         variant: "destructive"
       });
     } finally {
@@ -135,7 +208,7 @@ const ReviewIdeas = () => {
     if (!currentlySelected && selectedCount >= 10) {
       toast({
         title: "Selection limit reached",
-        description: "You can select up to 10 content ideas.",
+        description: "You can select up to 10 content missions.",
         variant: "destructive"
       });
       return;
@@ -159,6 +232,11 @@ const ReviewIdeas = () => {
       if (error) {
         throw error;
       }
+      
+      // If we're selecting a mission (not deselecting), update progress data
+      if (!currentlySelected) {
+        await loadProgressData();
+      }
     } catch (error) {
       console.error('Error updating idea selection:', error);
       
@@ -177,8 +255,8 @@ const ReviewIdeas = () => {
   const handleGenerateScripts = async () => {
     if (selectedCount === 0) {
       toast({
-        title: "No ideas selected",
-        description: "Please select at least one idea to generate scripts.",
+        title: "No missions selected",
+        description: "Please select at least one mission to generate scripts.",
         variant: "destructive"
       });
       return;
@@ -226,7 +304,7 @@ const ReviewIdeas = () => {
         
         toast({
           title: "Content strategy updated!",
-          description: "Your content plan has been updated with your selected ideas."
+          description: "Your content plan has been updated with your selected missions."
         });
       }
       
@@ -254,34 +332,27 @@ const ReviewIdeas = () => {
     <div className="container mx-auto py-10 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="glass-panel mb-8 p-6 rounded-xl">
-          <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple bg-clip-text text-transparent">Your Personalized Content Plan</h1>
+          <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple bg-clip-text text-transparent">
+            Your Level {progressData.currentLevel} Content Missions
+          </h1>
           <p className="text-muted-foreground">
-            Here are content ideas based on your strategy. Select up to 10 that best represent your brand's voice.
+            Complete these missions to create engaging content and level up your creator journey.
           </p>
         </div>
         
-        <div className="mb-6 glass-panel rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex flex-col w-full">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">
-                Selected: {selectedCount}/10
-              </span>
-              <span className="text-sm text-muted-foreground">
-                {selectedCount === 10 ? "Maximum selected" : `${10 - selectedCount} more available`}
-              </span>
-            </div>
-            <Progress value={selectedCount * 10} className="h-2 bg-gray-200" />
-          </div>
-          
-          <Button 
-            onClick={handleGenerateScripts} 
-            disabled={selectedCount === 0 || saving}
-            className="min-w-[200px] bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity"
-          >
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Finalize My Strategy
-          </Button>
-        </div>
+        <MissionProgress 
+          completedCount={selectedCount}
+          totalCount={10}
+          currentLevel={progressData.currentLevel}
+          currentXp={progressData.currentXp}
+          xpToNextLevel={progressData.xpToNextLevel}
+        />
+        
+        <MissionFilters 
+          onFilterChange={setFormatFilter}
+          onRefresh={generateContentIdeas}
+          isRefreshing={generating}
+        />
         
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -289,96 +360,71 @@ const ReviewIdeas = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {ideas.length === 0 ? (
-              <Card className="premium-card">
-                <CardContent className="p-6 flex flex-col items-center">
-                  <p className="text-center text-muted-foreground mb-4">
-                    No content ideas found. Click the button below to generate some ideas based on your strategy profile.
+            {filteredIdeas.length === 0 && (
+              <div className="text-center py-10 glass-panel rounded-xl">
+                <h3 className="text-lg font-semibold mb-2">No missions found</h3>
+                {formatFilter !== "all" ? (
+                  <p className="text-muted-foreground mb-6">
+                    No {formatFilter} missions available. Try a different filter or generate new missions.
                   </p>
-                  <Button 
-                    onClick={generateContentIdeas} 
-                    className="bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity"
-                    disabled={generating}
-                  >
-                    {generating ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Generating Ideas...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCcw className="mr-2 h-4 w-4" />
-                        Generate Content Ideas
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <>
-                <div className="flex justify-end mb-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={generateContentIdeas}
-                    disabled={generating}
-                    className="text-xs"
-                  >
-                    {generating ? (
-                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                    ) : (
-                      <RefreshCcw className="mr-1 h-3 w-3" />
-                    )}
-                    Refresh Ideas
-                  </Button>
-                </div>
-                {ideas.map((idea) => (
-                  <Card 
-                    key={idea.id} 
-                    className={`hover:border-socialmize-purple/40 transition-all duration-200 ${
-                      idea.selected ? "border-socialmize-purple bg-socialmize-purple/5" : "premium-card"
-                    }`}
-                  >
-                    <CardContent className="p-4 flex items-start gap-4">
-                      <div className="mt-1">
-                        <Checkbox
-                          checked={idea.selected}
-                          onCheckedChange={() => toggleSelection(idea.id, idea.selected)}
-                          id={`idea-${idea.id}`}
-                          className={idea.selected ? "text-socialmize-purple border-socialmize-purple" : ""}
-                        />
-                      </div>
-                      <label
-                        htmlFor={`idea-${idea.id}`}
-                        className="text-sm cursor-pointer flex-1 leading-relaxed"
-                      >
-                        {idea.idea}
-                      </label>
-                      {idea.selected && (
-                        <CheckCircle className="h-5 w-5 text-socialmize-purple shrink-0" />
-                      )}
-                    </CardContent>
-                  </Card>
+                ) : (
+                  <p className="text-muted-foreground mb-6">
+                    You don't have any content missions yet. Generate some to get started!
+                  </p>
+                )}
+                
+                <Button 
+                  onClick={generateContentIdeas} 
+                  className="bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity"
+                  disabled={generating}
+                >
+                  {generating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Generating Missions...
+                    </>
+                  ) : (
+                    "Generate Content Missions"
+                  )}
+                </Button>
+              </div>
+            )}
+            
+            {filteredIdeas.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredIdeas.map((idea) => (
+                  <MissionCard 
+                    key={idea.id}
+                    id={idea.id}
+                    idea={idea.idea}
+                    selected={idea.selected}
+                    format={idea.format_type}
+                    xpReward={idea.xp_reward}
+                    difficulty={idea.difficulty}
+                    onToggleSelection={toggleSelection}
+                  />
                 ))}
-              </>
+              </div>
             )}
           </div>
         )}
         
-        <div className="mt-8 flex justify-between">
-          <Button variant="outline" onClick={() => navigate('/strategy-chat')}>
-            Back to Strategy
-          </Button>
-          
-          <Button 
-            onClick={handleGenerateScripts} 
-            disabled={selectedCount === 0 || saving}
-            className="bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity"
-          >
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Finalize My Strategy
-          </Button>
-        </div>
+        {filteredIdeas.length > 0 && (
+          <div className="mt-8 flex justify-between">
+            <Button variant="outline" onClick={() => navigate('/strategy-chat')}>
+              Back to Strategy
+            </Button>
+            
+            <Button 
+              onClick={handleGenerateScripts} 
+              disabled={selectedCount === 0 || saving}
+              className="bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple hover:opacity-90 transition-opacity"
+            >
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Finalize My Strategy
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
