@@ -42,17 +42,24 @@ const ReminderSettings = ({ settings, setSettings, loading }: ReminderSettingsPr
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('google_calendar_sync, preferred_recording_days, preferred_reminder_time')
+          .select('*')
           .eq('id', user.id)
           .single();
         
         if (error) throw error;
         
         if (data) {
+          // Safely access the properties that might not exist yet
+          const googleCalendarSync = data.google_calendar_sync !== undefined ? data.google_calendar_sync : false;
+          const preferredRecordingDays = data.preferred_recording_days || ['Monday', 'Thursday'];
+          const preferredReminderTime = data.preferred_reminder_time ? 
+            (typeof data.preferred_reminder_time === 'string' ? 
+              data.preferred_reminder_time.substring(0, 5) : '10:00') : '10:00';
+          
           setPreferences({
-            googleCalendarSync: data.google_calendar_sync || false,
-            preferredRecordingDays: data.preferred_recording_days || ['Monday', 'Thursday'],
-            preferredReminderTime: data.preferred_reminder_time ? data.preferred_reminder_time.substring(0, 5) : '10:00'
+            googleCalendarSync,
+            preferredRecordingDays,
+            preferredReminderTime
           });
         }
       } catch (error) {
@@ -98,15 +105,17 @@ const ReminderSettings = ({ settings, setSettings, loading }: ReminderSettingsPr
     
     setSaving(true);
     try {
-      // Save to profiles table
+      // Save to profiles table with upsert to handle the new columns
+      const updateData = {
+        id: user.id,
+        google_calendar_sync: preferences.googleCalendarSync,
+        preferred_recording_days: preferences.preferredRecordingDays,
+        preferred_reminder_time: preferences.preferredReminderTime + ':00' // Add seconds
+      };
+      
       const { error } = await supabase
         .from('profiles')
-        .update({
-          google_calendar_sync: preferences.googleCalendarSync,
-          preferred_recording_days: preferences.preferredRecordingDays,
-          preferred_reminder_time: preferences.preferredReminderTime + ':00' // Add seconds
-        })
-        .eq('id', user.id);
+        .upsert(updateData);
       
       if (error) throw error;
       
@@ -155,11 +164,10 @@ const ReminderSettings = ({ settings, setSettings, loading }: ReminderSettingsPr
           <div className="space-y-2">
             <Label>Preferred Reminder Time</Label>
             <div className="flex gap-2 items-center">
-              <input
-                type="time"
+              <TimeInput
                 value={preferences.preferredReminderTime}
-                onChange={(e) => handleTimeChange(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                onChange={handleTimeChange}
+                className="w-full"
               />
             </div>
             <p className="text-xs text-muted-foreground">When should we remind you about posting and recording?</p>
