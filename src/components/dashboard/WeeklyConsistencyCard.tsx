@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, CalendarCheck, Flame } from "lucide-react";
@@ -43,8 +42,8 @@ export const WeeklyConsistencyCard = () => {
 
         // Remove the explicit generic type parameter to avoid the excessive type depth error
         const { data: xpData, error: xpError } = await supabase.functions.invoke('get-weekly-xp', {
-          body: {
-            userId: user.id,
+          body: { 
+            userId: user.id, 
             startDate: startOfWeek.toISOString()
           }
         });

@@ -8,6 +8,7 @@ import { CalendarPlus, CheckCircle, ChevronDown, ChevronUp } from "lucide-react"
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { ContentIdeaModal } from "./ContentIdeaModal";
 
 interface MissionCardProps {
   id: string;
@@ -30,6 +31,7 @@ export const MissionCard = ({
 }: MissionCardProps) => {
   const [expanded, setExpanded] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const { user } = useAuth();
   
   const handleToggleExpand = () => {
@@ -83,6 +85,10 @@ export const MissionCard = ({
     }
   };
   
+  const handleShowMore = () => {
+    setShowModal(true);
+  };
+  
   const formatIconMap = {
     "Video": "🎬",
     "Carousel": "📱",
@@ -93,95 +99,123 @@ export const MissionCard = ({
   
   const formatIcon = formatIconMap[format as keyof typeof formatIconMap] || "📝";
   const difficultyColor = difficulty === "Easy" ? "bg-green-100 text-green-800" : 
-                         difficulty === "Medium" ? "bg-yellow-100 text-yellow-800" : 
-                         "bg-red-100 text-red-800";
+                           difficulty === "Medium" ? "bg-yellow-100 text-yellow-800" : 
+                           "bg-red-100 text-red-800";
   
   return (
-    <Card className={`transition-all duration-200 hover:shadow-md ${
-      selected ? "border-socialmize-purple bg-socialmize-purple/5" : ""
-    }`}>
-      <CardContent className="p-4">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center space-x-2 mb-2">
-            <span className="text-xl">{formatIcon}</span>
-            <Badge variant="outline" className={difficultyColor}>{difficulty}</Badge>
-          </div>
-          <div>
-            <Badge className="bg-socialmize-purple/20 text-socialmize-purple border-none">
-              +{xpReward} XP
-            </Badge>
-          </div>
-        </div>
-        
-        <h3 className="text-md font-semibold mb-2 leading-snug">{idea}</h3>
-        
-        <div className="flex items-center justify-between mt-3">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleToggleExpand}
-            className="text-xs flex items-center gap-1 px-2"
-          >
-            {expanded ? (
-              <>Less <ChevronUp className="h-3 w-3" /></>
-            ) : (
-              <>More <ChevronDown className="h-3 w-3" /></>
-            )}
-          </Button>
-          
-          <div className="flex items-center gap-2">
-            <Checkbox
-              checked={selected}
-              id={`mission-${id}`}
-              disabled={completing}
-              className={selected ? "text-socialmize-purple border-socialmize-purple" : ""}
-            />
-            <label
-              htmlFor={`mission-${id}`}
-              className="text-xs cursor-pointer"
-              onClick={handleMarkComplete}
-            >
-              {selected ? "Completed" : "Complete"}
-            </label>
-          </div>
-        </div>
-        
-        {expanded && (
-          <div className="mt-3 pt-3 border-t text-sm space-y-3 text-muted-foreground">
-            <div>
-              <p className="text-xs font-medium mb-1">Tips:</p>
-              <p className="text-xs">Film in good lighting. Keep it under 60 seconds. Ask a question at the end.</p>
+    <>
+      <Card className={`transition-all duration-200 hover:shadow-md ${
+        selected ? "border-socialmize-purple bg-socialmize-purple/5" : ""
+      }`}>
+        <CardContent className="p-4">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center space-x-2 mb-2">
+              <span className="text-xl">{formatIcon}</span>
+              <Badge variant="outline" className={difficultyColor}>{difficulty}</Badge>
             </div>
+            <div>
+              <Badge className="bg-socialmize-purple/20 text-socialmize-purple border-none">
+                +{xpReward} XP
+              </Badge>
+            </div>
+          </div>
+          
+          <h3 className="text-md font-semibold mb-2 leading-snug">{idea}</h3>
+          
+          <div className="flex items-center justify-between mt-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={expanded ? handleToggleExpand : handleShowMore}
+              className="text-xs flex items-center gap-1 px-2"
+            >
+              {expanded ? (
+                <>Less <ChevronUp className="h-3 w-3" /></>
+              ) : (
+                <>More <ChevronDown className="h-3 w-3" /></>
+              )}
+            </Button>
             
             <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-xs flex-1"
-                onClick={handleAddToCalendar}
-              >
-                <CalendarPlus className="h-3 w-3 mr-1" /> Schedule
-              </Button>
-              
-              <Button 
-                variant="default"
-                size="sm"
-                className="text-xs flex-1 bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple"
+              <Checkbox
+                checked={selected}
+                id={`mission-${id}`}
+                disabled={completing}
+                className={selected ? "text-socialmize-purple border-socialmize-purple" : ""}
+              />
+              <label
+                htmlFor={`mission-${id}`}
+                className="text-xs cursor-pointer"
                 onClick={handleMarkComplete}
-                disabled={completing || selected}
               >
-                {completing ? (
-                  "Saving..."
-                ) : selected ? (
-                  <><CheckCircle className="h-3 w-3 mr-1" /> Done</>
-                ) : (
-                  "Mark Complete"
-                )}
-              </Button>
+                {selected ? "Completed" : "Complete"}
+              </label>
             </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          
+          {expanded && (
+            <div className="mt-3 pt-3 border-t text-sm space-y-3 text-muted-foreground">
+              <div>
+                <p className="text-xs font-medium mb-1">Tips:</p>
+                <p className="text-xs">Film in good lighting. Keep it under 60 seconds. Ask a question at the end.</p>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-xs flex-1"
+                  onClick={handleAddToCalendar}
+                >
+                  <CalendarPlus className="h-3 w-3 mr-1" /> Schedule
+                </Button>
+                
+                <Button 
+                  variant="default"
+                  size="sm"
+                  className="text-xs flex-1 bg-gradient-to-r from-socialmize-purple to-socialmize-dark-purple"
+                  onClick={handleMarkComplete}
+                  disabled={completing || selected}
+                >
+                  {completing ? (
+                    "Saving..."
+                  ) : selected ? (
+                    <><CheckCircle className="h-3 w-3 mr-1" /> Done</>
+                  ) : (
+                    "Mark Complete"
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      
+      <ContentIdeaModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        idea={{
+          id,
+          idea,
+          format,
+          difficulty,
+          xp_reward: xpReward,
+          selected,
+          shoot_tips: "Film in good lighting. Keep it under 60 seconds. Ask a question at the end to increase engagement.",
+          hook: "Have you ever wondered how to create viral content consistently? In this video, I'll share my top 3 secrets...",
+          talking_points: [
+            "Introduce the pain point your audience faces",
+            "Share your personal experience with this challenge",
+            "Reveal your solution and how it works",
+            "Show proof of your results"
+          ],
+          cta: "Drop a comment below with your biggest content creation struggle!"
+        }}
+        onComplete={async () => {
+          await onToggleSelection(id, selected);
+          return Promise.resolve();
+        }}
+      />
+    </>
   );
 };
