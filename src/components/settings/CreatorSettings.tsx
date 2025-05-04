@@ -25,6 +25,7 @@ const CreatorSettings = ({ settings, setSettings, loading }: CreatorSettingsProp
   const [isEditing, setIsEditing] = useState(false);
   const [updatedSettings, setUpdatedSettings] = useState({...settings.creatorSettings});
   const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Mission options
   const missionOptions: { value: CreatorMission | null; label: string }[] = [
@@ -78,11 +79,48 @@ const CreatorSettings = ({ settings, setSettings, loading }: CreatorSettingsProp
   };
 
   // Function to regenerate content strategy
-  const handleRegenerateStrategy = () => {
-    toast({
-      title: "Strategy Refresh",
-      description: "Your content strategy will be regenerated based on your preferences."
-    });
+  const handleRegenerateStrategy = async () => {
+    if (!user) return;
+    
+    setIsSyncing(true);
+    try {
+      // First sync the settings
+      await syncCreatorSettings();
+      
+      // Then notify the user about strategy regeneration
+      toast({
+        title: "Strategy Refresh",
+        description: "Your content strategy will be regenerated based on your preferences."
+      });
+    } catch (error) {
+      console.error("Error regenerating strategy:", error);
+      toast({
+        title: "Refresh Failed",
+        description: "There was a problem refreshing your strategy. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Function to sync creator settings with strategy profile
+  const syncCreatorSettings = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('sync-creator-settings', {
+        body: { userId: user.id }
+      });
+      
+      if (error) throw error;
+      
+      console.log("Settings synced:", data);
+      return data;
+    } catch (error) {
+      console.error("Error syncing settings:", error);
+      throw error;
+    }
   };
 
   // Function to toggle edit mode
@@ -136,12 +174,15 @@ const CreatorSettings = ({ settings, setSettings, loading }: CreatorSettingsProp
         creatorSettings: updatedSettings
       }));
       
+      // Sync the settings with the strategy profile
+      await syncCreatorSettings();
+      
       // Exit edit mode
       setIsEditing(false);
       
       toast({
         title: "Settings Updated",
-        description: "Your creator preferences have been saved successfully."
+        description: "Your creator preferences have been saved and synced successfully."
       });
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -389,8 +430,8 @@ const CreatorSettings = ({ settings, setSettings, loading }: CreatorSettingsProp
           <Button onClick={handleRestartOnboarding} disabled={loading}>
             Update My Preferences
           </Button>
-          <Button onClick={handleRegenerateStrategy} variant="outline" disabled={loading}>
-            Regenerate Strategy
+          <Button onClick={handleRegenerateStrategy} variant="outline" disabled={loading || isSyncing}>
+            {isSyncing ? "Syncing..." : "Regenerate Strategy"}
           </Button>
         </div>
       )}
