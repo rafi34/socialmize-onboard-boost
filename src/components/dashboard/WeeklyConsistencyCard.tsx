@@ -35,8 +35,9 @@ export const WeeklyConsistencyCard = () => {
           
         if (remindersError) throw remindersError;
         
-        // For XP events, we'll use our new Edge Function
-        const { data: xpData, error: xpError } = await supabase.functions.invoke('get-weekly-xp', {
+        // For XP events, we'll use our edge function with explicit type annotations
+        // This fixes the TypeScript error by being explicit about the response type
+        const { data: xpData, error: xpError } = await supabase.functions.invoke<{ xp: number }>('get-weekly-xp', {
           body: {
             userId: user.id,
             startDate: startOfWeek.toISOString()
