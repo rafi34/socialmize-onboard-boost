@@ -24,7 +24,7 @@ interface ReminderPreferences {
 }
 
 // Define the profile data structure with our new fields
-interface ProfileData {
+interface ExtendedProfileData {
   id: string;
   email: string;
   created_at: string;
@@ -61,8 +61,8 @@ const ReminderSettings = ({ settings, setSettings, loading }: ReminderSettingsPr
         
         if (error) throw error;
         
-        // Type cast the data to our ProfileData interface
-        const profile = data as ProfileData;
+        // Type cast the data to our extended profile interface
+        const profile = data as unknown as ExtendedProfileData;
         
         if (profile) {
           // Safely access the properties that might not exist yet
@@ -121,15 +121,13 @@ const ReminderSettings = ({ settings, setSettings, loading }: ReminderSettingsPr
     
     setSaving(true);
     try {
-      // Direct update to profiles table instead of using RPC
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          google_calendar_sync: preferences.googleCalendarSync,
-          preferred_recording_days: preferences.preferredRecordingDays,
-          preferred_reminder_time: preferences.preferredReminderTime + ':00' // Add seconds
-        })
-        .eq('id', user.id);
+      // Use the RPC function to update profiles
+      const { error } = await supabase.rpc('update_profile_preferences', {
+        user_id: user.id,
+        calendar_sync: preferences.googleCalendarSync,
+        recording_days: preferences.preferredRecordingDays,
+        reminder_time: preferences.preferredReminderTime + ':00' // Add seconds
+      });
       
       if (error) throw error;
       

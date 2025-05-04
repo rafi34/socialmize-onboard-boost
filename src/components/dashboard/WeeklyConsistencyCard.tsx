@@ -35,10 +35,12 @@ export const WeeklyConsistencyCard = () => {
           
         if (remindersError) throw remindersError;
         
-        // For XP events, we'll use direct RPC call since the table might not be in the types
-        const { data: xpData, error: xpError } = await supabase.rpc('get_weekly_xp', { 
-          user_id_param: user.id, 
-          start_date_param: startOfWeek.toISOString() 
+        // For XP events, we'll use our new Edge Function
+        const { data: xpData, error: xpError } = await supabase.functions.invoke('get-weekly-xp', {
+          body: {
+            userId: user.id,
+            startDate: startOfWeek.toISOString()
+          }
         });
         
         if (xpError) {
@@ -72,7 +74,7 @@ export const WeeklyConsistencyCard = () => {
         }
         
         // Calculate total XP gained this week
-        const weeklyXP = xpData || 0; // Use the result from the RPC call
+        const weeklyXP = xpData?.xp || 0; // Use the result from the edge function
         
         setWeeklyData({
           completedTasks: completedReminders ? completedReminders.length : 0,

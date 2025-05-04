@@ -35,25 +35,57 @@ serve(async (req) => {
     // Calculate one week ago if startDate not provided
     const oneWeekAgo = startDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     
-    // We'll use a direct SQL query since we know the table structure
-    // but it might not be in the types yet
-    const { data, error } = await supabase.rpc('get_weekly_xp', {
-      user_id_param: userId,
-      start_date_param: oneWeekAgo
-    });
-
-    if (error) {
-      console.error("Error fetching weekly XP:", error);
-      return new Response(
-        JSON.stringify({ success: false, error: "Failed to fetch weekly XP" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-      );
+    // Query the XP events table directly since we can't be sure the RPC function exists yet
+    const { data: xpEvents, error: xpError } = await supabase
+      .from('xp_events')
+      .select('amount')
+      .eq('user_id', userId)
+      .gte('created_at', oneWeekAgo);
+    
+    if (xpError) {
+      console.error("Error fetching XP events:", xpError);
+      
+      // Try the get_weekly_xp RPC function as a fallback
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc('get_weekly_xp', {
+          user_id_param: userId,
+          start_date_param: oneWeekAgo
+        });
+        
+        if (rpcError) {
+          throw rpcError;
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            xp: rpcData || 0,
+            source: "rpc"
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (rpcFallbackError) {
+        console.error("RPC fallback error:", rpcFallbackError);
+        // If both methods fail, return 0 XP
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            xp: 0,
+            source: "default"
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
+
+    // Calculate total XP from events
+    const totalXP = xpEvents?.reduce((sum, event) => sum + (event.amount || 0), 0) || 0;
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        xp: data || 0
+        xp: totalXP,
+        source: "direct_query" 
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

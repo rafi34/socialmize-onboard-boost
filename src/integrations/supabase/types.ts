@@ -401,6 +401,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_weekly_xp: {
+        Args: { user_id_param: string; start_date_param: string }
+        Returns: number
+      }
       update_profile_preferences: {
         Args: {
           user_id: string
