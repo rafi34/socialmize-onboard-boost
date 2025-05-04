@@ -1,13 +1,11 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, CalendarCheck, Flame } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subDays, differenceInDays } from "date-fns";
+import { subDays, differenceInDays } from "date-fns";
 
-// Define the type for the edge function response
 interface WeeklyXPResponse {
   success: boolean;
   xp: number;
@@ -20,7 +18,7 @@ export const WeeklyConsistencyCard = () => {
   const [loading, setLoading] = useState(true);
   const [weeklyData, setWeeklyData] = useState({
     completedTasks: 0,
-    totalTasks: 7, // Assuming 7 days a week
+    totalTasks: 7,
     currentStreak: 0,
     bestStreak: 0,
     weeklyXP: 0
@@ -29,34 +27,29 @@ export const WeeklyConsistencyCard = () => {
   useEffect(() => {
     const fetchConsistencyData = async () => {
       if (!user) return;
-      
       setLoading(true);
       try {
-        // Get completed tasks this week
         const startOfWeek = subDays(new Date(), 7);
+
         const { data: completedReminders, error: remindersError } = await supabase
           .from('reminders')
           .select('id')
           .eq('user_id', user.id)
           .eq('completed', true)
           .gte('updated_at', startOfWeek.toISOString());
-          
+
         if (remindersError) throw remindersError;
-        
-        // For XP events, explicitly type the response
-        const { data: xpResponse, error: xpError } = await supabase.functions.invoke<WeeklyXPResponse>('get-weekly-xp', {
+
+        const { data: xpData, error: xpError } = await supabase.functions.invoke('get-weekly-xp', {
           body: {
             userId: user.id,
             startDate: startOfWeek.toISOString()
           }
         });
-        
-        if (xpError) {
-          console.error("XP data error:", xpError);
-          // Fallback to zero XP if we can't fetch it
-        }
-        
-        // Get streak information from progress tracking
+
+        if (xpError) throw xpError;
+        const xpResponse = xpData as WeeklyXPResponse;
+
         const { data: progressData, error: progressError } = await supabase
           .from('progress_tracking')
           .select('streak_days, last_activity_date')
@@ -64,40 +57,30 @@ export const WeeklyConsistencyCard = () => {
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-          
+
         if (progressError) throw progressError;
-        
-        // Calculate current streak
+
         let currentStreak = 0;
-        
-        if (progressData && progressData.last_activity_date) {
+        if (progressData?.last_activity_date) {
           const lastActivity = new Date(progressData.last_activity_date);
-          const today = new Date();
-          
-          // If last activity is today or yesterday, streak is active
-          const daysSinceLastActivity = differenceInDays(today, lastActivity);
-          if (daysSinceLastActivity <= 1) {
-            currentStreak = progressData.streak_days || 0;
-          }
+          const daysSince = differenceInDays(new Date(), lastActivity);
+          if (daysSince <= 1) currentStreak = progressData.streak_days || 0;
         }
-        
-        // Calculate total XP gained this week using the properly typed response
-        const weeklyXP = xpResponse?.xp || 0;
-        
+
         setWeeklyData({
-          completedTasks: completedReminders ? completedReminders.length : 0,
+          completedTasks: completedReminders?.length || 0,
           totalTasks: 7,
           currentStreak,
-          bestStreak: currentStreak, // For now, just use current streak
-          weeklyXP
+          bestStreak: currentStreak,
+          weeklyXP: xpResponse?.xp || 0
         });
-      } catch (error) {
-        console.error("Error fetching consistency data:", error);
+      } catch (err) {
+        console.error("WeeklyConsistency error:", err);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchConsistencyData();
   }, [user]);
 
@@ -108,14 +91,16 @@ export const WeeklyConsistencyCard = () => {
           <CardTitle className="text-lg">Weekly Consistency</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-24 bg-muted animate-pulse rounded"></div>
+          <div className="h-24 bg-muted animate-pulse rounded" />
         </CardContent>
       </Card>
     );
   }
 
-  // Calculate completion percentage
-  const completionPercentage = Math.min(100, (weeklyData.completedTasks / weeklyData.totalTasks) * 100);
+  const completionPercentage = Math.min(
+    100,
+    (weeklyData.completedTasks / weeklyData.totalTasks) * 100
+  );
 
   return (
     <Card className="mb-6">
@@ -129,11 +114,13 @@ export const WeeklyConsistencyCard = () => {
               <CalendarCheck className="h-5 w-5 text-socialmize-purple" />
               <span className="font-medium">Tasks Completed</span>
             </div>
-            <span className="text-sm">{weeklyData.completedTasks}/{weeklyData.totalTasks}</span>
+            <span className="text-sm">
+              {weeklyData.completedTasks}/{weeklyData.totalTasks}
+            </span>
           </div>
-          
+
           <Progress value={completionPercentage} className="h-2" />
-          
+
           <div className="grid grid-cols-2 gap-4 mt-2 pt-2 border-t">
             <div className="flex items-center gap-2">
               <Flame className="h-5 w-5 text-socialmize-orange" />
@@ -142,7 +129,7 @@ export const WeeklyConsistencyCard = () => {
                 <div className="font-bold">{weeklyData.currentStreak} days</div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-socialmize-purple" />
               <div>
