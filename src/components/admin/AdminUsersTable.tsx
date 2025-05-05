@@ -48,7 +48,7 @@ interface UserData {
   created_at: string;
   profile: {
     onboarding_complete: boolean;
-    metadata: any;
+    metadata: Record<string, any> | null;
   };
   progress: {
     current_xp: number;
@@ -107,18 +107,21 @@ export function AdminUsersTable() {
       
       console.log("Found Christian's profile:", christianProfile);
       
-      // Check if already an admin
-      if (christianProfile.metadata?.is_admin === true) {
+      // Create a properly typed metadata object
+      const currentMetadata = christianProfile.metadata as Record<string, any> || {};
+      
+      // Check if already an admin using the properly typed metadata
+      if (currentMetadata.is_admin === true) {
         console.log("Christian is already an admin");
         return;
       }
       
-      // Update to make admin
+      // Update to make admin, using a proper object for metadata
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
           metadata: {
-            ...christianProfile.metadata,
+            ...currentMetadata,
             is_admin: true
           }
         })
@@ -168,6 +171,9 @@ export function AdminUsersTable() {
 
       // Map through all profiles and fetch related data
       const usersWithData = await Promise.all(profilesData.map(async (profile) => {
+        // Properly type the metadata as Record<string, any> or null
+        const metadata = profile.metadata as Record<string, any> || {};
+        
         // Initialize with default data structure and track what data is available
         const userData: UserData = {
           id: profile.id,
@@ -175,7 +181,7 @@ export function AdminUsersTable() {
           created_at: profile.created_at,
           profile: {
             onboarding_complete: profile.onboarding_complete,
-            metadata: profile.metadata || {}
+            metadata: metadata
           },
           progress: {
             current_xp: 0,
@@ -254,7 +260,9 @@ export function AdminUsersTable() {
         
         const christianUser = usersWithData.find(u => u.email === 'christian@communitylaunch.com');
         if (christianUser) {
-          if (!christianUser.profile.metadata?.is_admin) {
+          // Properly check admin status using safely typed metadata
+          const isAdmin = christianUser.profile.metadata?.is_admin === true;
+          if (!isAdmin) {
             console.log("Christian found but is not an admin. Making admin...");
             await makeChristianAdmin();
           } else {
@@ -355,10 +363,12 @@ export function AdminUsersTable() {
     }
   };
 
-  // New function to toggle admin status
+  // Update toggleAdminStatus to properly handle metadata
   const toggleAdminStatus = async (userData: UserData) => {
     try {
-      const currentAdminStatus = userData.profile.metadata?.is_admin === true;
+      // Properly check admin status with safely typed metadata
+      const currentMetadata = userData.profile.metadata || {};
+      const currentAdminStatus = currentMetadata.is_admin === true;
       const newAdminStatus = !currentAdminStatus;
       
       // Update the user's metadata in the profiles table
@@ -366,7 +376,7 @@ export function AdminUsersTable() {
         .from('profiles')
         .update({
           metadata: {
-            ...userData.profile.metadata,
+            ...currentMetadata,
             is_admin: newAdminStatus
           }
         })
@@ -473,9 +483,12 @@ export function AdminUsersTable() {
     return null;
   };
 
-  // Function to get user type badge
+  // Update getUserTypeBadge to properly check for admin status
   const getUserTypeBadge = (userData: UserData) => {
-    if (userData.profile.metadata?.is_admin) {
+    // Safely check admin status
+    const isAdmin = userData.profile.metadata?.is_admin === true;
+    
+    if (isAdmin) {
       return (
         <Badge variant="default" className="bg-socialmize-purple text-white flex items-center gap-1">
           <Shield className="h-3 w-3" />
@@ -498,7 +511,9 @@ export function AdminUsersTable() {
       const christianUser = users.find(u => u.email === 'christian@communitylaunch.com');
       if (christianUser) {
         christianAdminCheckDone.current = true;
-        if (!christianUser.profile.metadata?.is_admin) {
+        // Properly check for admin status using the safely typed metadata
+        const isAdmin = christianUser.profile.metadata?.is_admin === true;
+        if (!isAdmin) {
           makeChristianAdmin();
         }
       }
