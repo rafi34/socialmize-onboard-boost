@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,6 +17,7 @@ import ReviewIdeas from "./pages/ReviewIdeas";
 import GenerateScripts from "./pages/GenerateScripts";
 import WeeklyCalendar from "./pages/WeeklyCalendar";
 import TopicSuggestions from "./pages/TopicSuggestions";
+import StrategyOverview from "./pages/StrategyOverview";
 
 const queryClient = new QueryClient();
 
@@ -90,6 +90,18 @@ const App = () => (
                 <ProtectedRoute>
                   <PremiumAppLayout>
                     <TopicSuggestions />
+                  </PremiumAppLayout>
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Strategy Overview - only for authenticated and onboarded users */}
+            <Route 
+              path="/strategy-overview" 
+              element={
+                <ProtectedRoute>
+                  <PremiumAppLayout>
+                    <StrategyOverview />
                   </PremiumAppLayout>
                 </ProtectedRoute>
               } 
