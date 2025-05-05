@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -282,6 +281,45 @@ export function AdminUsersTable() {
     }
   };
 
+  // New function to toggle admin status
+  const toggleAdminStatus = async (userData: UserData) => {
+    try {
+      const currentAdminStatus = userData.profile.metadata?.is_admin === true;
+      const newAdminStatus = !currentAdminStatus;
+      
+      // Update the user's metadata in the profiles table
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          metadata: {
+            ...userData.profile.metadata,
+            is_admin: newAdminStatus
+          }
+        })
+        .eq('id', userData.id);
+        
+      if (error) throw error;
+      
+      toast.success(`${userData.email} is now ${newAdminStatus ? 'an admin' : 'a regular user'}`);
+      
+      // Log this admin action
+      if (user) {
+        await supabase.from("admin_logs").insert({
+          admin_user_id: user.id,
+          target_user_id: userData.id,
+          action: newAdminStatus ? "grant_admin" : "revoke_admin",
+          metadata: { email: userData.email }
+        });
+      }
+      
+      // Refresh users list
+      fetchUsers();
+    } catch (error) {
+      console.error("Error updating admin status:", error);
+      toast.error("Failed to update admin status");
+    }
+  };
+
   // Create user type filters
   const adminUsers = users.filter(user => user.profile.metadata?.is_admin === true);
   const regularUsers = users.filter(user => user.profile.metadata?.is_admin !== true);
@@ -379,6 +417,34 @@ export function AdminUsersTable() {
       );
     }
   };
+
+  // Effect to make Christian an admin when component loads
+  useEffect(() => {
+    const makeChristianAdmin = async () => {
+      if (users.length > 0) {
+        const christianUser = users.find(u => u.email === 'christian@communitylaunch.com');
+        if (christianUser && !christianUser.profile.metadata?.is_admin) {
+          console.log("Making Christian an admin...");
+          await supabase
+            .from('profiles')
+            .update({
+              metadata: {
+                ...christianUser.profile.metadata,
+                is_admin: true
+              }
+            })
+            .eq('id', christianUser.id);
+          
+          toast.success("Christian has been made an admin");
+          fetchUsers();
+        }
+      }
+    };
+    
+    if (!loading && users.length > 0) {
+      makeChristianAdmin();
+    }
+  }, [users, loading]);
 
   if (loading) {
     return (
@@ -520,6 +586,10 @@ export function AdminUsersTable() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => toggleAdminStatus(userData)}>
+                            <Shield className="h-4 w-4 mr-2" />
+                            {userData.profile.metadata?.is_admin ? "Remove Admin" : "Make Admin"}
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleXPOverride(userData)}>
                             <Sparkles className="h-4 w-4 mr-2" />
                             XP Override
