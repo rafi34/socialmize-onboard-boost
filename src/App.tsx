@@ -17,6 +17,7 @@ import StrategyChat from "./pages/StrategyChat";
 import ReviewIdeas from "./pages/ReviewIdeas";
 import GenerateScripts from "./pages/GenerateScripts";
 import WeeklyCalendar from "./pages/WeeklyCalendar";
+import TopicSuggestions from "./pages/TopicSuggestions";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,18 @@ const App = () => (
                 <ProtectedRoute>
                   <PremiumAppLayout>
                     <WeeklyCalendar />
+                  </PremiumAppLayout>
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Topic Suggestions - only for authenticated and onboarded users */}
+            <Route 
+              path="/topic-suggestions" 
+              element={
+                <ProtectedRoute>
+                  <PremiumAppLayout>
+                    <TopicSuggestions />
                   </PremiumAppLayout>
                 </ProtectedRoute>
               } 

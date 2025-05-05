@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { RefreshCw, Sparkles } from "lucide-react";
+import { RefreshCw, Sparkles, ArrowRight } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { Link } from "react-router-dom";
 
 interface TopicSuggestionSectionProps {
   onSelectTopic: (topic: string) => void;
@@ -110,13 +111,18 @@ export const TopicSuggestionSection = ({ onSelectTopic }: TopicSuggestionSection
 
   return (
     <Card className="mb-6">
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-lg">Topic Suggestions</CardTitle>
+        <Button variant="link" size="sm" asChild className="text-socialmize-purple">
+          <Link to="/topic-suggestions" className="flex items-center">
+            View All <ArrowRight className="ml-1 h-4 w-4" />
+          </Link>
+        </Button>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {topics.map((topic, index) => (
+            {topics.slice(0, 3).map((topic, index) => (
               <Button
                 key={index}
                 variant="outline"
@@ -128,7 +134,7 @@ export const TopicSuggestionSection = ({ onSelectTopic }: TopicSuggestionSection
               </Button>
             ))}
           </div>
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
             <Button
               variant="ghost"
               size="sm"
@@ -138,6 +144,12 @@ export const TopicSuggestionSection = ({ onSelectTopic }: TopicSuggestionSection
             >
               <RefreshCw className={`mr-2 h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
               {refreshing ? 'Refreshing...' : 'Refresh topics'}
+            </Button>
+            
+            <Button variant="ghost" size="sm" asChild className="text-socialmize-purple">
+              <Link to="/topic-suggestions">
+                See all topics
+              </Link>
             </Button>
           </div>
         </div>
