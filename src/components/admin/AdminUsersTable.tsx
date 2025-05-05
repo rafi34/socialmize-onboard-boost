@@ -30,7 +30,9 @@ import {
   Search,
   Clock,
   AlertTriangle,
-  Users
+  Users,
+  Shield,
+  User
 } from "lucide-react";
 import { XPOverrideDialog } from "./XPOverrideDialog";
 import { UserProfileDrawer } from "./UserProfileDrawer";
@@ -258,14 +260,48 @@ export function AdminUsersTable() {
     }
   };
 
+  // Create user type filters
+  const adminUsers = users.filter(user => user.profile.metadata?.is_admin === true);
+  const regularUsers = users.filter(user => user.profile.metadata?.is_admin !== true);
+  
+  // Filter by search query
   const filteredUsers = users.filter(user => 
     user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.strategy.niche_topic?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Get counts for the user types
+  const adminCount = adminUsers.length;
+  const regularCount = regularUsers.length;
+
+  // Function to format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  // Function to determine if user is in onboarding
+  const isInOnboarding = (userData: UserData) => {
+    return !userData.profile.onboarding_complete;
+  };
+
+  // Function to get user type badge
+  const getUserTypeBadge = (userData: UserData) => {
+    if (userData.profile.metadata?.is_admin) {
+      return (
+        <Badge variant="default" className="bg-socialmize-purple text-white flex items-center gap-1">
+          <Shield className="h-3 w-3" />
+          <span>Admin</span>
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="secondary" className="flex items-center gap-1">
+          <User className="h-3 w-3" />
+          <span>Creator</span>
+        </Badge>
+      );
+    }
   };
 
   if (loading) {
@@ -299,6 +335,16 @@ export function AdminUsersTable() {
           <h3 className="text-lg font-medium">All Users ({users.length})</h3>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="flex items-center gap-1">
+              <Shield className="h-3 w-3" />
+              <span>Admins: {adminCount}</span>
+            </Badge>
+            <Badge variant="outline" className="flex items-center gap-1">
+              <User className="h-3 w-3" />
+              <span>Users: {regularCount}</span>
+            </Badge>
+          </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -337,15 +383,13 @@ export function AdminUsersTable() {
               </TableRow>
             ) : (
               filteredUsers.map((userData) => (
-                <TableRow key={userData.id}>
+                <TableRow key={userData.id} className={userData.profile.metadata?.is_admin ? "bg-purple-50" : ""}>
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-medium">{userData.email}</span>
                       <div className="flex items-center gap-1 mt-1">
-                        {userData.profile.metadata?.is_admin && (
-                          <Badge variant="default" className="bg-socialmize-purple text-white">Admin</Badge>
-                        )}
-                        {!userData.profile.onboarding_complete && (
+                        {getUserTypeBadge(userData)}
+                        {isInOnboarding(userData) && (
                           <Badge variant="outline">Onboarding</Badge>
                         )}
                       </div>
