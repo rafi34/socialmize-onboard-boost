@@ -1,4 +1,3 @@
-
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,6 +19,7 @@ import {
   LevelProgressCard,
   ScriptsSection,
   StrategyPlanSection,
+  ContentAnalyticsSection,
 } from "@/components/dashboard";
 
 import { EnhancedWeeklyCalendarGrid } from "@/components/dashboard/EnhancedWeeklyCalendarGrid";
@@ -33,6 +33,8 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { useQueryClient } from "@tanstack/react-query";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BarChart2, Calendar, FileText, Settings, Sparkles } from "lucide-react";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -50,6 +52,7 @@ export default function Dashboard() {
   const [generationStatus, setGenerationStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [lastFetchAttempt, setLastFetchAttempt] = useState<number>(0);
+  const [activeTab, setActiveTab] = useState<'content' | 'analytics' | 'planner'>('content');
 
   const fetchUserData = useCallback(async () => {
     if (!user) return;
@@ -375,34 +378,72 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
       <main className="flex-grow container py-6 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
           
           <StrategyPlanSection />
 
           {planConfirmed && (
             <>
-              <EnhancedWeeklyCalendarGrid strategy={strategy} loading={loading} />
-              <ContentGenerationSection
-                strategy={strategy}
-                loading={loading}
-                refetchScripts={fetchUserData}
-              />
-              <TodaysMissionCard strategy={strategy} loading={loading} />
-              <Card className="mb-6">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Your Scripts</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ScriptsSection strategy={strategy} loading={loading} />
-                </CardContent>
-              </Card>
-              <ScriptPreviewsSection scripts={scripts} loading={loading} />
+              <Tabs 
+                value={activeTab} 
+                onValueChange={(value) => setActiveTab(value as 'content' | 'analytics' | 'planner')}
+                className="my-6"
+              >
+                <TabsList className="grid grid-cols-3 mb-4">
+                  <TabsTrigger value="content" className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    Content
+                  </TabsTrigger>
+                  <TabsTrigger value="planner" className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Planner
+                  </TabsTrigger>
+                  <TabsTrigger value="analytics" className="flex items-center gap-2">
+                    <BarChart2 className="h-4 w-4" />
+                    Analytics
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="content">
+                  <div className="space-y-6">
+                    <TodaysMissionCard strategy={strategy} loading={loading} />
+                    <ContentGenerationSection
+                      strategy={strategy}
+                      loading={loading}
+                      refetchScripts={fetchUserData}
+                    />
+                    <Card className="mb-6">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-lg">Your Scripts</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <ScriptsSection strategy={strategy} loading={loading} />
+                      </CardContent>
+                    </Card>
+                    <ScriptPreviewsSection scripts={scripts} loading={loading} />
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="planner">
+                  <div className="space-y-6">
+                    <EnhancedWeeklyCalendarGrid strategy={strategy} loading={loading} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <ReminderCard reminder={reminder} loading={loading} />
+                      <LevelProgressCard progress={progress} loading={loading} />
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="analytics">
+                  <div className="space-y-6">
+                    <ContentAnalyticsSection scripts={scripts} loading={loading} />
+                    <WeeklyConsistencyCard />
+                  </div>
+                </TabsContent>
+              </Tabs>
             </>
           )}
-
-          <ReminderCard reminder={reminder} loading={loading} />
-          <LevelProgressCard progress={progress} loading={loading} />
         </div>
       </main>
     </div>

@@ -98,16 +98,25 @@ serve(async (req) => {
         contentContext = "social media content";
     }
     
-    // Create prompt for OpenAI
+    // Enhanced prompts for better quality content
     const topicPrompt = topic ? `on the topic of ${topic}` : "on a topic relevant to your niche";
     const stylePrompt = creator_style ? `Your content style is ${creator_style}.` : "";
     const additionalDetails = additional_input ? `\n\nAdditional details or transcript: ${additional_input}` : "";
     
     const systemPrompt = `You are an expert social media content creator specializing in ${contentContext}. ${stylePrompt} Create engaging, authentic content that resonates with audiences.`;
     
-    const userPrompt = `Generate a script for ${contentContext} ${topicPrompt}.${additionalDetails}`;
+    const userPrompt = `Generate a script for ${contentContext} ${topicPrompt}.${additionalDetails}
+    
+Your response MUST be in JSON format with the following structure:
+{
+  "title": "Catchy and descriptive title",
+  "hook": "Attention-grabbing opening hook that makes viewers want to watch",
+  "content": "The main script content with line breaks where appropriate",
+  "format_type": "${type.replace('_', ' ')}",
+  "key_points": ["Point 1", "Point 2", "Point 3"]
+}`;
 
-    // Call OpenAI API
+    // Call OpenAI API with enhanced parameters
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -151,6 +160,11 @@ serve(async (req) => {
       if (!content.format_type) {
         content.format_type = type.replace('_', ' ');
       }
+      
+      // Add any missing fields from enhanced response
+      if (!content.key_points) {
+        content.key_points = [];
+      }
     } catch (parseError) {
       console.error("Error parsing content:", parseError);
       console.log("Raw content:", responseData.choices[0].message.content);
@@ -160,9 +174,18 @@ serve(async (req) => {
         title: "Generated Content",
         hook: "Attention-grabbing opening",
         content: responseData.choices[0].message.content,
-        format_type: type.replace('_', ' ')
+        format_type: type.replace('_', ' '),
+        key_points: []
       };
     }
+    
+    // Add metadata about the generation
+    content.metadata = {
+      generated_at: new Date().toISOString(),
+      type,
+      topic,
+      creator_style
+    };
     
     // Store content in database using Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
