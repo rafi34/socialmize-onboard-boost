@@ -63,7 +63,7 @@ export default function AdminDashboard() {
   return (
     <div className="container py-8">
       <PageHeader
-        heading="Admin Dashboard"
+        title="Admin Dashboard"
         description="Manage users, fix issues, and optimize platform growth"
         icon={<Shield className="h-6 w-6" />}
       />

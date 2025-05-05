@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { AdminLogDialog } from "./AdminLogDialog";
+import { AdminLogsTable } from "./AdminLogsTable";
 import { 
   User, 
   Calendar, 

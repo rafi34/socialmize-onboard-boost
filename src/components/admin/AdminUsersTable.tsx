@@ -99,15 +99,17 @@ export function AdminUsersTable() {
           metadata: item.metadata || {}
         },
         progress: {
-          current_xp: item.progress_tracking?.[0]?.current_xp || 0,
-          current_level: item.progress_tracking?.[0]?.current_level || 1,
-          streak_days: item.progress_tracking?.[0]?.streak_days || 0
+          // Fix: Properly handle progress_tracking array, accessing first item's properties
+          current_xp: item.progress_tracking && item.progress_tracking[0] ? item.progress_tracking[0].current_xp || 0 : 0,
+          current_level: item.progress_tracking && item.progress_tracking[0] ? item.progress_tracking[0].current_level || 1 : 1,
+          streak_days: item.progress_tracking && item.progress_tracking[0] ? item.progress_tracking[0].streak_days || 0 : 0
         },
         strategy: {
-          niche_topic: item.strategy_profiles?.[0]?.niche_topic || '',
-          summary: item.strategy_profiles?.[0]?.summary || '',
-          creator_style: item.strategy_profiles?.[0]?.creator_style || '',
-          posting_frequency: item.strategy_profiles?.[0]?.posting_frequency || ''
+          // Fix: Properly handle strategy_profiles array, accessing first item's properties
+          niche_topic: item.strategy_profiles && item.strategy_profiles[0] ? item.strategy_profiles[0].niche_topic || '' : '',
+          summary: item.strategy_profiles && item.strategy_profiles[0] ? item.strategy_profiles[0].summary || '' : '',
+          creator_style: item.strategy_profiles && item.strategy_profiles[0] ? item.strategy_profiles[0].creator_style || '' : '',
+          posting_frequency: item.strategy_profiles && item.strategy_profiles[0] ? item.strategy_profiles[0].posting_frequency || '' : ''
         }
       }));
 

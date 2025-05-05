@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,15 +69,13 @@ export function AdminStatsCard() {
         const latestProgressByUser = new Map();
         
         progressData.forEach(entry => {
-          if (!latestProgressByUser.has(entry.user_id)) {
-            latestProgressByUser.set(entry.user_id, entry);
-            totalXP += entry.current_xp || 0;
-            totalLevel += entry.current_level || 1;
-            maxStreak = Math.max(maxStreak, entry.streak_days || 0);
-          }
+          // Fix: Remove references to user_id
+          totalXP += entry.current_xp || 0;
+          totalLevel += entry.current_level || 1;
+          maxStreak = Math.max(maxStreak, entry.streak_days || 0);
         });
         
-        const uniqueUserCount = latestProgressByUser.size || 1;
+        const uniqueUserCount = progressData.length || 1;
         totalXP = Math.round(totalXP / uniqueUserCount);
         totalLevel = Math.round(totalLevel / uniqueUserCount * 10) / 10; // 1 decimal place
       }
