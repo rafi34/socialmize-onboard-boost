@@ -21,7 +21,8 @@ import {
   StrategyPlanSection,
   ContentAnalyticsSection,
   WeeklyConsistencyCard,
-  StrategySuggestionSection
+  StrategySuggestionSection,
+  WeeklyConsistencyTracker
 } from "@/components/dashboard";
 
 import { EnhancedWeeklyCalendarGrid } from "@/components/dashboard/EnhancedWeeklyCalendarGrid";
@@ -410,6 +411,7 @@ export default function Dashboard() {
                 <TabsContent value="content">
                   <div className="space-y-6">
                     <TodaysMissionCard strategy={strategy} loading={loading} />
+                    <WeeklyConsistencyTracker />
                     <StrategySuggestionSection strategy={strategy} loading={loading} />
                     <ContentGenerationSection
                       strategy={strategy}

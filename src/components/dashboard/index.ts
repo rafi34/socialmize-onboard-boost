@@ -19,3 +19,5 @@ export { ContentMissionsSection } from './ContentMissionsSection';
 export { ContentGenerationSection } from './ContentGenerationSection';
 export { ContentAnalyticsSection } from './ContentAnalyticsSection';
 export { StrategySuggestionSection } from './StrategySuggestionSection';
+export { WeeklyConsistencyTracker } from './WeeklyConsistencyTracker';
+
