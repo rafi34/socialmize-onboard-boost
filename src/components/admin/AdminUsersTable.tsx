@@ -102,7 +102,7 @@ export function AdminUsersTable() {
         throw profilesError;
       }
 
-      console.log("Profiles fetched:", profilesData);
+      console.log("Profiles fetched:", profilesData?.length || 0);
       
       if (!profilesData || profilesData.length === 0) {
         console.log("No users found in database");
@@ -162,11 +162,13 @@ export function AdminUsersTable() {
         }
 
         try {
-          // Fetch strategy profile data
+          // Fetch strategy profile data - CRUCIAL CHANGE: order by created_at and limit 1
           const { data: strategyData, error: strategyError } = await supabase
             .from('strategy_profiles')
             .select('*')
             .eq('user_id', profile.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
             .maybeSingle();
 
           if (strategyError) {
@@ -187,7 +189,7 @@ export function AdminUsersTable() {
         return userData;
       }));
 
-      console.log("Transformed user data:", usersWithData);
+      console.log("Transformed user data:", usersWithData.length);
       setUsers(usersWithData);
     } catch (error: any) {
       console.error("Error fetching users:", error);
