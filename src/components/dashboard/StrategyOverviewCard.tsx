@@ -8,11 +8,13 @@ import { FullStrategyModal } from "./FullStrategyModal";
 interface StrategyOverviewCardProps {
   onRegenerateClick?: () => void;
   fullPlanText?: string | null;
+  onViewFullPlan?: () => void;
 }
 
 export const StrategyOverviewCard = ({ 
   onRegenerateClick,
-  fullPlanText 
+  fullPlanText,
+  onViewFullPlan
 }: StrategyOverviewCardProps) => {
   const [showFullStrategy, setShowFullStrategy] = useState(false);
 
@@ -68,6 +70,14 @@ export const StrategyOverviewCard = ({
   
   const summary = getSummaryFromFullPlan();
 
+  const handleViewFullPlan = () => {
+    if (onViewFullPlan) {
+      onViewFullPlan();
+    } else {
+      setShowFullStrategy(true);
+    }
+  };
+
   return (
     <>
       <Card className="mb-6">
@@ -94,7 +104,7 @@ export const StrategyOverviewCard = ({
               variant="outline"
               size="sm"
               className="mt-2 flex items-center gap-2"
-              onClick={() => setShowFullStrategy(true)}
+              onClick={handleViewFullPlan}
             >
               <FileText className="h-4 w-4" />
               View Full Strategy Plan
@@ -114,12 +124,14 @@ export const StrategyOverviewCard = ({
         </CardFooter>
       </Card>
 
-      <FullStrategyModal 
-        isOpen={showFullStrategy}
-        onClose={() => setShowFullStrategy(false)}
-        fullPlanText={fullPlanText || ""}
-        onRegenerateClick={onRegenerateClick}
-      />
+      {!onViewFullPlan && (
+        <FullStrategyModal 
+          isOpen={showFullStrategy}
+          onClose={() => setShowFullStrategy(false)}
+          fullPlanText={fullPlanText || ""}
+          onRegenerateClick={onRegenerateClick}
+        />
+      )}
     </>
   );
 };
