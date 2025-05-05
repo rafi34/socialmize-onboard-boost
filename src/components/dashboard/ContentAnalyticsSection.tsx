@@ -1,185 +1,157 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart, BarChart2, PieChart, TrendingUp } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { GeneratedScript } from "@/types/dashboard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BarChart2, PieChart as PieChartIcon } from "lucide-react";
 
-interface ContentAnalyticsSectionProps {
-  scripts?: GeneratedScript[] | null;
-  loading?: boolean;
+interface ContentAnalyticsProps {
+  scripts: GeneratedScript[] | null;
+  loading: boolean;
 }
 
-export const ContentAnalyticsSection = ({ 
-  scripts, 
-  loading = false 
-}: ContentAnalyticsSectionProps) => {
-  const [activeTab, setActiveTab] = useState("overview");
+export const ContentAnalyticsSection = ({ scripts, loading }: ContentAnalyticsProps) => {
+  const [contentTypeData, setContentTypeData] = useState<any[]>([]);
+  const [weeklyData, setWeeklyData] = useState<any[]>([]);
+  const [activeChart, setActiveChart] = useState<'distribution' | 'weekly'>('distribution');
   
-  // Calculate content metrics
-  const contentCounts = scripts?.reduce((acc, script) => {
-    const formatType = script.format_type || 'Unknown';
-    acc[formatType] = (acc[formatType] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>) || {};
-  
-  // Format content data for display
-  const contentTypes = Object.keys(contentCounts);
-  const totalScripts = scripts?.length || 0;
-  
+  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088fe', '#00C49F'];
+
+  useEffect(() => {
+    if (scripts && scripts.length > 0) {
+      // Process content type distribution
+      const typeCount: Record<string, number> = {};
+      scripts.forEach(script => {
+        const type = script.format_type || 'Unknown';
+        typeCount[type] = (typeCount[type] || 0) + 1;
+      });
+      
+      const distributionData = Object.entries(typeCount).map(([name, value], index) => ({
+        name,
+        value,
+        fill: COLORS[index % COLORS.length]
+      }));
+      setContentTypeData(distributionData);
+      
+      // Process weekly content generation
+      const weeklyStats: Record<string, number> = {
+        'Monday': 0,
+        'Tuesday': 0,
+        'Wednesday': 0,
+        'Thursday': 0,
+        'Friday': 0,
+        'Saturday': 0,
+        'Sunday': 0
+      };
+      
+      scripts.forEach(script => {
+        const date = new Date(script.created_at);
+        const day = date.toLocaleDateString('en-US', { weekday: 'long' });
+        weeklyStats[day] = (weeklyStats[day] || 0) + 1;
+      });
+      
+      const weeklyDataArray = Object.entries(weeklyStats).map(([day, count]) => ({
+        day,
+        count
+      }));
+      
+      setWeeklyData(weeklyDataArray);
+    }
+  }, [scripts]);
+
   if (loading) {
     return (
-      <Card className="mb-6">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Content Analytics</CardTitle>
+      <Card>
+        <CardHeader>
+          <CardTitle>Content Analytics</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Skeleton className="h-48 w-full" />
-              <Skeleton className="h-48 w-full" />
-            </div>
-          </div>
+          <Skeleton className="h-[300px] w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!scripts || scripts.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Content Analytics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-center py-12">
+            No content data available yet. 
+            Generate some content to see analytics.
+          </p>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="mb-6">
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <BarChart2 className="h-5 w-5 text-socialmize-purple" />
-            Content Analytics
-          </CardTitle>
-          <Button variant="outline" size="sm">
-            Export Data
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="overview">
-              Overview
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle>Content Analytics</CardTitle>
+        <Tabs value={activeChart} onValueChange={(value) => setActiveChart(value as 'distribution' | 'weekly')}>
+          <TabsList>
+            <TabsTrigger value="distribution" className="flex items-center gap-1">
+              <PieChartIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Distribution</span>
             </TabsTrigger>
-            <TabsTrigger value="content">
-              Content Breakdown
-            </TabsTrigger>
-            <TabsTrigger value="performance">
-              Performance
+            <TabsTrigger value="weekly" className="flex items-center gap-1">
+              <BarChart2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Weekly</span>
             </TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="overview" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-muted rounded-lg p-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Total Content</h3>
-                <p className="text-2xl font-bold">{totalScripts}</p>
-              </div>
-              
-              <div className="bg-muted rounded-lg p-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Content Types</h3>
-                <p className="text-2xl font-bold">{contentTypes.length}</p>
-              </div>
-              
-              <div className="bg-muted rounded-lg p-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Production Rate</h3>
-                <p className="text-2xl font-bold">
-                  {totalScripts > 0
-                    ? <span className="flex items-center gap-1">{(totalScripts / 7).toFixed(1)} <span className="text-xs font-normal">/week</span></span>
-                    : "N/A"}
-                </p>
-              </div>
-            </div>
-            
-            <div className="bg-muted rounded-lg p-4">
-              <h3 className="text-sm font-medium mb-3">Content Distribution</h3>
-              <div className="flex flex-wrap gap-3">
-                {contentTypes.length > 0 ? (
-                  contentTypes.map(type => (
-                    <div 
-                      key={type} 
-                      className="flex-1 min-w-[120px] p-3 bg-background rounded-md shadow-sm"
-                    >
-                      <div className="text-xs text-muted-foreground">{type}</div>
-                      <div className="text-lg font-semibold mt-1">{contentCounts[type]}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {Math.round((contentCounts[type] / totalScripts) * 100)}% of total
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center w-full text-muted-foreground p-4">
-                    No content data available
-                  </div>
-                )}
-              </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="content">
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Detailed breakdown of your content by type and performance metrics.
-              </p>
-              {contentTypes.length > 0 ? (
-                <div className="space-y-2">
-                  {contentTypes.map(type => (
-                    <div key={type} className="flex items-center justify-between p-3 border rounded-md">
-                      <div>
-                        <h4 className="font-medium">{type}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {contentCounts[type]} scripts
-                        </p>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-24 bg-muted rounded-full h-2 mr-2">
-                          <div 
-                            className="bg-socialmize-purple h-2 rounded-full" 
-                            style={{ width: `${Math.round((contentCounts[type] / totalScripts) * 100)}%` }}
-                          />
-                        </div>
-                        <span className="text-sm">
-                          {Math.round((contentCounts[type] / totalScripts) * 100)}%
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center p-8 border border-dashed rounded-md">
-                  <p>No content data available</p>
-                  <Button variant="outline" size="sm" className="mt-2">
-                    Generate Content
-                  </Button>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="performance">
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Content performance metrics will be available once you start recording engagement metrics.
-              </p>
-              <div className="flex flex-col items-center justify-center p-8 border border-dashed rounded-md">
-                <BarChart className="h-10 w-10 text-muted-foreground mb-2" />
-                <h3 className="text-lg font-medium">Performance Tracking</h3>
-                <p className="text-sm text-muted-foreground text-center max-w-md mt-1">
-                  Connect your social media accounts to track content performance and gain insights to optimize your strategy.
-                </p>
-                <Button variant="outline" size="sm" className="mt-4">
-                  Connect Accounts
-                </Button>
-              </div>
-            </div>
-          </TabsContent>
         </Tabs>
+      </CardHeader>
+      <CardContent>
+        <TabsContent value="distribution" className="mt-0">
+          <div className="h-[350px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={contentTypeData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={true}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {contentTypeData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => [`${value} scripts`, 'Count']} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="text-xs text-muted-foreground text-center mt-4">
+            Distribution of content by type
+          </p>
+        </TabsContent>
+        
+        <TabsContent value="weekly" className="mt-0">
+          <div className="h-[350px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={weeklyData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" />
+                <YAxis allowDecimals={false} />
+                <Tooltip formatter={(value) => [`${value} scripts`, 'Generated']} />
+                <Bar dataKey="count" fill="#8884d8" name="Scripts Generated" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="text-xs text-muted-foreground text-center mt-4">
+            Scripts generated by day of week
+          </p>
+        </TabsContent>
       </CardContent>
     </Card>
   );
