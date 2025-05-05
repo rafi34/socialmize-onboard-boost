@@ -24,6 +24,7 @@ export default function Dashboard() {
   const [showContent, setShowContent] = useState(false);
   const [activeTab, setActiveTab] = useState<'content' | 'analytics' | 'planner'>('content');
   const [hasAttemptedRetry, setHasAttemptedRetry] = useState(false);
+  const [errorShown, setErrorShown] = useState(false);
   
   const {
     strategy,
@@ -44,7 +45,7 @@ export default function Dashboard() {
 
   // Display error toast on generation error, but only once
   useEffect(() => {
-    if (generationStatus === 'error' && generationError && !hasAttemptedRetry && retryCount >= 3) {
+    if (generationStatus === 'error' && generationError && !hasAttemptedRetry && retryCount >= 3 && !errorShown) {
       showNotification({
         title: "Strategy Generation Issue",
         description: "We encountered an issue while creating your strategy. Please try again manually.",
@@ -65,8 +66,9 @@ export default function Dashboard() {
           </Button>
         ),
       });
+      setErrorShown(true);
     }
-  }, [generationStatus, generationError, hasAttemptedRetry, fetchUserData, resetRetryCount, retryCount]);
+  }, [generationStatus, generationError, hasAttemptedRetry, fetchUserData, resetRetryCount, retryCount, errorShown]);
 
   // Toggle visibility of content after initial load
   useEffect(() => {
@@ -77,6 +79,13 @@ export default function Dashboard() {
       return () => clearTimeout(timer);
     }
   }, [showContent]);
+
+  // Reset error shown state when generation status changes
+  useEffect(() => {
+    if (generationStatus !== 'error') {
+      setErrorShown(false);
+    }
+  }, [generationStatus]);
 
   if (profileComplete === false) return <Navigate to="/" replace />;
 
@@ -109,6 +118,7 @@ export default function Dashboard() {
             <>
               <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
               
+              {/* Only show error alert if there's a persistent error after multiple attempts */}
               {generationStatus === 'error' && generationError && retryCount >= 3 && (
                 <Alert variant="destructive" className="mb-6">
                   <AlertTriangle className="h-4 w-4" />
@@ -119,6 +129,7 @@ export default function Dashboard() {
                       onClick={() => {
                         resetRetryCount();
                         fetchUserData();
+                        setErrorShown(false);
                       }}
                       className="mt-2 inline-flex items-center"
                       size="sm"

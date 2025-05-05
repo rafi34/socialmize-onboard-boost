@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Check, AlertTriangle, Info, X } from "lucide-react";
 import { ToastActionElement } from "@/components/ui/toast";
 
@@ -34,6 +34,8 @@ export const showNotification = ({
       "text-blue-500"}
   `;
   
+  const { toast } = useToast();
+  
   return toast({
     title: title,
     description: description,
@@ -46,6 +48,8 @@ export const showNotification = ({
 
 // Utility hooks for displaying notifications
 export const useNotification = () => {
+  const { toast } = useToast();
+  
   return {
     success: (options: Omit<NotificationOptions, "type">) => 
       showNotification({ ...options, type: "success" }),

@@ -2,7 +2,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useStrategyData } from "@/hooks/useStrategyData";
 
 type WeeklyCalendarContextType = {
@@ -32,6 +32,7 @@ export const WeeklyCalendarDataProvider = ({ children }: WeeklyCalendarDataProvi
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updateAttempts, setUpdateAttempts] = useState(0);
+  const { toast } = useToast();
   const MAX_UPDATE_ATTEMPTS = 2;
 
   // Initialize calendar data from strategy
