@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>("users");
+  const [christianAdminInProgress, setChristianAdminInProgress] = useState<boolean>(false);
 
   useEffect(() => {
     if (user) {
@@ -53,22 +54,60 @@ export default function AdminDashboard() {
     try {
       if (!user) return;
       
+      setChristianAdminInProgress(true);
+      
+      // First, find Christian's user ID by email
+      const { data: christianUser, error: lookupError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', 'christian@communitylaunch.com')
+        .single();
+      
+      if (lookupError) {
+        console.error("Error finding Christian's user ID:", lookupError);
+        toast.error("Couldn't find Christian in the system");
+        setChristianAdminInProgress(false);
+        return;
+      }
+      
+      if (!christianUser || !christianUser.id) {
+        toast.error("Christian's user account not found");
+        setChristianAdminInProgress(false);
+        return;
+      }
+      
+      console.log("Found Christian's user ID:", christianUser.id);
+      
+      // Now call the RPC function with the correct user ID
       const { data, error } = await supabase
         .rpc('set_admin_status', { 
-          target_user_id: 'lookup-by-email', 
+          target_user_id: christianUser.id, 
           is_admin: true,
           admin_user_id: user.id
         });
       
       if (error) {
+        console.error("Failed to make Christian an admin:", error);
         toast.error("Failed to make Christian an admin: " + error.message);
         return;
       }
+      
+      console.log("Admin status update result:", data);
+      
+      // Log this action
+      await supabase.from("admin_logs").insert({
+        admin_user_id: user.id,
+        target_user_id: christianUser.id,
+        action: "grant_admin",
+        metadata: { method: "makeChristianAdmin", operation: "success" }
+      });
       
       toast.success("Admin privileges granted to Christian");
     } catch (error: any) {
       console.error("Error making Christian admin:", error);
       toast.error("Error making Christian admin: " + error.message);
+    } finally {
+      setChristianAdminInProgress(false);
     }
   };
 
@@ -154,9 +193,16 @@ export default function AdminDashboard() {
                     <Button 
                       variant="outline"
                       onClick={makeChristianAdmin}
+                      disabled={christianAdminInProgress}
                       className="bg-white"
                     >
-                      Make Christian an Admin
+                      {christianAdminInProgress ? (
+                        <>
+                          <span className="animate-spin mr-2">⏳</span> Processing...
+                        </>
+                      ) : (
+                        "Make Christian an Admin"
+                      )}
                     </Button>
                   </div>
                 </div>
