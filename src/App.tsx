@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,6 +19,7 @@ import GenerateScripts from "./pages/GenerateScripts";
 import WeeklyCalendar from "./pages/WeeklyCalendar";
 import TopicSuggestions from "./pages/TopicSuggestions";
 import StrategyOverview from "./pages/StrategyOverview";
+import Reminders from "./pages/Reminders";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +104,18 @@ const App = () => (
                 <ProtectedRoute>
                   <PremiumAppLayout>
                     <StrategyOverview />
+                  </PremiumAppLayout>
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Reminders - only for authenticated and onboarded users */}
+            <Route 
+              path="/reminders" 
+              element={
+                <ProtectedRoute>
+                  <PremiumAppLayout>
+                    <Reminders />
                   </PremiumAppLayout>
                 </ProtectedRoute>
               } 

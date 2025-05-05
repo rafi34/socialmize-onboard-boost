@@ -5,6 +5,9 @@ import { StrategyOverviewCard } from "@/components/strategy/StrategyOverviewCard
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { StrategyData } from "@/types/dashboard";
+import { Button } from "@/components/ui/button";
+import { Calendar, Bell } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const StrategyOverview = () => {
   const [loading, setLoading] = useState(true);
@@ -81,6 +84,22 @@ const StrategyOverview = () => {
       <PageHeader 
         title="Strategy Overview" 
         description="View and manage your content creation strategy"
+        actions={
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link to="/reminders" className="flex items-center gap-2">
+                <Bell className="h-4 w-4" />
+                Reminders
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/weekly-calendar" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Calendar
+              </Link>
+            </Button>
+          </div>
+        }
       />
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
