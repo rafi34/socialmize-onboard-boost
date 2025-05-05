@@ -23,6 +23,7 @@ import { DashboardContent } from "@/components/dashboard/DashboardContent";
 import { DashboardPlanner } from "@/components/dashboard/DashboardPlanner";
 import { DashboardAnalytics } from "@/components/dashboard/DashboardAnalytics";
 import { StrategyGenerationState } from "@/components/dashboard/StrategyGenerationState";
+import { QueryClient } from "@tanstack/react-query";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -40,7 +41,7 @@ export default function Dashboard() {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [lastFetchAttempt, setLastFetchAttempt] = useState<number>(0);
   const [activeTab, setActiveTab] = useState<'content' | 'analytics' | 'planner'>('content');
-  const [queryClient] = useState(() => new window.tanstack.QueryClient());
+  const [queryClient] = useState(() => new QueryClient());
 
   const fetchUserData = useCallback(async () => {
     if (!user) return;
