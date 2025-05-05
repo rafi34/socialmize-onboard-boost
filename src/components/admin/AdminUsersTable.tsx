@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,7 +28,8 @@ import {
   Trash, 
   Bug,
   Search,
-  Clock
+  Clock,
+  AlertTriangle
 } from "lucide-react";
 import { XPOverrideDialog } from "./XPOverrideDialog";
 import { UserProfileDrawer } from "./UserProfileDrawer";
@@ -72,6 +74,7 @@ export function AdminUsersTable() {
   const { user } = useAuth();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [showXPOverride, setShowXPOverride] = useState(false);
@@ -86,6 +89,10 @@ export function AdminUsersTable() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
+      console.log("Fetching users...");
+      
       const { data, error } = await supabase
         .from('profiles')
         .select(`
@@ -99,7 +106,19 @@ export function AdminUsersTable() {
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching users:", error);
+        throw error;
+      }
+
+      console.log("Fetch results:", data);
+      
+      if (!data || data.length === 0) {
+        console.log("No users found in database");
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
 
       // Transform the data to the expected structure
       const transformedData = data.map(item => ({
@@ -137,9 +156,11 @@ export function AdminUsersTable() {
         }
       }));
 
+      console.log("Transformed user data:", transformedData);
       setUsers(transformedData);
     } catch (error) {
       console.error("Error fetching users:", error);
+      setError("Failed to load users. Please try refreshing.");
       toast.error("Failed to load users");
     } finally {
       setLoading(false);
@@ -246,6 +267,21 @@ export function AdminUsersTable() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="rounded-lg border bg-white shadow-sm p-6">
+        <div className="flex flex-col items-center justify-center h-64 text-center">
+          <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
+          <h3 className="text-lg font-medium mb-2">Error Loading Users</h3>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={fetchUsers}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-lg border bg-white shadow-sm">
       <div className="p-4 flex items-center justify-between">
@@ -282,7 +318,9 @@ export function AdminUsersTable() {
             {filteredUsers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                  No users found
+                  {users.length === 0 ? 
+                    "No users found in the database. You need to create at least one user account." : 
+                    "No users match your search criteria."}
                 </TableCell>
               </TableRow>
             ) : (
