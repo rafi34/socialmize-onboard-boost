@@ -7,9 +7,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { StrategyData } from "@/types/dashboard";
 import { Button } from "@/components/ui/button";
-import { Calendar, Bell, FileText, BarChart2 } from "lucide-react";
+import { Calendar, Bell, FileText, BarChart2, Zap, TrendingUp, Activity } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const StrategyOverview = () => {
   const [loading, setLoading] = useState(true);
@@ -82,6 +83,28 @@ const StrategyOverview = () => {
     console.log("Edit strategy clicked");
   };
 
+  // Simulate some key metrics for the strategy dashboard
+  const keyMetrics = [
+    { 
+      title: "Content Consistency", 
+      value: `${Math.round((usedTopicsCount / Math.max(1, totalTopicsCount)) * 100)}%`, 
+      description: "Based on your topic usage",
+      icon: <Activity className="h-5 w-5 text-socialmize-purple" />
+    },
+    { 
+      title: "Strategy Completion", 
+      value: strategy?.weekly_calendar ? "Active" : "In Progress", 
+      description: "Your content plan status",
+      icon: <TrendingUp className="h-5 w-5 text-socialmize-purple" />
+    },
+    { 
+      title: "Content Velocity", 
+      value: strategy?.posting_frequency || "Not set", 
+      description: "Your posting frequency",
+      icon: <Zap className="h-5 w-5 text-socialmize-purple" />
+    }
+  ];
+
   return (
     <div className="container mx-auto py-10 px-4 max-w-5xl">
       <PageHeader 
@@ -128,6 +151,24 @@ const StrategyOverview = () => {
         </TabsList>
         
         <TabsContent value="overview" className="space-y-6">
+          {/* Key Metrics Section */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {keyMetrics.map((metric, index) => (
+              <Card key={index}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    {metric.icon}
+                    {metric.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{metric.value}</div>
+                  <p className="text-sm text-muted-foreground">{metric.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <StrategyOverviewCard 
               strategy={strategy}
@@ -138,7 +179,28 @@ const StrategyOverview = () => {
             />
             
             <div className="space-y-6">
-              {/* Add more overview components here */}
+              {/* Add strategy management options here */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Quick Actions</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button variant="outline" className="text-sm" asChild>
+                      <Link to="/review-ideas">Review Content Ideas</Link>
+                    </Button>
+                    <Button variant="outline" className="text-sm" asChild>
+                      <Link to="/generate-scripts">Generate Scripts</Link>
+                    </Button>
+                    <Button variant="outline" className="text-sm" asChild>
+                      <Link to="/strategy-chat">Strategy Chat</Link>
+                    </Button>
+                    <Button variant="outline" className="text-sm" asChild>
+                      <Link to="/topic-suggestions">Topic Suggestions</Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </TabsContent>

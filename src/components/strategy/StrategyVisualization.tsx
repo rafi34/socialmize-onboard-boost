@@ -1,8 +1,10 @@
 
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend, CartesianGrid } from "recharts";
 import { StrategyData } from "@/types/dashboard";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { ChartPie, ChartBar, ChartArea } from "lucide-react";
 
 interface StrategyVisualizationProps {
   strategy: StrategyData | null;
@@ -45,6 +47,35 @@ export const StrategyVisualization = ({
       content: (strategy.weekly_calendar[day] || []).length
     }));
   }, [strategy?.weekly_calendar]);
+
+  // Projected growth data (simulated)
+  const projectedGrowthData = useMemo(() => {
+    const baseFollowers = 100;
+    const weeklyGrowth = 0.15; // 15% weekly growth
+    
+    return Array.from({ length: 12 }, (_, i) => ({
+      week: `Week ${i + 1}`,
+      followers: Math.round(baseFollowers * Math.pow(1 + weeklyGrowth, i))
+    }));
+  }, []);
+
+  // Engagement prediction data (simulated)
+  const engagementPredictionData = useMemo(() => {
+    // Different engagement rates for different content types
+    const contentTypes = strategy?.content_types || [];
+    if (contentTypes.length === 0) return [];
+    
+    return contentTypes.map((type, index) => {
+      // Simulate different engagement rates for different content types
+      const baseRate = 2 + (index % 3) * 1.5;
+      
+      return {
+        name: type,
+        rate: baseRate,
+        fill: getContentTypeColor(index)
+      };
+    });
+  }, [strategy?.content_types]);
   
   // Helper to get color for content type
   function getContentTypeColor(index: number) {
@@ -85,8 +116,11 @@ export const StrategyVisualization = ({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
       {/* Content Types Distribution */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Content Format Mix</CardTitle>
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ChartPie className="h-5 w-5 text-socialmize-purple" />
+            Content Format Mix
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[200px] w-full">
@@ -121,8 +155,11 @@ export const StrategyVisualization = ({
       
       {/* Topic Utilization */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Topic Utilization</CardTitle>
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ChartPie className="h-5 w-5 text-socialmize-purple" />
+            Topic Utilization
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[200px] w-full">
@@ -156,9 +193,12 @@ export const StrategyVisualization = ({
       </Card>
       
       {/* Weekly Content Posting Plan */}
-      <Card className="md:col-span-2">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Weekly Content Schedule</CardTitle>
+      <Card>
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ChartBar className="h-5 w-5 text-socialmize-purple" />
+            Weekly Content Schedule
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[200px] w-full">
@@ -177,6 +217,68 @@ export const StrategyVisualization = ({
             ) : (
               <div className="h-full flex items-center justify-center text-muted-foreground">
                 No weekly schedule data available
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* New Chart: Projected Audience Growth */}
+      <Card>
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ChartArea className="h-5 w-5 text-socialmize-purple" />
+            Projected Audience Growth
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[200px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={projectedGrowthData} margin={{ top: 10, right: 30, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="week" />
+                <YAxis />
+                <Tooltip 
+                  formatter={(value: any) => [`${value} followers`, 'Projected Followers']}
+                  labelFormatter={(label) => `${label}`}
+                />
+                <Line type="monotone" dataKey="followers" stroke="#8884d8" activeDot={{ r: 8 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* New Chart: Engagement Prediction by Content Type */}
+      <Card className="md:col-span-2">
+        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <ChartBar className="h-5 w-5 text-socialmize-purple" />
+            Predicted Engagement by Content Type
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[200px] w-full">
+            {engagementPredictionData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={engagementPredictionData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip 
+                    formatter={(value: any) => [`${value}%`, 'Avg. Engagement Rate']}
+                    labelFormatter={(label) => `${label}`}
+                  />
+                  <Legend />
+                  <Bar dataKey="rate" fill="#8884d8" name="Predicted Engagement Rate (%)">
+                    {engagementPredictionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                No engagement prediction data available
               </div>
             )}
           </div>
