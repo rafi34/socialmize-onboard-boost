@@ -2,18 +2,21 @@
 import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { StrategyOverviewCard } from "@/components/strategy/StrategyOverviewCard";
+import { StrategyVisualization } from "@/components/strategy/StrategyVisualization";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { StrategyData } from "@/types/dashboard";
 import { Button } from "@/components/ui/button";
-import { Calendar, Bell, FileText } from "lucide-react";
+import { Calendar, Bell, FileText, BarChart2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const StrategyOverview = () => {
   const [loading, setLoading] = useState(true);
   const [strategy, setStrategy] = useState<StrategyData | null>(null);
   const [usedTopicsCount, setUsedTopicsCount] = useState(0);
   const [totalTopicsCount, setTotalTopicsCount] = useState(0);
+  const [activeTab, setActiveTab] = useState("overview");
   const { user } = useAuth();
 
   useEffect(() => {
@@ -108,20 +111,46 @@ const StrategyOverview = () => {
         }
       />
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-        <StrategyOverviewCard 
-          strategy={strategy}
-          loading={loading}
-          onEditClick={handleEditStrategy}
-          usedTopicsCount={usedTopicsCount}
-          totalTopicsCount={totalTopicsCount}
-        />
+      <Tabs 
+        defaultValue="overview" 
+        value={activeTab} 
+        onValueChange={setActiveTab}
+        className="mt-6"
+      >
+        <TabsList className="mb-6">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2">
+            <BarChart2 className="h-4 w-4" />
+            Analytics
+          </TabsTrigger>
+        </TabsList>
         
-        <div className="space-y-6">
-          {/* This space can be used for additional strategy-related components */}
-          {/* For example, a WeeklyCalendarPreview or TopicIdeasPreview */}
-        </div>
-      </div>
+        <TabsContent value="overview" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <StrategyOverviewCard 
+              strategy={strategy}
+              loading={loading}
+              onEditClick={handleEditStrategy}
+              usedTopicsCount={usedTopicsCount}
+              totalTopicsCount={totalTopicsCount}
+            />
+            
+            <div className="space-y-6">
+              {/* Add more overview components here */}
+            </div>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="analytics">
+          <StrategyVisualization 
+            strategy={strategy} 
+            usedTopicsCount={usedTopicsCount}
+            totalTopicsCount={totalTopicsCount}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,7 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown } from "lucide-react";
 
 // Import Settings components
-import ProfileSettings from "@/components/settings/ProfileSettings";
+import ExpandedProfileSettings from "@/components/settings/ExpandedProfileSettings";
 import CreatorSettings from "@/components/settings/CreatorSettings";
 import NotificationSettings from "@/components/settings/NotificationSettings";
 import IntegrationSettings from "@/components/settings/IntegrationSettings";
@@ -22,6 +21,17 @@ export type UserSettings = {
     name: string;
     email: string;
     avatarUrl: string | null;
+    bio?: string;
+    location?: string;
+    website?: string;
+    socialLinks?: {
+      twitter?: string;
+      instagram?: string;
+      youtube?: string;
+      facebook?: string;
+      linkedin?: string;
+      github?: string;
+    };
   };
   creatorSettings: {
     creatorMission: string | null;
@@ -54,6 +64,17 @@ const initialSettings: UserSettings = {
     name: "",
     email: "",
     avatarUrl: null,
+    bio: "",
+    location: "",
+    website: "",
+    socialLinks: {
+      twitter: "",
+      instagram: "",
+      youtube: "",
+      facebook: "",
+      linkedin: "",
+      github: "",
+    }
   },
   creatorSettings: {
     creatorMission: null,
@@ -127,6 +148,17 @@ const Settings = () => {
           name: user.user_metadata?.full_name || "",
           email: user.email || "",
           avatarUrl: user.user_metadata?.avatar_url || null,
+          bio: user.user_metadata?.bio || "",
+          location: user.user_metadata?.location || "",
+          website: user.user_metadata?.website || "",
+          socialLinks: user.user_metadata?.social_links || {
+            twitter: "",
+            instagram: "",
+            youtube: "",
+            facebook: "",
+            linkedin: "",
+            github: "",
+          }
         },
         creatorSettings: {
           creatorMission: onboardingData?.creator_mission || null,
@@ -161,7 +193,7 @@ const Settings = () => {
             value={activeTab === "profile"} 
             onToggle={() => setActiveTab(activeTab === "profile" ? "" : "profile")}
           >
-            <ProfileSettings settings={settings} setSettings={setSettings} loading={loading} />
+            <ExpandedProfileSettings settings={settings} setSettings={setSettings} loading={loading} />
           </SettingsAccordion>
           
           <SettingsAccordion 
@@ -240,7 +272,7 @@ const Settings = () => {
         <div className="md:w-3/4">
           <TabsContent value="profile" className="mt-0">
             <Card className="p-6">
-              <ProfileSettings settings={settings} setSettings={setSettings} loading={loading} />
+              <ExpandedProfileSettings settings={settings} setSettings={setSettings} loading={loading} />
             </Card>
           </TabsContent>
           

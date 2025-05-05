@@ -11,7 +11,7 @@ export interface StrategyData {
   full_plan_text?: string;
   niche_topic?: string;
   topic_ideas?: string[];
-  summary?: string; // Added summary property
+  summary?: string;
 }
 
 // Progress and gamification
@@ -51,4 +51,35 @@ export interface GeneratedScript {
   hook?: string;
   topic?: string;
   created_at: string;
+}
+
+// Performance analytics types
+export interface PerformanceData {
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  followers_gained: number;
+  engagement_rate: number;
+  period: 'day' | 'week' | 'month' | 'year';
+  date: string;
+}
+
+// Content strategy visualization
+export interface ContentTypeDistribution {
+  type: string;
+  count: number;
+  percentage: number;
+}
+
+export interface TopicProgress {
+  total: number;
+  used: number;
+  remaining: number;
+  percentage: number;
+}
+
+export interface WeekdayPostingSchedule {
+  day: string;
+  count: number;
 }
