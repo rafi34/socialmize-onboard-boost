@@ -19,3 +19,18 @@ export interface InboxItem {
 }
 
 export type InboxFilter = 'all' | 'unread' | 'week' | 'action';
+
+export interface Badge {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  isUnlocked: boolean;
+  unlockCriteria: string;
+  xpReward: number;
+  category: 'onboarding' | 'streak' | 'content' | 'social' | 'level';
+  level?: number;
+  unlockedAt?: string;
+}
+
+export type BadgeFilter = 'all' | 'unlocked' | 'locked' | 'upcoming';
