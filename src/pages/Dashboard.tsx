@@ -14,8 +14,6 @@ import {
 
 import {
   CreatorSummaryHeader,
-  WeeklyCalendarGrid,
-  ContentGeneratorSection,
   TodaysMissionCard,
   ScriptPreviewsSection,
   ReminderCard,
@@ -23,6 +21,9 @@ import {
   ScriptsSection,
   StrategyPlanSection,
 } from "@/components/dashboard";
+
+import { EnhancedWeeklyCalendarGrid } from "@/components/dashboard/EnhancedWeeklyCalendarGrid";
+import { ContentGenerationSection } from "@/components/dashboard/ContentGenerationSection";
 
 import { Navigate } from "react-router-dom";
 import {
@@ -381,8 +382,8 @@ export default function Dashboard() {
 
           {planConfirmed && (
             <>
-              <WeeklyCalendarGrid strategy={strategy} loading={loading} />
-              <ContentGeneratorSection
+              <EnhancedWeeklyCalendarGrid strategy={strategy} loading={loading} />
+              <ContentGenerationSection
                 strategy={strategy}
                 loading={loading}
                 refetchScripts={fetchUserData}

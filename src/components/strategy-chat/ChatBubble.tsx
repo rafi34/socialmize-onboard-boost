@@ -80,7 +80,6 @@ export const ChatBubble = ({
           </div>
         ) : (
           <ReactMarkdown 
-            className="whitespace-pre-wrap"
             components={{
               pre({node, className, children, ...props}) {
                 return (
