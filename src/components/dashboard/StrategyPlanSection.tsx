@@ -81,10 +81,9 @@ export const StrategyPlanSection = () => {
     <>
       <div className="mb-6 flex items-center justify-between">
         <StrategyOverviewCard 
-          strategy={strategy} 
-          loading={loading}
+          onRegenerateClick={handleOpenRegenerate}
+          fullPlanText={strategy?.full_plan_text}
           onViewFullPlan={handleOpenFullPlan}
-          onRegeneratePlan={handleOpenRegenerate}
         />
         
         <div className="flex-shrink-0 ml-4">
@@ -98,14 +97,16 @@ export const StrategyPlanSection = () => {
       </div>
       
       <FullStrategyModal 
-        open={isFullPlanOpen} 
-        onOpenChange={setIsFullPlanOpen}
-        strategy={strategy}
+        isOpen={isFullPlanOpen} 
+        onClose={() => setIsFullPlanOpen(false)}
+        fullPlanText={strategy?.full_plan_text || ""}
+        onRegenerateClick={handleOpenRegenerate}
       />
       
       <RegeneratePlanModal
-        open={isRegeneratePlanOpen}
-        onOpenChange={setIsRegeneratePlanOpen}
+        isOpen={isRegeneratePlanOpen}
+        onClose={() => setIsRegeneratePlanOpen(false)}
+        userId={user?.id || ""}
         onSuccess={fetchStrategyData}
       />
     </>
