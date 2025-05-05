@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,6 +23,7 @@ import Reminders from "./pages/Reminders";
 import ScriptsLibrary from "./pages/ScriptsLibrary";
 import InboxCenterPage from "./pages/InboxCenterPage";
 import BadgesPage from "./pages/BadgesPage";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +72,18 @@ const App = () => (
                 <ProtectedRoute>
                   <PremiumAppLayout>
                     <Dashboard />
+                  </PremiumAppLayout>
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Admin Dashboard - only for authenticated and admin users */}
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute>
+                  <PremiumAppLayout>
+                    <AdminDashboard />
                   </PremiumAppLayout>
                 </ProtectedRoute>
               } 
