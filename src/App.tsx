@@ -20,6 +20,7 @@ import WeeklyCalendar from "./pages/WeeklyCalendar";
 import TopicSuggestions from "./pages/TopicSuggestions";
 import StrategyOverview from "./pages/StrategyOverview";
 import Reminders from "./pages/Reminders";
+import ScriptsLibrary from "./pages/ScriptsLibrary";
 
 const queryClient = new QueryClient();
 
@@ -116,6 +117,18 @@ const App = () => (
                 <ProtectedRoute>
                   <PremiumAppLayout>
                     <Reminders />
+                  </PremiumAppLayout>
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Scripts Library - only for authenticated and onboarded users */}
+            <Route 
+              path="/scripts-library" 
+              element={
+                <ProtectedRoute>
+                  <PremiumAppLayout>
+                    <ScriptsLibrary />
                   </PremiumAppLayout>
                 </ProtectedRoute>
               } 

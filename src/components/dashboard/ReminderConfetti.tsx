@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import confetti from 'react-confetti';
+import Confetti from 'react-confetti';
 
 interface ReminderConfettiProps {
   active: boolean;
@@ -41,7 +41,7 @@ export const ReminderConfetti = ({ active, duration = 3000 }: ReminderConfettiPr
   return (
     <>
       {showConfetti && (
-        <confetti
+        <Confetti
           width={windowDimension.width}
           height={windowDimension.height}
           numberOfPieces={400}

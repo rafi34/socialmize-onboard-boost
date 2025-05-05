@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { StrategyData } from "@/types/dashboard";
 import { Button } from "@/components/ui/button";
-import { Calendar, Bell } from "lucide-react";
+import { Calendar, Bell, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const StrategyOverview = () => {
@@ -96,6 +96,12 @@ const StrategyOverview = () => {
               <Link to="/weekly-calendar" className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 Calendar
+              </Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/scripts-library" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Scripts
               </Link>
             </Button>
           </div>
