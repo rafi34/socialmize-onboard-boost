@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,6 +21,7 @@ import StrategyOverview from "./pages/StrategyOverview";
 import Reminders from "./pages/Reminders";
 import ScriptsLibrary from "./pages/ScriptsLibrary";
 import InboxCenterPage from "./pages/InboxCenterPage";
+import BadgesPage from "./pages/BadgesPage";
 
 const queryClient = new QueryClient();
 
@@ -142,6 +142,18 @@ const App = () => (
                 <ProtectedRoute>
                   <PremiumAppLayout>
                     <InboxCenterPage />
+                  </PremiumAppLayout>
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Badges Page - only for authenticated and onboarded users */}
+            <Route 
+              path="/badges" 
+              element={
+                <ProtectedRoute>
+                  <PremiumAppLayout>
+                    <BadgesPage />
                   </PremiumAppLayout>
                 </ProtectedRoute>
               } 

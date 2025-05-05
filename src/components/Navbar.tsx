@@ -21,7 +21,7 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
-import { ChevronDown } from "lucide-react";
+import { Badge, ChevronDown } from "lucide-react";
 import React from "react";
 
 // Create ListItem component for the navigation dropdown
@@ -97,6 +97,12 @@ export function Navbar() {
                 </NavigationMenuItem>
                 
                 <NavigationMenuItem>
+                  <Link to="/badges" className={navigationMenuTriggerStyle()}>
+                    Badges
+                  </Link>
+                </NavigationMenuItem>
+                
+                <NavigationMenuItem>
                   <Link to="/settings" className={navigationMenuTriggerStyle()}>
                     Settings
                   </Link>
@@ -138,6 +144,9 @@ export function Navbar() {
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/review-ideas">Content Ideas</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/badges">Badges & Achievements</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/settings">Settings</Link>
