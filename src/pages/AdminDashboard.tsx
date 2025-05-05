@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,30 +79,42 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="container py-8">
+    <div className="container py-8 text-socialmize-brand-text">
       <PageHeader
         title="Admin Dashboard"
         description="Manage users, fix issues, and optimize platform growth"
-        icon={<Shield className="h-6 w-6" />}
+        icon={<Shield className="h-6 w-6 text-socialmize-brand-green" />}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
         <div className="lg:col-span-9">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="users" className="flex items-center gap-2">
+            <TabsList className="mb-4 bg-socialmize-brand-teal border border-socialmize-brand-green/20">
+              <TabsTrigger 
+                value="users" 
+                className="flex items-center gap-2 data-[state=active]:bg-socialmize-brand-green data-[state=active]:text-white"
+              >
                 <Users className="h-4 w-4" />
                 <span>Users</span>
               </TabsTrigger>
-              <TabsTrigger value="logs" className="flex items-center gap-2">
+              <TabsTrigger 
+                value="logs" 
+                className="flex items-center gap-2 data-[state=active]:bg-socialmize-brand-green data-[state=active]:text-white"
+              >
                 <Activity className="h-4 w-4" />
                 <span>Activity Logs</span>
               </TabsTrigger>
-              <TabsTrigger value="tools" className="flex items-center gap-2">
+              <TabsTrigger 
+                value="tools" 
+                className="flex items-center gap-2 data-[state=active]:bg-socialmize-brand-green data-[state=active]:text-white"
+              >
                 <Bug className="h-4 w-4" />
                 <span>Debug Tools</span>
               </TabsTrigger>
-              <TabsTrigger value="settings" className="flex items-center gap-2">
+              <TabsTrigger 
+                value="settings" 
+                className="flex items-center gap-2 data-[state=active]:bg-socialmize-brand-green data-[state=active]:text-white"
+              >
                 <Settings className="h-4 w-4" />
                 <span>Admin Settings</span>
               </TabsTrigger>
@@ -116,39 +129,39 @@ export default function AdminDashboard() {
             </TabsContent>
 
             <TabsContent value="tools">
-              <div className="rounded-lg border p-6 bg-white shadow-sm">
-                <h3 className="text-lg font-semibold mb-4">Platform Debug Tools</h3>
-                <p className="text-muted-foreground mb-6">
+              <div className="rounded-lg border border-socialmize-brand-green/20 p-6 bg-socialmize-brand-teal/60 shadow-sm">
+                <h3 className="text-lg font-semibold mb-4 text-socialmize-brand-light">Platform Debug Tools</h3>
+                <p className="text-socialmize-brand-text mb-6">
                   Advanced tools for troubleshooting and fixing user issues. These actions are logged.
                 </p>
                 
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">Coming soon...</p>
+                  <p className="text-sm text-socialmize-brand-text/80">Coming soon...</p>
                 </div>
               </div>
             </TabsContent>
             
             <TabsContent value="settings">
-              <div className="rounded-lg border p-6 bg-white shadow-sm">
-                <h3 className="text-lg font-semibold mb-4">Admin Configuration</h3>
-                <p className="text-muted-foreground mb-6">
+              <div className="rounded-lg border border-socialmize-brand-green/20 p-6 bg-socialmize-brand-teal/60 shadow-sm">
+                <h3 className="text-lg font-semibold mb-4 text-socialmize-brand-light">Admin Configuration</h3>
+                <p className="text-socialmize-brand-text mb-6">
                   Configure admin users and platform settings.
                 </p>
                 
                 <div className="space-y-4">
-                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
-                    <h4 className="font-medium mb-2 flex items-center">
-                      <Shield className="h-4 w-4 mr-2 text-amber-600" />
+                  <div className="p-4 bg-socialmize-brand-teal/80 border border-socialmize-brand-green/30 rounded-md">
+                    <h4 className="font-medium mb-2 flex items-center text-socialmize-brand-light">
+                      <Shield className="h-4 w-4 mr-2 text-socialmize-brand-green" />
                       Special Admin Controls
                     </h4>
-                    <p className="text-sm text-amber-800 mb-4">
+                    <p className="text-sm text-socialmize-brand-text mb-4">
                       These actions grant special admin privileges to specific users.
                     </p>
                     <Button 
                       variant="outline"
                       onClick={makeChristianAdmin}
                       disabled={christianAdminInProgress}
-                      className="bg-white"
+                      className="bg-socialmize-brand-green hover:bg-socialmize-brand-green/80 text-white border-none"
                     >
                       {christianAdminInProgress ? (
                         <>
@@ -168,11 +181,11 @@ export default function AdminDashboard() {
         <div className="lg:col-span-3 space-y-6">
           <AdminStatsCard />
           
-          <div className="rounded-lg border p-4 bg-white shadow-sm">
-            <h3 className="text-sm font-medium mb-2">Quick Actions</h3>
-            <Separator className="my-2" />
+          <div className="rounded-lg border border-socialmize-brand-green/20 p-4 bg-socialmize-brand-teal/60 shadow-sm">
+            <h3 className="text-sm font-medium mb-2 text-socialmize-brand-light">Quick Actions</h3>
+            <Separator className="my-2 bg-socialmize-brand-green/20" />
             <div className="space-y-2 text-sm">
-              <p className="text-muted-foreground">Admin tools coming soon...</p>
+              <p className="text-socialmize-brand-text/80">Admin tools coming soon...</p>
             </div>
           </div>
         </div>

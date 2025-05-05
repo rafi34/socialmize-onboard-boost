@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -37,11 +38,11 @@ const AppLayout = ({ children, className }: { children: React.ReactNode, classNa
   </div>
 );
 
-// Admin app layout with subtle indication of being in admin mode
+// Admin app layout with SocialMize brand colors
 const AdminAppLayout = ({ children }: { children: React.ReactNode }) => (
-  <AppLayout className="bg-gradient-to-br from-white to-amber-50">
-    <div className="fixed bottom-4 right-4 bg-amber-100 border border-amber-200 rounded-full py-1 px-3 flex items-center text-xs text-amber-800 shadow-sm">
-      <Shield className="h-3 w-3 mr-1" /> Admin Mode
+  <AppLayout className="bg-brand-gradient">
+    <div className="fixed bottom-4 right-4 bg-socialmize-brand-green/20 border border-socialmize-brand-green/40 rounded-full py-1 px-3 flex items-center text-xs text-socialmize-brand-light shadow-sm">
+      <Shield className="h-3 w-3 mr-1 text-socialmize-brand-green" /> Admin Mode
     </div>
     {children}
   </AppLayout>

@@ -45,6 +45,13 @@
     --sidebar-ring: 240 4.9% 83.9%;
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 0 0% 98%;
+
+    /* SocialMize Brand Colors as CSS Variables */
+    --brand-dark: #002E33;
+    --brand-teal: #004851;
+    --brand-green: #22B573;
+    --brand-light: #4C9F85;
+    --brand-text: #9ECBA9;
   }
  
   .dark {
@@ -90,6 +97,19 @@
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family: 'Inter', sans-serif;
   }
+}
+
+/* SocialMize theme utility classes */
+.socialmize-bg-gradient {
+  background: linear-gradient(to bottom, var(--brand-dark), var(--brand-teal));
+}
+
+.socialmize-card {
+  @apply border-socialmize-brand-green/20 bg-socialmize-brand-teal/60 text-socialmize-brand-text;
+}
+
+.socialmize-button {
+  @apply bg-socialmize-brand-green hover:bg-socialmize-brand-green/80 text-white;
 }
 
 /* Typing animation for chat messages */

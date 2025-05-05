@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -70,7 +69,12 @@ export default {
 					blue: '#0EA5E9',
 					green: '#10B981',
 					orange: '#F97316',
-					yellow: '#FEF7CD'
+					yellow: '#FEF7CD',
+					'brand-green': '#22B573', // The bright green from the logo
+					'brand-teal': '#004851',  // Dark teal background color
+					'brand-dark': '#002E33',  // Darker teal at the top
+					'brand-light': '#4C9F85', // Light green text color
+					'brand-text': '#9ECBA9',  // Very light green text color
 				}
 			},
 			borderRadius: {
@@ -125,6 +129,9 @@ export default {
 				'scale-in': 'scale-in 0.2s ease-out',
 				'confetti': 'confetti 2s ease-out forwards',
 				'xp-gain': 'xp-gain 1s ease-out forwards'
+			},
+			backgroundImage: {
+				'brand-gradient': 'linear-gradient(to bottom, #002E33, #004851)',
 			}
 		}
 	},
