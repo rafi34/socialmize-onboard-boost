@@ -16,19 +16,98 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, idea, ideaId } = await req.json();
+    const { user_id, type, additional_input, creator_style, topic } = await req.json();
 
-    if (!userId || !idea) {
+    if (!user_id || !type) {
       throw new Error('Missing required parameters');
     }
 
+    console.log(`Generating content of type ${type} for user ${user_id}`);
+    console.log(`Additional input: ${additional_input?.substring(0, 50)}...`);
+    console.log(`Creator style: ${creator_style}, Topic: ${topic}`);
+
     if (!openaiApiKey) {
-      throw new Error('OpenAI API key not configured');
+      // For development without OpenAI key, return mock data
+      console.log("Using mock data (OpenAI API key not configured)");
+      const mockResults = [{
+        title: `Sample ${type.replace('_', ' ')} Content`,
+        hook: "This is a sample attention-grabbing hook for your content.",
+        content: "This is the main content of your generated script.\n\nIt includes multiple paragraphs that explain your topic in detail.\n\nThe content is formatted with line breaks where appropriate and includes all the key points you'd want to communicate.\n\nFinally, it ends with a strong call-to-action.",
+        format_type: type.replace('_', ' ')
+      }];
+      
+      // Store mock content in database
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      if (supabaseUrl && supabaseServiceKey) {
+        try {
+          const scriptData = {
+            user_id,
+            title: mockResults[0].title,
+            hook: mockResults[0].hook,
+            content: mockResults[0].content,
+            format_type: mockResults[0].format_type
+          };
+          
+          await fetch(`${supabaseUrl}/rest/v1/generated_scripts`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseServiceKey,
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(scriptData)
+          });
+          
+          console.log("Stored mock content in database");
+        } catch (dbError) {
+          console.error("Error storing mock content:", dbError);
+        }
+      }
+      
+      return new Response(JSON.stringify({
+        success: true,
+        results: mockResults,
+        mock: true
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
-    console.log(`Generating script for user ${userId}, idea: "${idea.substring(0, 30)}..."`);
+    // For real usage with OpenAI
+    // Prepare context based on content type
+    let contentContext = "";
+    switch (type) {
+      case "duet":
+        contentContext = "a duet-style video where you react to trending content";
+        break;
+      case "meme":
+        contentContext = "a funny, viral short-form video content that's entertaining and shareable";
+        break;
+      case "carousel":
+        contentContext = "an educational slide deck with multiple points presented in sequence";
+        break;
+      case "voiceover":
+        contentContext = "a voiceover script that will be narrated over visuals";
+        break;
+      case "talking_head":
+        contentContext = "a direct-to-camera talking head video where you speak directly to the audience";
+        break;
+      default:
+        contentContext = "social media content";
+    }
+    
+    // Create prompt for OpenAI
+    const topicPrompt = topic ? `on the topic of ${topic}` : "on a topic relevant to your niche";
+    const stylePrompt = creator_style ? `Your content style is ${creator_style}.` : "";
+    const additionalDetails = additional_input ? `\n\nAdditional details or transcript: ${additional_input}` : "";
+    
+    const systemPrompt = `You are an expert social media content creator specializing in ${contentContext}. ${stylePrompt} Create engaging, authentic content that resonates with audiences.`;
+    
+    const userPrompt = `Generate a script for ${contentContext} ${topicPrompt}.${additionalDetails}`;
 
-    // Generate content using OpenAI
+    // Call OpenAI API
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -38,17 +117,12 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          {
-            role: 'system',
-            content: 'You are a professional social media content writer. You create engaging scripts for social media posts based on content ideas. Your scripts should include a hook, main content, and call-to-action. You MUST return valid JSON that can be parsed directly. Do not include any text, markdown formatting, or code blocks around your response. The output should be pure JSON only.'
-          },
-          {
-            role: 'user',
-            content: `Create a social media script based on this content idea: "${idea}". Format your response as a JSON object with the following structure: { "title": "Catchy title", "hook": "Attention-grabbing hook", "content": "Main content with paragraph breaks where appropriate", "format_type": "Talking Head" }`
-          }
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
         ],
         temperature: 0.7,
-        response_format: { type: "json_object" }, // Ensure we get a properly formatted JSON response
+        response_format: { type: "json_object" },
+        max_tokens: 1000,
       }),
     });
 
@@ -58,44 +132,39 @@ serve(async (req) => {
     }
 
     const responseData = await response.json();
-    const generatedContent = responseData.choices[0].message.content;
+    console.log("Got response from OpenAI");
     
-    // Parse the JSON response
-    let parsedContent;
+    // Parse the JSON response and validate it has the expected format
+    let content;
     try {
-      // First try direct parsing since we requested json_object format
-      parsedContent = JSON.parse(generatedContent);
-      console.log("Successfully parsed JSON response");
-    } catch (e) {
-      console.error('Error parsing JSON from OpenAI response:', e);
-      console.error('Raw content received:', generatedContent);
-      
-      // Try to clean the content before parsing
-      const cleanedContent = cleanJsonContent(generatedContent);
-      try {
-        parsedContent = JSON.parse(cleanedContent);
-        console.log("Successfully parsed JSON after cleaning");
-      } catch (cleanError) {
-        console.error('Still unable to parse JSON after cleaning:', cleanError);
-        
-        // Fallback: extract content by regex
-        const titleMatch = generatedContent.match(/"title":\s*"([^"]*)"/);
-        const hookMatch = generatedContent.match(/"hook":\s*"([^"]*)"/);
-        const contentMatch = generatedContent.match(/"content":\s*"([^"]*)"/);
-        const formatMatch = generatedContent.match(/"format_type":\s*"([^"]*)"/);
-        
-        parsedContent = {
-          title: titleMatch ? titleMatch[1] : 'Untitled Content',
-          hook: hookMatch ? hookMatch[1] : 'No hook provided',
-          content: contentMatch ? contentMatch[1].replace(/\\n/g, '\n') : 'No content provided',
-          format_type: formatMatch ? formatMatch[1] : 'Talking Head'
-        };
-        
-        console.log("Used regex fallback to parse content");
+      content = JSON.parse(responseData.choices[0].message.content);
+      if (!content.title || !content.content) {
+        throw new Error("Incomplete content format");
       }
+      
+      // Ensure hook is present (default value if not)
+      if (!content.hook) {
+        content.hook = content.title;
+      }
+      
+      // Ensure format_type is present
+      if (!content.format_type) {
+        content.format_type = type.replace('_', ' ');
+      }
+    } catch (parseError) {
+      console.error("Error parsing content:", parseError);
+      console.log("Raw content:", responseData.choices[0].message.content);
+      
+      // Create a default structure
+      content = {
+        title: "Generated Content",
+        hook: "Attention-grabbing opening",
+        content: responseData.choices[0].message.content,
+        format_type: type.replace('_', ' ')
+      };
     }
-
-    // Save to database using Supabase REST API
+    
+    // Store content in database using Supabase
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
@@ -103,17 +172,14 @@ serve(async (req) => {
       throw new Error('Supabase URL or service key not configured');
     }
     
-    // Create the script object
     const scriptData = {
-      user_id: userId,
-      idea_id: ideaId, // Make sure to save the idea_id
-      title: parsedContent.title,
-      hook: parsedContent.hook,
-      content: parsedContent.content,
-      format_type: parsedContent.format_type || 'Talking Head'
+      user_id,
+      title: content.title,
+      hook: content.hook,
+      content: content.content,
+      format_type: content.format_type
     };
     
-    // Insert into Supabase
     const insertResponse = await fetch(`${supabaseUrl}/rest/v1/generated_scripts`, {
       method: 'POST',
       headers: {
@@ -131,49 +197,23 @@ serve(async (req) => {
     }
     
     const insertedScript = await insertResponse.json();
+    console.log("Stored content in database");
 
     return new Response(JSON.stringify({
       success: true,
-      script: insertedScript[0],
+      results: [content],
+      stored: insertedScript
     }), {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json',
-      },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   } catch (error) {
     console.error('Error in generate-content function:', error);
-    return new Response(JSON.stringify({ success: false, error: error.message }), {
+    return new Response(JSON.stringify({ 
+      success: false, 
+      error: error.message 
+    }), {
       status: 500,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json',
-      },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });
-
-// Helper function to clean JSON content from potential formatting or markdown
-function cleanJsonContent(content) {
-  // Remove markdown code block indicators
-  let cleaned = content.trim()
-    .replace(/^```json\s*/g, '')
-    .replace(/^```\s*/g, '')
-    .replace(/```$/g, '');
-  
-  // Remove any text before first { and after last }
-  const firstBrace = cleaned.indexOf('{');
-  const lastBrace = cleaned.lastIndexOf('}');
-  if (firstBrace !== -1 && lastBrace !== -1) {
-    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-  }
-  
-  // Fix common JSON string issues
-  cleaned = cleaned
-    .replace(/\\"/g, '"') // Fix escaped quotes inside already escaped content
-    .replace(/\r\n/g, '\\n')
-    .replace(/\n/g, '\\n');
-    
-  return cleaned;
-}

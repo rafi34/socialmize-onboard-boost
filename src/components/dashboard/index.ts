@@ -16,3 +16,4 @@ export { RegeneratePlanModal } from './RegeneratePlanModal';
 export { StrategyOverviewSection } from './StrategyOverviewSection';
 export { WeeklyConsistencyCard } from './WeeklyConsistencyCard';
 export { ContentMissionsSection } from './ContentMissionsSection';
+export { ContentGenerationSection } from './ContentGenerationSection';
