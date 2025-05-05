@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -57,19 +56,6 @@ interface UserData {
   };
 }
 
-interface ProgressTracking {
-  current_xp: number;
-  current_level: number;
-  streak_days: number;
-}
-
-interface StrategyProfile {
-  niche_topic: string;
-  summary: string;
-  creator_style: string;
-  posting_frequency: string;
-}
-
 export function AdminUsersTable() {
   const { user } = useAuth();
   const [users, setUsers] = useState<UserData[]>([]);
@@ -93,71 +79,71 @@ export function AdminUsersTable() {
       
       console.log("Fetching users...");
       
-      const { data, error } = await supabase
+      // First, get all profiles
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select(`
-          id,
-          email,
-          created_at,
-          onboarding_complete,
-          metadata,
-          progress_tracking:progress_tracking(current_xp, current_level, streak_days),
-          strategy_profiles:strategy_profiles(niche_topic, summary, creator_style, posting_frequency)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error("Error fetching users:", error);
-        throw error;
+      if (profilesError) {
+        console.error("Error fetching profiles:", profilesError);
+        throw profilesError;
       }
 
-      console.log("Fetch results:", data);
+      console.log("Profiles fetched:", profilesData);
       
-      if (!data || data.length === 0) {
+      if (!profilesData || profilesData.length === 0) {
         console.log("No users found in database");
         setUsers([]);
         setLoading(false);
         return;
       }
 
-      // Transform the data to the expected structure
-      const transformedData = data.map(item => ({
-        id: item.id,
-        email: item.email,
-        created_at: item.created_at,
-        profile: {
-          onboarding_complete: item.onboarding_complete,
-          metadata: item.metadata || {}
-        },
-        progress: {
-          current_xp: Array.isArray(item.progress_tracking) && item.progress_tracking.length > 0 
-            ? (item.progress_tracking[0]?.current_xp || 0) 
-            : 0,
-          current_level: Array.isArray(item.progress_tracking) && item.progress_tracking.length > 0 
-            ? (item.progress_tracking[0]?.current_level || 1) 
-            : 1,
-          streak_days: Array.isArray(item.progress_tracking) && item.progress_tracking.length > 0 
-            ? (item.progress_tracking[0]?.streak_days || 0) 
-            : 0
-        },
-        strategy: {
-          niche_topic: Array.isArray(item.strategy_profiles) && item.strategy_profiles.length > 0 
-            ? (item.strategy_profiles[0]?.niche_topic || '') 
-            : '',
-          summary: Array.isArray(item.strategy_profiles) && item.strategy_profiles.length > 0 
-            ? (item.strategy_profiles[0]?.summary || '') 
-            : '',
-          creator_style: Array.isArray(item.strategy_profiles) && item.strategy_profiles.length > 0 
-            ? (item.strategy_profiles[0]?.creator_style || '') 
-            : '',
-          posting_frequency: Array.isArray(item.strategy_profiles) && item.strategy_profiles.length > 0 
-            ? (item.strategy_profiles[0]?.posting_frequency || '') 
-            : ''
-        }
+      // Prepare the user data with default values
+      const userData: UserData[] = await Promise.all(profilesData.map(async (profile) => {
+        // Fetch progress tracking data for this user
+        const { data: progressData } = await supabase
+          .from('progress_tracking')
+          .select('*')
+          .eq('user_id', profile.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        // Fetch strategy profile data for this user
+        const { data: strategyData } = await supabase
+          .from('strategy_profiles')
+          .select('*')
+          .eq('user_id', profile.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        // Transform to expected structure
+        return {
+          id: profile.id,
+          email: profile.email,
+          created_at: profile.created_at,
+          profile: {
+            onboarding_complete: profile.onboarding_complete,
+            metadata: profile.metadata || {}
+          },
+          progress: {
+            current_xp: progressData?.current_xp || 0,
+            current_level: progressData?.current_level || 1,
+            streak_days: progressData?.streak_days || 0
+          },
+          strategy: {
+            niche_topic: strategyData?.niche_topic || '',
+            summary: strategyData?.summary || '',
+            creator_style: strategyData?.creator_style || '',
+            posting_frequency: strategyData?.posting_frequency || ''
+          }
+        };
       }));
 
-      console.log("Transformed user data:", transformedData);
-      setUsers(transformedData);
+      console.log("Transformed user data:", userData);
+      setUsers(userData);
     } catch (error) {
       console.error("Error fetching users:", error);
       setError("Failed to load users. Please try refreshing.");
