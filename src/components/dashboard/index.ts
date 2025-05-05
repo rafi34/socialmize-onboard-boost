@@ -20,4 +20,7 @@ export { ContentGenerationSection } from './ContentGenerationSection';
 export { ContentAnalyticsSection } from './ContentAnalyticsSection';
 export { StrategySuggestionSection } from './StrategySuggestionSection';
 export { WeeklyConsistencyTracker } from './WeeklyConsistencyTracker';
-
+export { DashboardContent } from './DashboardContent';
+export { DashboardPlanner } from './DashboardPlanner';
+export { DashboardAnalytics } from './DashboardAnalytics';
+export { StrategyGenerationState } from './StrategyGenerationState';
