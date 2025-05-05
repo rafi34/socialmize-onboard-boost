@@ -16,6 +16,7 @@ import NotFound from "./pages/NotFound";
 import StrategyChat from "./pages/StrategyChat";
 import ReviewIdeas from "./pages/ReviewIdeas";
 import GenerateScripts from "./pages/GenerateScripts";
+import WeeklyCalendar from "./pages/WeeklyCalendar";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,18 @@ const App = () => (
                 <ProtectedRoute>
                   <PremiumAppLayout>
                     <Dashboard />
+                  </PremiumAppLayout>
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Weekly Calendar - only for authenticated and onboarded users */}
+            <Route 
+              path="/weekly-calendar" 
+              element={
+                <ProtectedRoute>
+                  <PremiumAppLayout>
+                    <WeeklyCalendar />
                   </PremiumAppLayout>
                 </ProtectedRoute>
               } 
