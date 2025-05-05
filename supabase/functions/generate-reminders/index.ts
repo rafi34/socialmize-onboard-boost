@@ -116,10 +116,11 @@ serve(async (req) => {
           
           reminders.push({
             user_id: userId,
-            type: 'post',
+            reminder_type: 'post',
             content_format: content,
             content_title: `Time to post: ${content}`,
-            scheduled_time: reminderTime.toISOString()
+            reminder_time: reminderTime.toISOString(),
+            is_active: true
           });
         }
       }
@@ -134,10 +135,11 @@ serve(async (req) => {
         
         reminders.push({
           user_id: userId,
-          type: 'record',
-          content_format: null,
+          reminder_type: 'record',
+          content_format: 'Recording Session',
           content_title: 'Daily recording session',
-          scheduled_time: recordingTime.toISOString()
+          reminder_time: recordingTime.toISOString(),
+          is_active: true
         });
       }
     } else {
@@ -152,10 +154,11 @@ serve(async (req) => {
           
           reminders.push({
             user_id: userId,
-            type: 'record',
-            content_format: null,
+            reminder_type: 'record',
+            content_format: 'Bulk Recording',
             content_title: 'Bulk recording session',
-            scheduled_time: recordingTime.toISOString()
+            reminder_time: recordingTime.toISOString(),
+            is_active: true
           });
         }
       }
@@ -165,7 +168,7 @@ serve(async (req) => {
     const { data: insertData, error: insertError } = await supabase
       .from('reminders')
       .upsert(reminders, { 
-        onConflict: 'user_id,content_title,scheduled_time',
+        onConflict: 'user_id,content_title,reminder_time',
         ignoreDuplicates: true 
       });
 

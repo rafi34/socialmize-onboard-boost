@@ -236,6 +236,10 @@ export type Database = {
       }
       reminders: {
         Row: {
+          calendar_event_id: string | null
+          completed: boolean | null
+          content_format: string | null
+          content_title: string | null
           created_at: string
           id: string
           is_active: boolean | null
@@ -244,8 +248,13 @@ export type Database = {
           reminder_type: string
           updated_at: string
           user_id: string
+          xp_awarded: boolean | null
         }
         Insert: {
+          calendar_event_id?: string | null
+          completed?: boolean | null
+          content_format?: string | null
+          content_title?: string | null
           created_at?: string
           id?: string
           is_active?: boolean | null
@@ -254,8 +263,13 @@ export type Database = {
           reminder_type: string
           updated_at?: string
           user_id: string
+          xp_awarded?: boolean | null
         }
         Update: {
+          calendar_event_id?: string | null
+          completed?: boolean | null
+          content_format?: string | null
+          content_title?: string | null
           created_at?: string
           id?: string
           is_active?: boolean | null
@@ -264,6 +278,7 @@ export type Database = {
           reminder_type?: string
           updated_at?: string
           user_id?: string
+          xp_awarded?: boolean | null
         }
         Relationships: []
       }

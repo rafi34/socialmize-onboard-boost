@@ -14,6 +14,7 @@ import { CalendarDays, CalendarCheck, FileText, Image, Video, Headphones, Mic } 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { toast } from "@/components/ui/use-toast";
 
 interface WeeklyCalendarGridProps {
   strategy: StrategyData | null;
@@ -63,7 +64,11 @@ export const WeeklyCalendarGrid = ({ strategy, loading }: WeeklyCalendarGridProp
         .eq('is_active', true);
 
       if (error) throw error;
-      setReminders(data || []);
+      
+      // Make sure we only set the reminders state if we have valid data
+      if (data) {
+        setReminders(data as Reminder[]);
+      }
     } catch (error) {
       console.error('Error fetching reminders:', error);
     }
@@ -83,6 +88,20 @@ export const WeeklyCalendarGrid = ({ strategy, loading }: WeeklyCalendarGridProp
       if (error) throw error;
       
       setIsCalendarAdded(true);
+      toast({
+        title: "Calendar Updated",
+        description: "Your content calendar has been added to your reminders.",
+      });
+      
+      // Generate reminders based on the weekly calendar
+      await supabase.functions.invoke('generate-reminders', {
+        body: { 
+          userId: user.id
+        }
+      });
+      
+      // Refresh the reminders list
+      fetchReminders();
       
       // Add XP for setting up calendar
       await supabase.functions.invoke('award-xp', {
@@ -94,6 +113,11 @@ export const WeeklyCalendarGrid = ({ strategy, loading }: WeeklyCalendarGridProp
       });
     } catch (error) {
       console.error('Error adding to calendar:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update your calendar. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -214,6 +238,79 @@ export const WeeklyCalendarGrid = ({ strategy, loading }: WeeklyCalendarGridProp
     return null;
   };
 
+  const handleMarkAsPosted = async (day: string, contentType: string) => {
+    if (!user) return;
+    
+    try {
+      // Find the reminder for this day and content type
+      const dayReminders = reminders.filter(r => {
+        const reminderDay = format(new Date(r.reminder_time), 'EEEE').toLowerCase();
+        return reminderDay === day.toLowerCase() && 
+              r.content_format?.toLowerCase() === contentType.toLowerCase();
+      });
+      
+      if (dayReminders.length > 0) {
+        const reminder = dayReminders[0];
+        
+        // Update the reminder as completed
+        const { error } = await supabase
+          .from('reminders')
+          .update({ completed: true })
+          .eq('id', reminder.id);
+          
+        if (error) throw error;
+        
+        // Refresh reminders
+        fetchReminders();
+        
+        // Award XP for posting content
+        await supabase.functions.invoke('award-xp', {
+          body: { 
+            userId: user.id,
+            amount: 25,
+            type: 'post_content'
+          }
+        });
+        
+        toast({
+          title: "Content Posted",
+          description: `Great job! You've marked ${contentType} as posted.`,
+        });
+      } else {
+        // No reminder found, create one that's already completed
+        const reminderTime = new Date();
+        const { error } = await supabase
+          .from('reminders')
+          .insert({
+            user_id: user.id,
+            reminder_type: 'post',
+            reminder_time: reminderTime.toISOString(),
+            content_format: contentType,
+            content_title: `${contentType} for ${day}`,
+            completed: true,
+            is_active: true
+          });
+          
+        if (error) throw error;
+        
+        // Refresh reminders
+        fetchReminders();
+        
+        toast({
+          title: "Content Posted",
+          description: `Great job! You've marked ${contentType} as posted.`,
+        });
+      }
+    } catch (error) {
+      console.error('Error marking content as posted:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update content status. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card className="mb-6 overflow-hidden">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -303,7 +400,11 @@ export const WeeklyCalendarGrid = ({ strategy, loading }: WeeklyCalendarGridProp
                     <FileText className="h-4 w-4" />
                     Generate Script
                   </Button>
-                  <Button size="sm" className="flex items-center gap-1">
+                  <Button 
+                    size="sm" 
+                    className="flex items-center gap-1"
+                    onClick={() => handleMarkAsPosted(selectedDay, content)}
+                  >
                     <CalendarCheck className="h-4 w-4" />
                     Mark as Posted
                   </Button>
