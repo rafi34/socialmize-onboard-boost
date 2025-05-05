@@ -1,158 +1,178 @@
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { CalendarDays, Flame, Trophy, Target } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { format, startOfWeek, endOfWeek } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-
-interface ConsistencyStats {
-  weeklyXp: number;
-  streak: number;
-  target: number;
-  totalScripts: number;
-}
+import { Trophy, Calendar, AlertTriangle } from "lucide-react";
 
 export const WeeklyConsistencyCard = () => {
-  const [stats, setStats] = useState<ConsistencyStats>({
-    weeklyXp: 0,
-    streak: 0,
-    target: 100,
-    totalScripts: 0
-  });
-  const [loading, setLoading] = useState(true);
+  const [weeklyXP, setWeeklyXP] = useState<number>(0);
+  const [weeklyGoal, setWeeklyGoal] = useState<number>(100);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   
-  const today = new Date();
-  const dayOfWeek = today.getDay(); // 0 (Sunday) to 6 (Saturday)
-  const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // adjust when day is sunday
-  const weekStart = new Date(today.setDate(diff));
+  const startDate = startOfWeek(new Date());
+  const endDate = endOfWeek(new Date());
+  const formattedDateRange = `${format(startDate, 'MMM d')} - ${format(endDate, 'MMM d, yyyy')}`;
   
   useEffect(() => {
-    if (user) {
-      fetchConsistencyStats();
-    }
-  }, [user]);
-
-  const fetchConsistencyStats = async () => {
-    if (!user) return;
-    
-    try {
-      setLoading(true);
+    const fetchWeeklyXP = async () => {
+      if (!user) return;
       
-      // Fetch weekly XP and streak
-      const { data: xpData, error: xpError } = await supabase.functions.invoke('get-weekly-xp', {
-        body: { 
-          userId: user.id,
-          startDate: weekStart.toISOString()
-        }
-      });
-      
-      if (xpError) throw xpError;
-      
-      // Fetch total scripts count
-      const { count, error: countError } = await supabase
-        .from('generated_scripts')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
+      try {
+        setLoading(true);
+        setError(null);
         
-      if (countError) throw countError;
-      
-      // Update stats
-      setStats({
-        weeklyXp: xpData?.xp || 0,
-        streak: xpData?.streak || 0,
-        target: 100, // Weekly target XP
-        totalScripts: count || 0
-      });
-    } catch (err) {
-      console.error('Error fetching consistency stats:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        // Fetch weekly XP from the database function
+        const { data, error } = await supabase.rpc(
+          'get_weekly_xp',
+          { 
+            user_id_param: user.id,
+            start_date_param: startOfWeek(new Date()).toISOString()
+          }
+        );
+        
+        if (error) throw error;
+        
+        setWeeklyXP(data || 0);
+        
+        // Get the user's strategy to determine appropriate goal
+        const { data: strategyData, error: strategyError } = await supabase
+          .from("strategy_profiles")
+          .select("posting_frequency")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (strategyError) throw strategyError;
+        
+        // Set weekly goal based on posting frequency
+        if (strategyData) {
+          const frequency = strategyData.posting_frequency;
+          let goal = 100; // default
+          
+          switch(frequency) {
+            case 'Daily':
+              goal = 200;
+              break;
+            case '3-5 times per week':
+              goal = 150;
+              break;
+            case '1-2 times per week':
+              goal = 100;
+              break;
+            default:
+              goal = 100;
+          }
+          
+          setWeeklyGoal(goal);
+        }
+        
+      } catch (e: any) {
+        console.error("Error fetching weekly consistency data:", e);
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchWeeklyXP();
+  }, [user]);
   
-  // Calculate progress percentage, capped at 100%
-  const progressPercentage = Math.min(100, (stats.weeklyXp / stats.target) * 100);
+  // Calculate progress percentage (capped at 100%)
+  const progressPercentage = Math.min(100, (weeklyXP / weeklyGoal) * 100);
   
-  // Get message based on progress
-  const getMotivationalMessage = () => {
-    if (stats.weeklyXp >= stats.target) return "Goal achieved! Great work! 🎉";
-    if (progressPercentage >= 75) return "Almost there! Keep going! 💪";
-    if (progressPercentage >= 50) return "Halfway to your goal! 👍";
-    if (progressPercentage >= 25) return "Good progress! 👌";
-    return "Just getting started! 🌱";
-  };
-
-  // Get streak color class based on streak length
-  const getStreakColorClass = () => {
-    if (stats.streak >= 7) return "text-orange-500";
-    if (stats.streak >= 3) return "text-yellow-500";
-    return "text-muted-foreground";
-  };
+  // Determine level based on XP
+  let level = "Beginner";
+  
+  if (weeklyXP >= 150) {
+    level = "Expert";
+  } else if (weeklyXP >= 100) {
+    level = "Advanced";
+  } else if (weeklyXP >= 50) {
+    level = "Intermediate";
+  }
+  
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-md">Weekly Progress</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-4 w-full mb-2" />
+          <Skeleton className="h-8 w-full mb-2" />
+          <Skeleton className="h-4 w-1/2" />
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-md">Weekly Progress</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-2 text-red-500">
+            <AlertTriangle className="h-4 w-4" />
+            <p className="text-sm">There was an error loading your progress.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card className="glass-panel">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CalendarDays className="h-4 w-4" />
-          Weekly Consistency
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-md flex justify-between items-center">
+          <span>Weekly Progress</span>
+          <Calendar className="h-4 w-4 text-muted-foreground" />
         </CardTitle>
+        <CardDescription>{formattedDateRange}</CardDescription>
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <div className="flex justify-between">
-              <Skeleton className="h-8 w-24" />
-              <Skeleton className="h-8 w-24" />
+        <div className="space-y-4">
+          <div className="flex justify-between items-end mb-1">
+            <div>
+              <p className="text-sm text-muted-foreground">Weekly XP</p>
+              <p className="text-2xl font-bold">{weeklyXP}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">Goal</p>
+              <p className="text-lg font-medium">{weeklyGoal} XP</p>
             </div>
           </div>
-        ) : (
-          <>
-            <div className="mb-6">
-              <div className="flex justify-between items-center mb-1">
-                <span className="text-sm text-muted-foreground">Weekly XP</span>
-                <span className="text-sm font-medium">{stats.weeklyXp} / {stats.target} XP</span>
-              </div>
-              <Progress 
-                value={progressPercentage} 
-                className={cn(
-                  "h-2",
-                  progressPercentage >= 100 ? "bg-green-100" : "bg-slate-100"
-                )}
-                indicatorClassName={cn(
-                  progressPercentage >= 100 ? "bg-green-500" : "bg-socialmize-purple"
-                )}
-              />
-              <p className="text-xs mt-1 text-muted-foreground">{getMotivationalMessage()}</p>
+          
+          <Progress 
+            value={progressPercentage} 
+            indicatorClassName={`
+              ${progressPercentage < 30 ? 'bg-red-500' : 
+                progressPercentage < 70 ? 'bg-yellow-500' : 
+                'bg-green-500'}
+            `}
+          />
+          
+          <div className="pt-2 flex justify-between items-center">
+            <div className="flex items-center gap-1 bg-accent/50 rounded-full px-3 py-1">
+              <Trophy className={`h-4 w-4 ${
+                level === "Expert" ? "text-yellow-500" : 
+                level === "Advanced" ? "text-blue-500" : 
+                level === "Intermediate" ? "text-green-500" : 
+                "text-gray-500"
+              }`} />
+              <p className="text-xs font-medium">{level} Level</p>
             </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col items-center bg-accent/30 rounded-md p-3">
-                <Flame className={cn("h-5 w-5 mb-1", getStreakColorClass())} />
-                <span className={cn("text-xl font-bold", getStreakColorClass())}>{stats.streak}</span>
-                <span className="text-xs text-muted-foreground">Day Streak</span>
-              </div>
-              
-              <div className="flex flex-col items-center bg-accent/30 rounded-md p-3">
-                <Trophy className="h-5 w-5 mb-1 text-blue-500" />
-                <span className="text-xl font-bold text-blue-500">{stats.totalScripts}</span>
-                <span className="text-xs text-muted-foreground">Total Scripts</span>
-              </div>
-            </div>
-            
-            <div className="mt-4 text-center">
-              <p className="text-xs text-muted-foreground">
-                <Target className="h-3 w-3 inline mr-1" />
-                Weekly goal: {stats.target} XP
-              </p>
-            </div>
-          </>
-        )}
+            <p className="text-sm text-muted-foreground">{progressPercentage.toFixed(0)}% complete</p>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

@@ -3,7 +3,6 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
-import { toast } from "@/components/ui/use-toast";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart2, Calendar, Sparkles, AlertTriangle } from "lucide-react";
@@ -15,12 +14,16 @@ import { StrategyGenerationState } from "@/components/dashboard/StrategyGenerati
 import { QueryClient } from "@tanstack/react-query";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { showNotification } from "@/components/ui/notification-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const [queryClient] = useState(() => new QueryClient());
   const [showContent, setShowContent] = useState(false);
   const [activeTab, setActiveTab] = useState<'content' | 'analytics' | 'planner'>('content');
+  const [hasAttemptedRetry, setHasAttemptedRetry] = useState(false);
   
   const {
     strategy,
@@ -39,14 +42,26 @@ export default function Dashboard() {
 
   // Display error toast on generation error
   useEffect(() => {
-    if (generationStatus === 'error' && generationError) {
-      toast({
+    if (generationStatus === 'error' && generationError && !hasAttemptedRetry) {
+      showNotification({
         title: "Strategy Generation Issue",
-        description: generationError || "There was a problem generating your strategy. We'll try again automatically.",
-        variant: "destructive",
+        description: "We encountered an issue while creating your strategy. You can try again manually.",
+        type: "error",
+        action: (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => {
+              fetchUserData();
+              setHasAttemptedRetry(true);
+            }}
+          >
+            Retry
+          </Button>
+        ),
       });
     }
-  }, [generationStatus, generationError]);
+  }, [generationStatus, generationError, hasAttemptedRetry, fetchUserData]);
 
   // Toggle visibility of content after initial load
   useEffect(() => {
@@ -77,73 +92,88 @@ export default function Dashboard() {
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
       <main className="flex-grow container py-6 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
-          <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
-          
-          {generationStatus === 'error' && generationError && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Strategy Generation Error</AlertTitle>
-              <AlertDescription>
-                {generationError}
-                <button 
-                  onClick={fetchUserData}
-                  className="block mt-2 underline text-sm hover:text-foreground/80"
-                >
-                  Try again manually
-                </button>
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          <StrategyPlanSection />
-
-          {planConfirmed && (
+          {loading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-40 w-full" />
+            </div>
+          ) : (
             <>
-              <Tabs 
-                value={activeTab} 
-                onValueChange={(value) => setActiveTab(value as 'content' | 'analytics' | 'planner')}
-                className="my-6"
-              >
-                <TabsList className="grid grid-cols-3 mb-4">
-                  <TabsTrigger value="content" className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4" />
-                    Content
-                  </TabsTrigger>
-                  <TabsTrigger value="planner" className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    Planner
-                  </TabsTrigger>
-                  <TabsTrigger value="analytics" className="flex items-center gap-2">
-                    <BarChart2 className="h-4 w-4" />
-                    Analytics
-                  </TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="content">
-                  <DashboardContent 
-                    strategy={strategy} 
-                    scripts={scripts} 
-                    loading={loading} 
-                    refetchScripts={fetchUserData} 
-                  />
-                </TabsContent>
-                
-                <TabsContent value="planner">
-                  <DashboardPlanner 
-                    strategy={strategy}
-                    progress={progress}
-                    reminder={reminder}
-                    loading={loading}
-                  />
-                </TabsContent>
-                
-                <TabsContent value="analytics">
-                  <DashboardAnalytics 
-                    scripts={scripts}
-                    loading={loading}
-                  />
-                </TabsContent>
-              </Tabs>
+              <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
+              
+              {generationStatus === 'error' && generationError && (
+                <Alert variant="destructive" className="mb-6">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Strategy Generation Error</AlertTitle>
+                  <AlertDescription>
+                    {generationError}
+                    <Button 
+                      onClick={fetchUserData}
+                      className="block mt-2 underline text-sm hover:text-foreground/80"
+                    >
+                      Try again manually
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <StrategyPlanSection />
+
+              {planConfirmed ? (
+                <>
+                  <Tabs 
+                    value={activeTab} 
+                    onValueChange={(value) => setActiveTab(value as 'content' | 'analytics' | 'planner')}
+                    className="my-6"
+                  >
+                    <TabsList className="grid grid-cols-3 mb-4">
+                      <TabsTrigger value="content" className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        Content
+                      </TabsTrigger>
+                      <TabsTrigger value="planner" className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Planner
+                      </TabsTrigger>
+                      <TabsTrigger value="analytics" className="flex items-center gap-2">
+                        <BarChart2 className="h-4 w-4" />
+                        Analytics
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="content">
+                      <DashboardContent 
+                        strategy={strategy} 
+                        scripts={scripts} 
+                        loading={loading} 
+                        refetchScripts={fetchUserData} 
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="planner">
+                      <DashboardPlanner 
+                        strategy={strategy}
+                        progress={progress}
+                        reminder={reminder}
+                        loading={loading}
+                      />
+                    </TabsContent>
+                    
+                    <TabsContent value="analytics">
+                      <DashboardAnalytics 
+                        scripts={scripts}
+                        loading={loading}
+                      />
+                    </TabsContent>
+                  </Tabs>
+                </>
+              ) : (
+                <div className="text-center py-12 bg-muted rounded-lg">
+                  <h3 className="text-lg font-medium mb-2">Complete Your Strategy Plan</h3>
+                  <p className="text-muted-foreground mb-4">Confirm your content strategy plan to access the dashboard features</p>
+                  <Button onClick={() => fetchUserData()}>Refresh Status</Button>
+                </div>
+              )}
             </>
           )}
         </div>
