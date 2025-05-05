@@ -1,3 +1,4 @@
+
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,6 +21,7 @@ import {
   ScriptsSection,
   StrategyPlanSection,
   ContentAnalyticsSection,
+  WeeklyConsistencyCard
 } from "@/components/dashboard";
 
 import { EnhancedWeeklyCalendarGrid } from "@/components/dashboard/EnhancedWeeklyCalendarGrid";
