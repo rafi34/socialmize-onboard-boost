@@ -47,12 +47,13 @@ export const ScriptCard = ({ script, isFavorite, onToggleFavorite }: ScriptCardP
     
     try {
       if (isFavorite) {
-        // Remove from favorites
+        // Remove from favorites using raw SQL query instead of from()
         const { error } = await supabase
-          .from('favorite_scripts')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('script_id', script.id);
+          .rpc('delete_favorite_script', { 
+            user_id_param: user.id,
+            script_id_param: script.id
+          })
+          .maybeSingle();
           
         if (error) throw error;
         
@@ -61,13 +62,13 @@ export const ScriptCard = ({ script, isFavorite, onToggleFavorite }: ScriptCardP
           description: "This script has been removed from your favorites.",
         });
       } else {
-        // Add to favorites
+        // Add to favorites using raw SQL query instead of from()
         const { error } = await supabase
-          .from('favorite_scripts')
-          .insert({
-            user_id: user.id,
-            script_id: script.id
-          });
+          .rpc('add_favorite_script', { 
+            user_id_param: user.id,
+            script_id_param: script.id
+          })
+          .maybeSingle();
           
         if (error) throw error;
         
