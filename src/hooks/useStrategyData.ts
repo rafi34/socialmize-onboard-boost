@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { StrategyData } from "@/types/dashboard";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function useStrategyData() {
@@ -10,10 +10,18 @@ export function useStrategyData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 2;
   const { user } = useAuth();
 
   const fetchStrategyData = useCallback(async () => {
     if (!user) return;
+
+    // Don't auto-retry too many times
+    if (retryCount >= MAX_RETRIES && error) {
+      console.log(`Reached max retries (${MAX_RETRIES}), stopping auto-refresh`);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -50,6 +58,9 @@ export function useStrategyData() {
           topic_ideas: data.topic_ideas as string[] || [],
           summary: data.summary
         });
+        
+        // Reset retry counter on success
+        setRetryCount(0);
       } else {
         console.log("No strategy data found");
         setStrategy(null);
@@ -58,11 +69,12 @@ export function useStrategyData() {
       console.error("Error fetching strategy data:", err);
       setError(err.message || "Failed to fetch strategy data");
       // No toast here - we don't want to show errors to the user for background fetches
+      setRetryCount(prev => prev + 1);
     } finally {
       setLoading(false);
       setLastFetchTime(Date.now());
     }
-  }, [user]);
+  }, [user, error, retryCount]);
 
   // Initial fetch
   useEffect(() => {
@@ -102,6 +114,9 @@ export function useStrategyData() {
       
       if (error) throw error;
       
+      // Reset retry counter
+      setRetryCount(0);
+      
       // Fetch the updated strategy data
       await fetchStrategyData();
       
@@ -126,12 +141,20 @@ export function useStrategyData() {
     }
   };
 
+  // Reset retry mechanism
+  const resetRetries = () => {
+    setRetryCount(0);
+    setError(null);
+  };
+
   return {
     strategy,
     loading,
     error,
     fetchStrategyData,
     regenerateStrategy,
-    lastFetchTime
+    lastFetchTime,
+    resetRetries,
+    retryCount
   };
 }

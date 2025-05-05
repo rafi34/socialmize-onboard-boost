@@ -2,7 +2,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { useStrategyData } from "@/hooks/useStrategyData";
 
 type WeeklyCalendarContextType = {
@@ -31,6 +31,8 @@ export const WeeklyCalendarDataProvider = ({ children }: WeeklyCalendarDataProvi
   const [calendarData, setCalendarData] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [updateAttempts, setUpdateAttempts] = useState(0);
+  const MAX_UPDATE_ATTEMPTS = 2;
 
   // Initialize calendar data from strategy
   useEffect(() => {
@@ -56,6 +58,9 @@ export const WeeklyCalendarDataProvider = ({ children }: WeeklyCalendarDataProvi
   const updateCalendarData = async (day: string, contentTypes: string[]): Promise<boolean> => {
     if (!user) return false;
     
+    // Reset error state
+    setError(null);
+    
     try {
       // Create a copy of the current calendar data
       const updatedCalendar = { ...calendarData };
@@ -77,10 +82,14 @@ export const WeeklyCalendarDataProvider = ({ children }: WeeklyCalendarDataProvi
         
       if (updateError) throw updateError;
       
+      // Only show notification on success
       toast({
         title: "Calendar Updated",
         description: `Your content schedule for ${day} has been updated.`,
       });
+      
+      // Reset update attempts counter on success
+      setUpdateAttempts(0);
       
       // Refresh strategy data to ensure everything is in sync
       await fetchStrategyData();
@@ -90,11 +99,17 @@ export const WeeklyCalendarDataProvider = ({ children }: WeeklyCalendarDataProvi
       console.error("Error updating calendar:", err);
       setError(err.message || "Failed to update calendar");
       
-      toast({
-        title: "Update Failed",
-        description: "There was a problem updating your content schedule.",
-        variant: "destructive",
-      });
+      // Only show toast if we've exceeded retry attempts
+      if (updateAttempts >= MAX_UPDATE_ATTEMPTS) {
+        toast({
+          title: "Update Failed",
+          description: "There was a problem updating your content schedule. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        // Increment attempt counter
+        setUpdateAttempts(prev => prev + 1);
+      }
       
       return false;
     }

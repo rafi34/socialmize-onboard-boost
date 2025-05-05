@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   StrategyData,
@@ -24,6 +24,8 @@ export function useDashboardData() {
   const [generationStatus, setGenerationStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [lastFetchAttempt, setLastFetchAttempt] = useState<number>(0);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
   
   const generateWaitingMessage = useCallback(async () => {
     if (!user) return;
@@ -36,9 +38,15 @@ export function useDashboardData() {
         }
       );
 
+      if (error) {
+        console.error("Error from generate-waiting-message:", error);
+        return;
+      }
+
       if (data?.message) setWaitingMessage(data.message);
     } catch (error) {
       console.error("Error generating waiting message:", error);
+      // Don't show toast for this error as it's not critical
     }
   }, [user]);
 
@@ -76,6 +84,7 @@ export function useDashboardData() {
         
         setGenerationStatus('success');
         setIsGeneratingStrategy(false);
+        setRetryCount(0); // Reset retry count on success
         await fetchUserData();
       } catch (error: any) {
         console.error("Fetch error:", error);
@@ -99,6 +108,12 @@ export function useDashboardData() {
 
   const fetchUserData = useCallback(async () => {
     if (!user) return;
+
+    // If we've hit the retry limit, don't try again until explicitly requested
+    if (retryCount >= MAX_RETRIES && generationStatus === 'error') {
+      console.log(`Reached max retries (${MAX_RETRIES}), stopping auto-refresh`);
+      return;
+    }
 
     setLoading(true);
 
@@ -164,6 +179,7 @@ export function useDashboardData() {
         setStrategy(processedStrategy);
         setIsGeneratingStrategy(false);
         setGenerationStatus('success');
+        setRetryCount(0); // Reset retry count on success
       } else {
         const { data: onboardingData, error: onboardingError } =
           await supabase
@@ -249,7 +265,7 @@ export function useDashboardData() {
       setLoading(false);
       setLastFetchAttempt(Date.now());
     }
-  }, [user, generateStrategy, generateWaitingMessage]);
+  }, [user, generateStrategy, generateWaitingMessage, retryCount, generationStatus, MAX_RETRIES]);
 
   // Initialize data
   useEffect(() => {
@@ -258,22 +274,31 @@ export function useDashboardData() {
     }
   }, [user, fetchUserData]);
 
-  // Auto-refresh when waiting for strategy generation
+  // Auto-refresh when waiting for strategy generation with exponential backoff
   useEffect(() => {
     if (generationStatus === 'pending') {
+      // Exponential backoff for retries: 5s, 10s, 20s...
+      const backoffTime = 5000 * Math.pow(2, retryCount);
+      const maxBackoff = 30000; // Cap at 30 seconds
+      const refreshTime = Math.min(backoffTime, maxBackoff);
+      
+      console.log(`Auto-refreshing data due to pending generation in ${refreshTime/1000}s (retry ${retryCount + 1}/${MAX_RETRIES})`);
+      
       const refreshTimer = setTimeout(() => {
-        console.log("Auto-refreshing data due to pending generation...");
+        setRetryCount(prev => prev + 1);
         fetchUserData();
-      }, 5000);
+      }, refreshTime);
       
       return () => clearTimeout(refreshTimer);
     }
-  }, [generationStatus, fetchUserData, lastFetchAttempt]);
+  }, [generationStatus, fetchUserData, lastFetchAttempt, retryCount]);
 
-  // Retry in case of error
+  // Retry once in case of error, but with a limited retry count
   useEffect(() => {
-    if (generationStatus === 'error' && generationError) {
+    if (generationStatus === 'error' && generationError && retryCount < MAX_RETRIES) {
       const retryTimeout = setTimeout(async () => {
+        console.log(`Retry attempt ${retryCount + 1}/${MAX_RETRIES} after error`);
+        
         const { data: strategyData } = await supabase
           .from("strategy_profiles")
           .select("id")
@@ -283,12 +308,20 @@ export function useDashboardData() {
         if (strategyData) {
           console.log("Strategy found on retry, refreshing data");
           fetchUserData();
+        } else {
+          setRetryCount(prev => prev + 1);
         }
       }, 10000); // Wait 10 seconds before retrying
       
       return () => clearTimeout(retryTimeout);
     }
-  }, [generationStatus, generationError, fetchUserData, user?.id]);
+  }, [generationStatus, generationError, fetchUserData, user?.id, retryCount]);
+
+  // Expose a function to manually reset retry count
+  const resetRetryCount = () => {
+    setRetryCount(0);
+    setGenerationError(null);
+  };
 
   return {
     user,
@@ -306,5 +339,7 @@ export function useDashboardData() {
     fetchUserData,
     generateStrategy,
     generateWaitingMessage,
+    resetRetryCount,
+    retryCount,
   };
 }

@@ -34,22 +34,12 @@ export const showNotification = ({
       "text-blue-500"}
   `;
   
-  // Create the title with the icon as JSX
-  const titleWithIcon = (
-    <div className="flex items-center gap-2">
-      <span className={iconClassName}>{iconComponent}</span>
-      <span>{title}</span>
-    </div>
-  );
-  
   return toast({
-    // Pass the title as a string, not as JSX
     title: title,
     description: description,
     duration: duration,
     variant: type === "error" ? "destructive" : "default",
     action: action,
-    // We'll handle the icon in the Toaster component
     icon: <span className={iconClassName}>{iconComponent}</span>
   });
 };

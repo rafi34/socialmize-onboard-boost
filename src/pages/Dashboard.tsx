@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart2, Calendar, Sparkles, AlertTriangle } from "lucide-react";
+import { BarChart2, Calendar, Sparkles, AlertTriangle, RefreshCw } from "lucide-react";
 import { CreatorSummaryHeader, StrategyPlanSection } from "@/components/dashboard";
 import { DashboardContent } from "@/components/dashboard/DashboardContent";
 import { DashboardPlanner } from "@/components/dashboard/DashboardPlanner";
@@ -38,30 +38,35 @@ export default function Dashboard() {
     generationStatus,
     generationError,
     fetchUserData,
+    resetRetryCount,
+    retryCount
   } = useDashboardData();
 
-  // Display error toast on generation error
+  // Display error toast on generation error, but only once
   useEffect(() => {
-    if (generationStatus === 'error' && generationError && !hasAttemptedRetry) {
+    if (generationStatus === 'error' && generationError && !hasAttemptedRetry && retryCount >= 3) {
       showNotification({
         title: "Strategy Generation Issue",
-        description: "We encountered an issue while creating your strategy. You can try again manually.",
+        description: "We encountered an issue while creating your strategy. Please try again manually.",
         type: "error",
+        duration: 8000,
         action: (
           <Button 
-            variant="ghost" 
+            variant="outline" 
             size="sm" 
             onClick={() => {
+              resetRetryCount();
               fetchUserData();
               setHasAttemptedRetry(true);
             }}
           >
+            <RefreshCw className="h-4 w-4 mr-1" />
             Retry
           </Button>
         ),
       });
     }
-  }, [generationStatus, generationError, hasAttemptedRetry, fetchUserData]);
+  }, [generationStatus, generationError, hasAttemptedRetry, fetchUserData, resetRetryCount, retryCount]);
 
   // Toggle visibility of content after initial load
   useEffect(() => {
@@ -83,7 +88,10 @@ export default function Dashboard() {
         waitingMessage={waitingMessage}
         generationStatus={generationStatus}
         generationError={generationError}
-        onRetry={fetchUserData}
+        onRetry={() => {
+          resetRetryCount();
+          fetchUserData();
+        }}
       />
     );
   }
@@ -101,16 +109,22 @@ export default function Dashboard() {
             <>
               <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
               
-              {generationStatus === 'error' && generationError && (
+              {generationStatus === 'error' && generationError && retryCount >= 3 && (
                 <Alert variant="destructive" className="mb-6">
                   <AlertTriangle className="h-4 w-4" />
                   <AlertTitle>Strategy Generation Error</AlertTitle>
                   <AlertDescription>
                     {generationError}
                     <Button 
-                      onClick={fetchUserData}
-                      className="block mt-2 underline text-sm hover:text-foreground/80"
+                      onClick={() => {
+                        resetRetryCount();
+                        fetchUserData();
+                      }}
+                      className="mt-2 inline-flex items-center"
+                      size="sm"
+                      variant="outline"
                     >
+                      <RefreshCw className="h-4 w-4 mr-1" />
                       Try again manually
                     </Button>
                   </AlertDescription>
