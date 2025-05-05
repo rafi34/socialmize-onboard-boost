@@ -9,7 +9,7 @@ interface StrategyOverviewSectionProps {
   strategy: StrategyData | null;
   loading: boolean;
   onRegenerateClick?: () => void;
-  onPlanConfirmed?: (confirmed: boolean) => void; // Added this prop
+  onPlanConfirmed?: (confirmed: boolean) => void; 
 }
 
 export const StrategyOverviewSection = ({ 
@@ -60,7 +60,7 @@ export const StrategyOverviewSection = ({
   };
 
   return (
-    <div className="bg-socialmize-light-purple/50 p-6 rounded-lg border border-socialmize-light-purple">
+    <div className="bg-socialmize-brand-green/10 p-6 rounded-lg border border-socialmize-brand-green/20">
       <h2 className="text-xl font-semibold mb-2">Your Strategy Summary</h2>
       <p className="text-muted-foreground whitespace-pre-wrap mb-4">{summary}</p>
 
@@ -109,7 +109,7 @@ export const StrategyOverviewSection = ({
           <Button 
             onClick={handleConfirmPlan} 
             variant="default" 
-            className="flex items-center gap-2 mr-3"
+            className="bg-socialmize-brand-green hover:bg-socialmize-brand-green/90 flex items-center gap-2 mr-3"
           >
             Confirm Strategy
           </Button>
@@ -129,7 +129,10 @@ export const StrategyOverviewSection = ({
       {/* Show only Regenerate button if onPlanConfirmed is not provided */}
       {!onPlanConfirmed && onRegenerateClick && (
         <div className="mt-6">
-          <Button onClick={onRegenerateClick} className="flex items-center gap-2">
+          <Button 
+            onClick={onRegenerateClick} 
+            className="bg-socialmize-brand-green hover:bg-socialmize-brand-green/90 flex items-center gap-2"
+          >
             <RefreshCw className="h-4 w-4" />
             Regenerate Strategy
           </Button>

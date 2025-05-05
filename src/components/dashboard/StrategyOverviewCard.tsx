@@ -84,7 +84,7 @@ export const StrategyOverviewCard = ({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <Brain className="h-5 w-5 mr-2 text-socialmize-purple" />
+              <Brain className="h-5 w-5 mr-2 text-socialmize-brand-green" />
               <CardTitle className="text-lg">Your Strategy Plan</CardTitle>
             </div>
           </div>
