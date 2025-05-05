@@ -32,12 +32,16 @@ import {
   AlertTriangle,
   Users,
   Shield,
-  User
+  User,
+  AlertCircle,
+  Info
 } from "lucide-react";
 import { XPOverrideDialog } from "./XPOverrideDialog";
 import { UserProfileDrawer } from "./UserProfileDrawer";
 import { AdminLogDialog } from "./AdminLogDialog";
 import { logStrategyAction } from "@/utils/adminLog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface UserData {
   id: string;
@@ -57,6 +61,10 @@ interface UserData {
     summary: string;
     creator_style: string;
     posting_frequency: string;
+  };
+  data_status?: {
+    hasProgress: boolean;
+    hasStrategy: boolean;
   };
 }
 
@@ -105,66 +113,78 @@ export function AdminUsersTable() {
 
       // Map through all profiles and fetch related data
       const usersWithData = await Promise.all(profilesData.map(async (profile) => {
+        // Initialize with default data structure and track what data is available
+        const userData: UserData = {
+          id: profile.id,
+          email: profile.email,
+          created_at: profile.created_at,
+          profile: {
+            onboarding_complete: profile.onboarding_complete,
+            metadata: profile.metadata || {}
+          },
+          progress: {
+            current_xp: 0,
+            current_level: 1,
+            streak_days: 0
+          },
+          strategy: {
+            niche_topic: '',
+            summary: '',
+            creator_style: '',
+            posting_frequency: ''
+          },
+          data_status: {
+            hasProgress: false,
+            hasStrategy: false
+          }
+        };
+
         try {
           // Fetch progress tracking data
-          const { data: progressData } = await supabase
+          const { data: progressData, error: progressError } = await supabase
             .from('progress_tracking')
             .select('*')
             .eq('user_id', profile.id)
             .maybeSingle();
 
+          if (progressError) {
+            console.warn(`Warning: Error fetching progress data for user ${profile.id}:`, progressError);
+          } else if (progressData) {
+            userData.progress = {
+              current_xp: progressData.current_xp || 0,
+              current_level: progressData.current_level || 1,
+              streak_days: progressData.streak_days || 0
+            };
+            userData.data_status!.hasProgress = true;
+          }
+        } catch (err) {
+          console.warn(`Warning: Exception in progress data fetch for user ${profile.id}:`, err);
+        }
+
+        try {
           // Fetch strategy profile data
-          const { data: strategyData } = await supabase
+          const { data: strategyData, error: strategyError } = await supabase
             .from('strategy_profiles')
             .select('*')
             .eq('user_id', profile.id)
             .maybeSingle();
 
-          // Return complete user data object with defaults if some data is missing
-          return {
-            id: profile.id,
-            email: profile.email,
-            created_at: profile.created_at,
-            profile: {
-              onboarding_complete: profile.onboarding_complete,
-              metadata: profile.metadata || {}
-            },
-            progress: {
-              current_xp: progressData?.current_xp || 0,
-              current_level: progressData?.current_level || 1,
-              streak_days: progressData?.streak_days || 0
-            },
-            strategy: {
-              niche_topic: strategyData?.niche_topic || '',
-              summary: strategyData?.summary || '',
-              creator_style: strategyData?.creator_style || '',
-              posting_frequency: strategyData?.posting_frequency || ''
-            }
-          };
+          if (strategyError) {
+            console.warn(`Warning: Error fetching strategy data for user ${profile.id}:`, strategyError);
+          } else if (strategyData) {
+            userData.strategy = {
+              niche_topic: strategyData.niche_topic || '',
+              summary: strategyData.summary || '',
+              creator_style: strategyData.creator_style || '',
+              posting_frequency: strategyData.posting_frequency || ''
+            };
+            userData.data_status!.hasStrategy = true;
+          }
         } catch (err) {
-          console.error(`Error fetching data for user ${profile.id}:`, err);
-          // Return user with minimal data if there's an error fetching related data
-          return {
-            id: profile.id,
-            email: profile.email,
-            created_at: profile.created_at,
-            profile: {
-              onboarding_complete: profile.onboarding_complete,
-              metadata: profile.metadata || {}
-            },
-            progress: {
-              current_xp: 0,
-              current_level: 1,
-              streak_days: 0
-            },
-            strategy: {
-              niche_topic: '',
-              summary: '',
-              creator_style: '',
-              posting_frequency: ''
-            }
-          };
+          console.warn(`Warning: Exception in strategy data fetch for user ${profile.id}:`, err);
         }
+
+        return userData;
       }));
 
       console.log("Transformed user data:", usersWithData);
@@ -285,6 +305,60 @@ export function AdminUsersTable() {
     return !userData.profile.onboarding_complete;
   };
 
+  // Function to render data status indicators
+  const renderDataStatusIndicator = (userData: UserData) => {
+    if (!userData.data_status) return null;
+    
+    if (!userData.data_status.hasProgress && !userData.data_status.hasStrategy) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <AlertCircle className="h-3.5 w-3.5 text-amber-500 ml-1" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Missing progress and strategy data</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    } else if (!userData.data_status.hasProgress) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Info className="h-3.5 w-3.5 text-blue-500 ml-1" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Missing progress data</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    } else if (!userData.data_status.hasStrategy) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Info className="h-3.5 w-3.5 text-blue-500 ml-1" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Missing strategy data</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    
+    return null;
+  };
+
   // Function to get user type badge
   const getUserTypeBadge = (userData: UserData) => {
     if (userData.profile.metadata?.is_admin) {
@@ -386,7 +460,10 @@ export function AdminUsersTable() {
                 <TableRow key={userData.id} className={userData.profile.metadata?.is_admin ? "bg-purple-50" : ""}>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-medium">{userData.email}</span>
+                      <div className="flex items-center">
+                        <span className="font-medium">{userData.email}</span>
+                        {renderDataStatusIndicator(userData)}
+                      </div>
                       <div className="flex items-center gap-1 mt-1">
                         {getUserTypeBadge(userData)}
                         {isInOnboarding(userData) && (
@@ -407,10 +484,14 @@ export function AdminUsersTable() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {userData.strategy.niche_topic || "Not set"}
+                    {userData.strategy.niche_topic || (
+                      <span className="text-muted-foreground italic">Not set</span>
+                    )}
                   </TableCell>
                   <TableCell>
-                    {userData.strategy.posting_frequency || "Not set"}
+                    {userData.strategy.posting_frequency || (
+                      <span className="text-muted-foreground italic">Not set</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
