@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -62,7 +63,7 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
           {readableText.split("\n").map((line, index) => (
             <p 
               key={index} 
-              className={`my-1 ${line.trim().startsWith("-") ? "pl-4" : ""} ${line.trim().startsWith("Phase") || line.trim().startsWith("Week") ? "text-lg font-medium text-socialmize-purple mt-4" : ""}`}
+              className={`my-1 ${line.trim().startsWith("-") ? "pl-4" : ""} ${line.trim().startsWith("Phase") || line.trim().startsWith("Week") ? "text-lg font-medium text-socialmize-green mt-4" : ""}`}
             >
               {line || "\u00A0"}
             </p>
@@ -240,7 +241,7 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
       <DialogContent className="max-w-3xl h-[85vh] flex flex-col overflow-hidden p-0">
         <DialogHeader className="p-6 pb-2">
           <div className="flex items-center gap-2">
-            <Brain className="h-6 w-6 text-socialmize-purple" />
+            <Brain className="h-6 w-6 text-socialmize-green" />
             <DialogTitle className="text-xl">Your Full Strategy Plan</DialogTitle>
           </div>
           <DialogDescription>
@@ -255,7 +256,7 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
               onClick={() => setDisplayMode('readable')}
               className={`px-4 py-2 text-sm font-medium rounded-l-lg ${
                 displayMode === 'readable' 
-                  ? 'bg-socialmize-purple text-white' 
+                  ? 'bg-socialmize-green text-white' 
                   : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
               }`}
             >
@@ -266,7 +267,7 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
               onClick={() => setDisplayMode('structured')}
               className={`px-4 py-2 text-sm font-medium rounded-r-lg ${
                 displayMode === 'structured' 
-                  ? 'bg-socialmize-purple text-white' 
+                  ? 'bg-socialmize-green text-white' 
                   : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
               }`}
             >
