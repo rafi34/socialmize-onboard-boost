@@ -5,16 +5,20 @@ import { Button } from "@/components/ui/button";
 import { GeneratedScript } from "@/types/dashboard";
 import { Copy, Eye, FileText, Star } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ScriptCardProps {
   script: GeneratedScript;
   isFavorite: boolean;
-  onToggleFavorite: () => void;
+  onToggleFavorite: (script: GeneratedScript, isFavorite: boolean) => void;
 }
 
 export const ScriptCard = ({ script, isFavorite, onToggleFavorite }: ScriptCardProps) => {
+  const { user } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(script.content).then(
@@ -34,6 +38,57 @@ export const ScriptCard = ({ script, isFavorite, onToggleFavorite }: ScriptCardP
         });
       }
     );
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!user) return;
+    
+    setIsTogglingFavorite(true);
+    
+    try {
+      if (isFavorite) {
+        // Remove from favorites
+        const { error } = await supabase
+          .from('favorite_scripts')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('script_id', script.id);
+          
+        if (error) throw error;
+        
+        toast({
+          title: "Removed from favorites",
+          description: "This script has been removed from your favorites.",
+        });
+      } else {
+        // Add to favorites
+        const { error } = await supabase
+          .from('favorite_scripts')
+          .insert({
+            user_id: user.id,
+            script_id: script.id
+          });
+          
+        if (error) throw error;
+        
+        toast({
+          title: "Added to favorites",
+          description: "This script has been added to your favorites.",
+        });
+      }
+      
+      // Call the parent component's handler
+      onToggleFavorite(script, !isFavorite);
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      toast({
+        title: "Action failed",
+        description: "There was a problem updating your favorites.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTogglingFavorite(false);
+    }
   };
 
   const formatTypeEmojis: Record<string, string> = {
@@ -59,8 +114,9 @@ export const ScriptCard = ({ script, isFavorite, onToggleFavorite }: ScriptCardP
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={onToggleFavorite}
+          onClick={handleToggleFavorite}
           className={isFavorite ? "text-yellow-500" : "text-muted-foreground"}
+          disabled={isTogglingFavorite}
         >
           <Star className="h-5 w-5" fill={isFavorite ? "currentColor" : "none"} />
         </Button>

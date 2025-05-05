@@ -77,3 +77,6 @@ verify_jwt = true
 
 [functions.get-content-idea-details]
 verify_jwt = false
+
+[functions.generate-inbox-nudges]
+verify_jwt = true

@@ -129,6 +129,63 @@ export type Database = {
         }
         Relationships: []
       }
+      inbox_items: {
+        Row: {
+          action_link: string | null
+          action_text: string | null
+          created_at: string
+          description: string | null
+          due_at: string | null
+          id: string
+          is_completed: boolean
+          is_read: boolean
+          item_type: string
+          metadata: Json | null
+          priority: string | null
+          source_id: string | null
+          streak_effect: boolean | null
+          title: string
+          user_id: string
+          xp_reward: number | null
+        }
+        Insert: {
+          action_link?: string | null
+          action_text?: string | null
+          created_at?: string
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          is_completed?: boolean
+          is_read?: boolean
+          item_type: string
+          metadata?: Json | null
+          priority?: string | null
+          source_id?: string | null
+          streak_effect?: boolean | null
+          title: string
+          user_id: string
+          xp_reward?: number | null
+        }
+        Update: {
+          action_link?: string | null
+          action_text?: string | null
+          created_at?: string
+          description?: string | null
+          due_at?: string | null
+          id?: string
+          is_completed?: boolean
+          is_read?: boolean
+          item_type?: string
+          metadata?: Json | null
+          priority?: string | null
+          source_id?: string | null
+          streak_effect?: boolean | null
+          title?: string
+          user_id?: string
+          xp_reward?: number | null
+        }
+        Relationships: []
+      }
       onboarding_answers: {
         Row: {
           content_format_preference: string | null
@@ -413,6 +470,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_streak_nudge: {
+        Args: { user_id_param: string }
+        Returns: undefined
+      }
+      generate_weekly_goal_nudge: {
+        Args: { user_id_param: string }
+        Returns: undefined
+      }
       get_generated_scripts: {
         Args: { user_id_param: string }
         Returns: {

@@ -21,6 +21,7 @@ import TopicSuggestions from "./pages/TopicSuggestions";
 import StrategyOverview from "./pages/StrategyOverview";
 import Reminders from "./pages/Reminders";
 import ScriptsLibrary from "./pages/ScriptsLibrary";
+import InboxCenterPage from "./pages/InboxCenterPage";
 
 const queryClient = new QueryClient();
 
@@ -129,6 +130,18 @@ const App = () => (
                 <ProtectedRoute>
                   <PremiumAppLayout>
                     <ScriptsLibrary />
+                  </PremiumAppLayout>
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Inbox Center - only for authenticated and onboarded users */}
+            <Route 
+              path="/inbox" 
+              element={
+                <ProtectedRoute>
+                  <PremiumAppLayout>
+                    <InboxCenterPage />
                   </PremiumAppLayout>
                 </ProtectedRoute>
               } 
