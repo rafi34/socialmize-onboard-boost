@@ -77,6 +77,38 @@ export function Navbar() {
                 </NavigationMenuItem>
                 
                 <NavigationMenuItem>
+                  <NavigationMenuTrigger>Content</NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                      <ListItem
+                        href="/scripts-library"
+                        title="Scripts Library"
+                      >
+                        Browse and manage your content scripts
+                      </ListItem>
+                      <ListItem
+                        href="/generate-scripts"
+                        title="Generate Scripts"
+                      >
+                        Create new content scripts from your ideas
+                      </ListItem>
+                      <ListItem
+                        href="/weekly-calendar"
+                        title="Content Calendar"
+                      >
+                        Manage your content posting schedule
+                      </ListItem>
+                      <ListItem
+                        href="/topic-suggestions"
+                        title="Topic Ideas"
+                      >
+                        Explore trending topic suggestions for your niche
+                      </ListItem>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+                
+                <NavigationMenuItem>
                   <NavigationMenuTrigger>Strategy</NavigationMenuTrigger>
                   <NavigationMenuContent>
                     <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
@@ -91,6 +123,32 @@ export function Navbar() {
                         title="Content Ideas"
                       >
                         Review generated content ideas and implementation plan
+                      </ListItem>
+                      <ListItem
+                        href="/strategy-overview"
+                        title="Strategy Overview"
+                      >
+                        View and manage your overall content strategy
+                      </ListItem>
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+                
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger>Tools</NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                      <ListItem
+                        href="/reminders"
+                        title="Reminders"
+                      >
+                        Set and manage content creation reminders
+                      </ListItem>
+                      <ListItem
+                        href="/inbox"
+                        title="Inbox"
+                      >
+                        View notifications and content updates
                       </ListItem>
                     </ul>
                   </NavigationMenuContent>
@@ -140,13 +198,28 @@ export function Navbar() {
                   <Link to="/dashboard">Dashboard</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
+                  <Link to="/scripts-library">Scripts Library</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/weekly-calendar">Content Calendar</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
                   <Link to="/strategy-chat">Strategy Chat</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/review-ideas">Content Ideas</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
+                  <Link to="/reminders">Reminders</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/inbox">Inbox</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
                   <Link to="/badges">Badges & Achievements</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/topic-suggestions">Topic Suggestions</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/settings">Settings</Link>
