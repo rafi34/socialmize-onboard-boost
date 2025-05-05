@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,6 +10,7 @@ import {
 import { Brain, RefreshCw } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState, useEffect } from "react";
+import { parseFullStrategyJson, strategyJsonToText } from "@/utils/parseFullStrategyJson";
 
 interface FullStrategyModalProps {
   isOpen: boolean;
@@ -23,33 +23,8 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
   const [parsedJson, setParsedJson] = useState<any>(null);
   const [isJsonValid, setIsJsonValid] = useState<boolean>(true);
   const [jsonError, setJsonError] = useState<string | null>(null);
+  const [displayMode, setDisplayMode] = useState<'readable' | 'structured'>('readable');
   
-  // Function to clean JSON text that might have markdown backticks
-  const cleanJsonText = (text?: string | null): string => {
-    if (!text) return "";
-    
-    // Remove markdown code block indicators
-    let cleaned = text.trim()
-      .replace(/^```json\s*/g, '')  // Remove opening ```json
-      .replace(/^```\s*/g, '')      // Remove opening ``` without json
-      .replace(/```$/g, '');        // Remove closing ```
-    
-    // Try to find JSON object boundaries if there's other text
-    const firstBrace = cleaned.indexOf('{');
-    const lastBrace = cleaned.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1) {
-      cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-    }
-    
-    // Fix common escaping issues
-    cleaned = cleaned
-      .replace(/\\"/g, '"') // Fix escaped quotes inside already escaped content
-      .replace(/\r\n/g, '\\n')
-      .replace(/\n/g, '\\n');
-    
-    return cleaned;
-  };
-
   // Parse JSON when fullPlanText changes
   useEffect(() => {
     if (!fullPlanText || fullPlanText.trim().length === 0) {
@@ -60,35 +35,44 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
     }
 
     try {
-      // Clean text of any markdown formatting before parsing JSON
-      const cleanedText = cleanJsonText(fullPlanText);
-      console.log("Attempting to parse JSON:", cleanedText.substring(0, 100) + "...");
-      
-      // Try to parse as JSON
-      const parsedData = JSON.parse(cleanedText);
-      console.log("Successfully parsed JSON plan:", parsedData);
-      
-      setParsedJson(parsedData);
-      setIsJsonValid(true);
-      setJsonError(null);
-    } catch (e) {
+      const parsed = parseFullStrategyJson(fullPlanText);
+      setParsedJson(parsed);
+      setIsJsonValid(!!parsed);
+      setJsonError(parsed ? null : "Failed to parse strategy data");
+    } catch (e: any) {
       console.error("Error parsing JSON plan:", e);
       setParsedJson(null);
       setIsJsonValid(false);
       setJsonError(`Failed to parse as JSON: ${e.message}`);
-      
-      // Log the raw text for debugging
-      console.log("Raw strategy text:", fullPlanText?.substring(0, 200));
     }
   }, [fullPlanText]);
   
-  // Function to format and display the plan text, supporting both JSON and plain text
-  const formatPlanText = () => {
+  // Function to format and display the plan text, supporting both readable and structured modes
+  const renderPlanContent = () => {
     if (!fullPlanText || fullPlanText.trim().length === 0) {
       return <p className="text-muted-foreground">No strategy plan available.</p>;
     }
 
-    if (isJsonValid && parsedJson) {
+    // Convert to readable text format
+    if (displayMode === 'readable') {
+      const readableText = strategyJsonToText(parsedJson) || fullPlanText;
+      
+      return (
+        <div className="prose prose-sm max-w-none dark:prose-invert">
+          {readableText.split("\n").map((line, index) => (
+            <p 
+              key={index} 
+              className={`my-1 ${line.trim().startsWith("-") ? "pl-4" : ""} ${line.trim().startsWith("Phase") || line.trim().startsWith("Week") ? "text-lg font-medium text-socialmize-purple mt-4" : ""}`}
+            >
+              {line || "\u00A0"}
+            </p>
+          ))}
+        </div>
+      );
+    }
+    
+    // Display structured data format
+    if (isJsonValid && parsedJson && displayMode === 'structured') {
       return (
         <div className="space-y-6">
           {/* Summary Section */}
@@ -233,60 +217,22 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
           )}
         </div>
       );
-    } else {
-      // Not valid JSON, display as plain text with line breaks and JSON error
+    } else if (displayMode === 'structured') {
+      // Not valid JSON but user wants structured view
       return (
         <div className="space-y-4">
-          {jsonError && (
-            <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-amber-800 text-sm">
-              <p className="font-medium">Could not parse as JSON</p>
-              <p className="text-xs mt-1">Displaying as plain text instead</p>
-            </div>
-          )}
+          <div className="bg-amber-50 border border-amber-200 p-3 rounded-md text-amber-800 text-sm">
+            <p className="font-medium">Could not parse as structured data</p>
+            <p className="text-xs mt-1">Switch to readable view to see the content</p>
+          </div>
           <div className="whitespace-pre-wrap">
-            {fullPlanText.split("\n").map((line, index) => (
-              <p key={index} className={`${line.trim().length === 0 ? 'my-4' : 'my-2'}`}>
-                {line || "\u00A0"}
-              </p>
-            ))}
+            <pre className="text-xs overflow-x-auto p-4 bg-gray-50 rounded-md">
+              {fullPlanText}
+            </pre>
           </div>
         </div>
       );
     }
-  };
-  
-  // Helper function to render different types of JSON values
-  const renderJsonValue = (key: string, value: any) => {
-    if (value === null || value === undefined) {
-      return <span className="text-muted-foreground">Not specified</span>;
-    }
-    
-    if (Array.isArray(value)) {
-      return (
-        <ul className="list-disc pl-5 space-y-1">
-          {value.map((item, i) => (
-            <li key={i}>{typeof item === 'object' ? JSON.stringify(item) : item}</li>
-          ))}
-        </ul>
-      );
-    }
-    
-    if (typeof value === 'object') {
-      return (
-        <div className="pl-3 border-l-2 border-muted mt-2">
-          {Object.entries(value).map(([subKey, subValue]) => (
-            <div key={subKey} className="mb-2">
-              <span className="font-medium">{subKey.replace(/_/g, ' ')}:</span>{' '}
-              {typeof subValue === 'object' ? 
-                JSON.stringify(subValue, null, 2) : 
-                subValue?.toString()}
-            </div>
-          ))}
-        </div>
-      );
-    }
-    
-    return <p>{value.toString()}</p>;
   };
 
   return (
@@ -294,7 +240,7 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
       <DialogContent className="max-w-3xl h-[85vh] flex flex-col overflow-hidden p-0">
         <DialogHeader className="p-6 pb-2">
           <div className="flex items-center gap-2">
-            <Brain className="h-6 w-6 text-primary" />
+            <Brain className="h-6 w-6 text-socialmize-purple" />
             <DialogTitle className="text-xl">Your Full Strategy Plan</DialogTitle>
           </div>
           <DialogDescription>
@@ -302,9 +248,36 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
           </DialogDescription>
         </DialogHeader>
         
+        <div className="px-6 py-2 border-b flex justify-end space-x-2">
+          <div className="inline-flex rounded-md shadow-sm" role="group">
+            <button
+              type="button"
+              onClick={() => setDisplayMode('readable')}
+              className={`px-4 py-2 text-sm font-medium rounded-l-lg ${
+                displayMode === 'readable' 
+                  ? 'bg-socialmize-purple text-white' 
+                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              Readable
+            </button>
+            <button
+              type="button"
+              onClick={() => setDisplayMode('structured')}
+              className={`px-4 py-2 text-sm font-medium rounded-r-lg ${
+                displayMode === 'structured' 
+                  ? 'bg-socialmize-purple text-white' 
+                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-100'
+              }`}
+            >
+              Structured
+            </button>
+          </div>
+        </div>
+        
         <ScrollArea className="flex-grow px-6 pb-6">
-          <div className="space-y-6">
-            {formatPlanText()}
+          <div className="space-y-6 py-4">
+            {renderPlanContent()}
           </div>
         </ScrollArea>
 
@@ -323,4 +296,38 @@ export const FullStrategyModal = ({ isOpen, onClose, fullPlanText, onRegenerateC
       </DialogContent>
     </Dialog>
   );
+};
+
+// Helper function to render different types of JSON values
+const renderJsonValue = (key: string, value: any) => {
+  if (value === null || value === undefined) {
+    return <span className="text-muted-foreground">Not specified</span>;
+  }
+  
+  if (Array.isArray(value)) {
+    return (
+      <ul className="list-disc pl-5 space-y-1">
+        {value.map((item, i) => (
+          <li key={i}>{typeof item === 'object' ? JSON.stringify(item) : item}</li>
+        ))}
+      </ul>
+    );
+  }
+  
+  if (typeof value === 'object') {
+    return (
+      <div className="pl-3 border-l-2 border-muted mt-2">
+        {Object.entries(value).map(([subKey, subValue]) => (
+          <div key={subKey} className="mb-2">
+            <span className="font-medium">{subKey.replace(/_/g, ' ')}:</span>{' '}
+            {typeof subValue === 'object' ? 
+              JSON.stringify(subValue, null, 2) : 
+              subValue?.toString()}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  
+  return <p>{value.toString()}</p>;
 };
