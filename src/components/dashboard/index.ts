@@ -2,6 +2,7 @@
 // Export all dashboard components
 export { CreatorSummaryHeader } from './CreatorSummaryHeader';
 export { WeeklyCalendarGrid } from './WeeklyCalendarGrid';
+export { EnhancedWeeklyCalendarGrid } from './EnhancedWeeklyCalendarGrid';
 export { ContentGeneratorSection } from './ContentGeneratorSection';
 export { TodaysMissionCard } from './TodaysMissionCard';
 export { ScriptPreviewsSection } from './ScriptPreviewsSection';

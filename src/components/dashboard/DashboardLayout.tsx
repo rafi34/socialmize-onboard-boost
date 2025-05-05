@@ -1,4 +1,4 @@
-import { WeeklyCalendarGrid } from "./WeeklyCalendarGrid";
+import { EnhancedWeeklyCalendarGrid } from "./EnhancedWeeklyCalendarGrid";
 import { CreatorSummaryHeader } from "./CreatorSummaryHeader";
 import { TodaysMissionCard } from "./TodaysMissionCard";
 import { ReminderCard } from "./ReminderCard";
@@ -199,7 +199,7 @@ export const DashboardLayout = () => {
             {activeTab === 'today' && (
               <div className="space-y-6">
                 <TodaysMissionCard strategy={strategy} loading={loading} />
-                <WeeklyCalendarGrid strategy={strategy} loading={loading} />
+                <EnhancedWeeklyCalendarGrid strategy={strategy} loading={loading} />
                 <ScriptPreviewsSection scripts={scripts} loading={loading} />
               </div>
             )}
