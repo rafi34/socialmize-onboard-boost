@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { Check, AlertTriangle, Info, X } from "lucide-react";
 import { ToastActionElement } from "@/components/ui/toast";
 
@@ -21,10 +21,11 @@ export const showNotification = ({
   duration = 5000,
   action
 }: NotificationOptions) => {
+  // Create the icon based on notification type
   const iconComponent = type === "success" ? <Check className="h-4 w-4" /> :
-             type === "error" ? <AlertTriangle className="h-4 w-4" /> :
-             type === "warning" ? <AlertTriangle className="h-4 w-4" /> :
-             <Info className="h-4 w-4" />;
+                       type === "error" ? <AlertTriangle className="h-4 w-4" /> :
+                       type === "warning" ? <AlertTriangle className="h-4 w-4" /> :
+                       <Info className="h-4 w-4" />;
   
   const iconClassName = `
     ${type === "success" ? "text-green-500" : 
@@ -33,20 +34,23 @@ export const showNotification = ({
       "text-blue-500"}
   `;
   
+  // Create the title with the icon as JSX
+  const titleWithIcon = (
+    <div className="flex items-center gap-2">
+      <span className={iconClassName}>{iconComponent}</span>
+      <span>{title}</span>
+    </div>
+  );
+  
   return toast({
+    // Pass the title as a string, not as JSX
     title: title,
     description: description,
     duration: duration,
     variant: type === "error" ? "destructive" : "default",
     action: action,
-    // Instead of using an icon prop directly (which causes type issues),
-    // prepend the icon to the title in a span
-    title: (
-      <div className="flex items-center gap-2">
-        <span className={iconClassName}>{iconComponent}</span>
-        <span>{title}</span>
-      </div>
-    ),
+    // We'll handle the icon in the Toaster component
+    icon: <span className={iconClassName}>{iconComponent}</span>
   });
 };
 
