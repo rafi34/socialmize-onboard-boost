@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -21,8 +20,10 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
-import { Badge, ChevronDown } from "lucide-react";
-import React from "react";
+import { Badge, ChevronDown, Shield } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { NavbarAdminLink } from "@/components/ui/navbar-admin-link";
+import { supabase } from "@/integrations/supabase/client";
 
 // Create ListItem component for the navigation dropdown
 const ListItem = React.forwardRef<
@@ -172,6 +173,7 @@ export function Navbar() {
 
         {user && (
           <div className="flex items-center gap-4">
+            <NavbarAdminLink />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -224,6 +226,10 @@ export function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link to="/settings">Settings</Link>
                 </DropdownMenuItem>
+                
+                {/* Admin Link (conditionally displayed) */}
+                <AdminMenuLink />
+                
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => signOut()}>
                   Log out
@@ -234,5 +240,41 @@ export function Navbar() {
         )}
       </div>
     </header>
+  );
+}
+
+// Admin Menu Link component (only visible for admins)
+function AdminMenuLink() {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const { user } = useAuth();
+  
+  useEffect(() => {
+    if (user) {
+      checkAdminStatus();
+    }
+  }, [user]);
+  
+  const checkAdminStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .rpc('is_admin', { user_id: user?.id });
+      
+      if (error) throw error;
+      setIsAdmin(!!data);
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+      setIsAdmin(false);
+    }
+  };
+  
+  if (!isAdmin) return null;
+  
+  return (
+    <DropdownMenuItem asChild>
+      <Link to="/admin" className="flex items-center gap-2">
+        <Shield className="h-4 w-4 text-amber-600" />
+        Admin Dashboard
+      </Link>
+    </DropdownMenuItem>
   );
 }

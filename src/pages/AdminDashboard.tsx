@@ -1,9 +1,7 @@
-
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Navigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { AdminUsersTable } from "@/components/admin/AdminUsersTable";
 import { AdminStatsCard } from "@/components/admin/AdminStatsCard";
@@ -11,44 +9,12 @@ import { AdminLogsTable } from "@/components/admin/AdminLogsTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Shield, Users, Activity, Bug, Settings } from "lucide-react";
-import { logStrategyAction } from "@/utils/adminLog";
 import { Button } from "@/components/ui/button";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<string>("users");
   const [christianAdminInProgress, setChristianAdminInProgress] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (user) {
-      checkAdminStatus();
-    }
-  }, [user]);
-
-  const checkAdminStatus = async () => {
-    try {
-      setLoading(true);
-      
-      const { data, error } = await supabase
-        .rpc('is_admin', { user_id: user?.id });
-      
-      if (error) throw error;
-      
-      setIsAdmin(!!data);
-      
-      if (!data) {
-        toast.error("You don't have admin access");
-      }
-    } catch (error) {
-      console.error("Error checking admin status:", error);
-      toast.error("Error checking admin permissions");
-      setIsAdmin(false);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const makeChristianAdmin = async () => {
     try {
@@ -110,18 +76,6 @@ export default function AdminDashboard() {
       setChristianAdminInProgress(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="container flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-socialmize-purple"></div>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return <Navigate to="/dashboard" replace />;
-  }
 
   return (
     <div className="container py-8">
