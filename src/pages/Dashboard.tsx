@@ -1,4 +1,3 @@
-
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,7 +20,8 @@ import {
   ScriptsSection,
   StrategyPlanSection,
   ContentAnalyticsSection,
-  WeeklyConsistencyCard
+  WeeklyConsistencyCard,
+  StrategySuggestionSection
 } from "@/components/dashboard";
 
 import { EnhancedWeeklyCalendarGrid } from "@/components/dashboard/EnhancedWeeklyCalendarGrid";
@@ -410,6 +410,7 @@ export default function Dashboard() {
                 <TabsContent value="content">
                   <div className="space-y-6">
                     <TodaysMissionCard strategy={strategy} loading={loading} />
+                    <StrategySuggestionSection strategy={strategy} loading={loading} />
                     <ContentGenerationSection
                       strategy={strategy}
                       loading={loading}
