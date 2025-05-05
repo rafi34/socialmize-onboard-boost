@@ -41,6 +41,16 @@ import { AdminLogDialog } from "./AdminLogDialog";
 import { logStrategyAction } from "@/utils/adminLog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface UserData {
   id: string;
@@ -76,6 +86,7 @@ export function AdminUsersTable() {
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [showXPOverride, setShowXPOverride] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const [showAdminConfirm, setShowAdminConfirm] = useState(false);
   const christianAdminCheckDone = useRef(false);
 
   useEffect(() => {
@@ -83,64 +94,6 @@ export function AdminUsersTable() {
       fetchUsers();
     }
   }, [user]);
-
-  const makeChristianAdmin = async () => {
-    try {
-      console.log("Attempting to make Christian an admin...");
-      
-      // Get Christian's user profile directly from the database
-      const { data: christianProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('email', 'christian@communitylaunch.com')
-        .single();
-      
-      if (profileError) {
-        console.error("Error finding Christian's profile:", profileError);
-        return;
-      }
-      
-      if (!christianProfile) {
-        console.log("Christian's profile not found");
-        return;
-      }
-      
-      console.log("Found Christian's profile:", christianProfile);
-      
-      // Create a properly typed metadata object
-      const currentMetadata = christianProfile.metadata as Record<string, any> || {};
-      
-      // Check if already an admin using the properly typed metadata
-      if (currentMetadata.is_admin === true) {
-        console.log("Christian is already an admin");
-        return;
-      }
-      
-      // Update to make admin, using a proper object for metadata
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          metadata: {
-            ...currentMetadata,
-            is_admin: true
-          }
-        })
-        .eq('id', christianProfile.id);
-      
-      if (updateError) {
-        console.error("Error making Christian an admin:", updateError);
-        return;
-      }
-      
-      console.log("Successfully made Christian an admin");
-      toast.success("Christian has been made an admin");
-      
-      // Refresh the users list
-      fetchUsers();
-    } catch (error) {
-      console.error("Error in makeChristianAdmin function:", error);
-    }
-  };
 
   const fetchUsers = async () => {
     try {
@@ -253,24 +206,12 @@ export function AdminUsersTable() {
       console.log("Transformed user data:", usersWithData.length);
       setUsers(usersWithData);
       
-      // Check if Christian needs to be made an admin
-      if (!christianAdminCheckDone.current) {
-        christianAdminCheckDone.current = true;
-        console.log("Checking if Christian needs to be made an admin...");
-        
-        const christianUser = usersWithData.find(u => u.email === 'christian@communitylaunch.com');
-        if (christianUser) {
-          // Properly check admin status using safely typed metadata
-          const isAdmin = christianUser.profile.metadata?.is_admin === true;
-          if (!isAdmin) {
-            console.log("Christian found but is not an admin. Making admin...");
-            await makeChristianAdmin();
-          } else {
-            console.log("Christian is already an admin");
-          }
-        } else {
-          console.log("Christian user not found in the data");
-        }
+      // Check for Christian in the user list
+      const christianUser = usersWithData.find(u => u.email === 'christian@communitylaunch.com');
+      if (christianUser) {
+        // Safely check admin status
+        const isAdmin = christianUser.profile.metadata?.is_admin === true;
+        console.log("Christian admin status check:", isAdmin);
       }
     } catch (error: any) {
       console.error("Error fetching users:", error);
@@ -363,45 +304,43 @@ export function AdminUsersTable() {
     }
   };
 
-  // Update toggleAdminStatus to properly handle metadata
+  // Updated toggle admin status function to use the RPC function
   const toggleAdminStatus = async (userData: UserData) => {
     try {
-      // Properly check admin status with safely typed metadata
+      if (!user) return;
+      
+      // Safely check admin status with properly typed metadata
       const currentMetadata = userData.profile.metadata || {};
       const currentAdminStatus = currentMetadata.is_admin === true;
       const newAdminStatus = !currentAdminStatus;
       
-      // Update the user's metadata in the profiles table
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          metadata: {
-            ...currentMetadata,
-            is_admin: newAdminStatus
-          }
-        })
-        .eq('id', userData.id);
+      // Call our new RPC function
+      const { data, error } = await supabase
+        .rpc('set_admin_status', {
+          target_user_id: userData.id,
+          is_admin: newAdminStatus,
+          admin_user_id: user.id
+        });
         
       if (error) throw error;
       
-      toast.success(`${userData.email} is now ${newAdminStatus ? 'an admin' : 'a regular user'}`);
-      
-      // Log this admin action
-      if (user) {
-        await supabase.from("admin_logs").insert({
-          admin_user_id: user.id,
-          target_user_id: userData.id,
-          action: newAdminStatus ? "grant_admin" : "revoke_admin",
-          metadata: { email: userData.email }
-        });
+      if (data) {
+        toast.success(`${userData.email} is now ${newAdminStatus ? 'an admin' : 'a regular user'}`);
+        // Refresh users list
+        fetchUsers();
+      } else {
+        toast.error(`Failed to update admin status for ${userData.email}`);
       }
-      
-      // Refresh users list
-      fetchUsers();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating admin status:", error);
-      toast.error("Failed to update admin status");
+      toast.error("Failed to update admin status: " + error.message);
     }
+  };
+
+  // Confirmation before changing admin status
+  const confirmAdminStatusChange = (userData: UserData) => {
+    setSelectedUser(userData);
+    setShowAdminConfirm(true);
   };
 
   // Create user type filters
@@ -505,21 +444,6 @@ export function AdminUsersTable() {
     }
   };
 
-  // Modified effect to make Christian an admin only once
-  useEffect(() => {
-    if (!loading && users.length > 0 && !christianAdminCheckDone.current) {
-      const christianUser = users.find(u => u.email === 'christian@communitylaunch.com');
-      if (christianUser) {
-        christianAdminCheckDone.current = true;
-        // Properly check for admin status using the safely typed metadata
-        const isAdmin = christianUser.profile.metadata?.is_admin === true;
-        if (!isAdmin) {
-          makeChristianAdmin();
-        }
-      }
-    }
-  }, [users, loading]);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -604,11 +528,11 @@ export function AdminUsersTable() {
                     <div className="flex flex-col">
                       <div className="flex items-center">
                         <span className="font-medium">{userData.email}</span>
-                        {renderDataStatusIndicator(userData)}
+                        {renderDataStatusIndicator && renderDataStatusIndicator(userData)}
                       </div>
                       <div className="flex items-center gap-1 mt-1">
                         {getUserTypeBadge(userData)}
-                        {isInOnboarding(userData) && (
+                        {isInOnboarding && isInOnboarding(userData) && (
                           <Badge variant="outline">Onboarding</Badge>
                         )}
                       </div>
@@ -660,7 +584,7 @@ export function AdminUsersTable() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => toggleAdminStatus(userData)}>
+                          <DropdownMenuItem onClick={() => confirmAdminStatusChange(userData)}>
                             <Shield className="h-4 w-4 mr-2" />
                             {userData.profile.metadata?.is_admin ? "Remove Admin" : "Make Admin"}
                           </DropdownMenuItem>
@@ -690,6 +614,40 @@ export function AdminUsersTable() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Admin Confirmation Dialog */}
+      <AlertDialog open={showAdminConfirm} onOpenChange={setShowAdminConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {selectedUser?.profile.metadata?.is_admin 
+                ? "Remove Admin Privileges" 
+                : "Grant Admin Privileges"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedUser?.profile.metadata?.is_admin 
+                ? `Are you sure you want to remove admin privileges from ${selectedUser?.email}?` 
+                : `Are you sure you want to grant admin privileges to ${selectedUser?.email}?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (selectedUser) {
+                  toggleAdminStatus(selectedUser);
+                }
+                setShowAdminConfirm(false);
+              }}
+              className={selectedUser?.profile.metadata?.is_admin 
+                ? "bg-red-500 hover:bg-red-600" 
+                : "bg-socialmize-purple hover:bg-socialmize-purple/90"}
+            >
+              {selectedUser?.profile.metadata?.is_admin ? "Remove Admin" : "Make Admin"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* XP Override Dialog */}
       {selectedUser && (

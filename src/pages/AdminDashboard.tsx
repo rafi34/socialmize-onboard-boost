@@ -10,8 +10,9 @@ import { AdminStatsCard } from "@/components/admin/AdminStatsCard";
 import { AdminLogsTable } from "@/components/admin/AdminLogsTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Shield, Users, Activity, Bug } from "lucide-react";
+import { Shield, Users, Activity, Bug, Settings } from "lucide-react";
 import { logStrategyAction } from "@/utils/adminLog";
+import { Button } from "@/components/ui/button";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -45,6 +46,29 @@ export default function AdminDashboard() {
       setIsAdmin(false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const makeChristianAdmin = async () => {
+    try {
+      if (!user) return;
+      
+      const { data, error } = await supabase
+        .rpc('set_admin_status', { 
+          target_user_id: 'lookup-by-email', 
+          is_admin: true,
+          admin_user_id: user.id
+        });
+      
+      if (error) {
+        toast.error("Failed to make Christian an admin: " + error.message);
+        return;
+      }
+      
+      toast.success("Admin privileges granted to Christian");
+    } catch (error: any) {
+      console.error("Error making Christian admin:", error);
+      toast.error("Error making Christian admin: " + error.message);
     }
   };
 
@@ -84,6 +108,10 @@ export default function AdminDashboard() {
                 <Bug className="h-4 w-4" />
                 <span>Debug Tools</span>
               </TabsTrigger>
+              <TabsTrigger value="settings" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                <span>Admin Settings</span>
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="users">
@@ -103,6 +131,34 @@ export default function AdminDashboard() {
                 
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">Coming soon...</p>
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="settings">
+              <div className="rounded-lg border p-6 bg-white shadow-sm">
+                <h3 className="text-lg font-semibold mb-4">Admin Configuration</h3>
+                <p className="text-muted-foreground mb-6">
+                  Configure admin users and platform settings.
+                </p>
+                
+                <div className="space-y-4">
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-md">
+                    <h4 className="font-medium mb-2 flex items-center">
+                      <Shield className="h-4 w-4 mr-2 text-amber-600" />
+                      Special Admin Controls
+                    </h4>
+                    <p className="text-sm text-amber-800 mb-4">
+                      These actions grant special admin privileges to specific users.
+                    </p>
+                    <Button 
+                      variant="outline"
+                      onClick={makeChristianAdmin}
+                      className="bg-white"
+                    >
+                      Make Christian an Admin
+                    </Button>
+                  </div>
                 </div>
               </div>
             </TabsContent>

@@ -565,6 +565,14 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      set_admin_status: {
+        Args: {
+          target_user_id: string
+          is_admin: boolean
+          admin_user_id: string
+        }
+        Returns: boolean
+      }
       update_profile_preferences: {
         Args: {
           user_id: string
