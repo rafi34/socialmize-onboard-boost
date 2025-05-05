@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -56,6 +55,19 @@ interface UserData {
   };
 }
 
+interface ProgressTracking {
+  current_xp: number;
+  current_level: number;
+  streak_days: number;
+}
+
+interface StrategyProfile {
+  niche_topic: string;
+  summary: string;
+  creator_style: string;
+  posting_frequency: string;
+}
+
 export function AdminUsersTable() {
   const { user } = useAuth();
   const [users, setUsers] = useState<UserData[]>([]);
@@ -99,17 +111,29 @@ export function AdminUsersTable() {
           metadata: item.metadata || {}
         },
         progress: {
-          // Fix: Properly handle progress_tracking array, accessing first item's properties
-          current_xp: item.progress_tracking && item.progress_tracking[0] ? item.progress_tracking[0].current_xp || 0 : 0,
-          current_level: item.progress_tracking && item.progress_tracking[0] ? item.progress_tracking[0].current_level || 1 : 1,
-          streak_days: item.progress_tracking && item.progress_tracking[0] ? item.progress_tracking[0].streak_days || 0 : 0
+          current_xp: Array.isArray(item.progress_tracking) && item.progress_tracking.length > 0 
+            ? (item.progress_tracking[0]?.current_xp || 0) 
+            : 0,
+          current_level: Array.isArray(item.progress_tracking) && item.progress_tracking.length > 0 
+            ? (item.progress_tracking[0]?.current_level || 1) 
+            : 1,
+          streak_days: Array.isArray(item.progress_tracking) && item.progress_tracking.length > 0 
+            ? (item.progress_tracking[0]?.streak_days || 0) 
+            : 0
         },
         strategy: {
-          // Fix: Properly handle strategy_profiles array, accessing first item's properties
-          niche_topic: item.strategy_profiles && item.strategy_profiles[0] ? item.strategy_profiles[0].niche_topic || '' : '',
-          summary: item.strategy_profiles && item.strategy_profiles[0] ? item.strategy_profiles[0].summary || '' : '',
-          creator_style: item.strategy_profiles && item.strategy_profiles[0] ? item.strategy_profiles[0].creator_style || '' : '',
-          posting_frequency: item.strategy_profiles && item.strategy_profiles[0] ? item.strategy_profiles[0].posting_frequency || '' : ''
+          niche_topic: Array.isArray(item.strategy_profiles) && item.strategy_profiles.length > 0 
+            ? (item.strategy_profiles[0]?.niche_topic || '') 
+            : '',
+          summary: Array.isArray(item.strategy_profiles) && item.strategy_profiles.length > 0 
+            ? (item.strategy_profiles[0]?.summary || '') 
+            : '',
+          creator_style: Array.isArray(item.strategy_profiles) && item.strategy_profiles.length > 0 
+            ? (item.strategy_profiles[0]?.creator_style || '') 
+            : '',
+          posting_frequency: Array.isArray(item.strategy_profiles) && item.strategy_profiles.length > 0 
+            ? (item.strategy_profiles[0]?.posting_frequency || '') 
+            : ''
         }
       }));
 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,11 +66,7 @@ export function AdminStatsCard() {
       let maxStreak = 0;
       
       if (progressData && progressData.length > 0) {
-        // Use Map to get latest progress entry per user
-        const latestProgressByUser = new Map();
-        
         progressData.forEach(entry => {
-          // Fix: Remove references to user_id
           totalXP += entry.current_xp || 0;
           totalLevel += entry.current_level || 1;
           maxStreak = Math.max(maxStreak, entry.streak_days || 0);
