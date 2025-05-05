@@ -499,6 +499,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_favorite_script: {
+        Args: { user_id_param: string; script_id_param: string }
+        Returns: Json
+      }
+      delete_favorite_script: {
+        Args: { user_id_param: string; script_id_param: string }
+        Returns: Json
+      }
       generate_streak_nudge: {
         Args: { user_id_param: string }
         Returns: undefined

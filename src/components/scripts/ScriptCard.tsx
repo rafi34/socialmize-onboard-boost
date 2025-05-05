@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardHeader, CardContent, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -47,13 +46,12 @@ export const ScriptCard = ({ script, isFavorite, onToggleFavorite }: ScriptCardP
     
     try {
       if (isFavorite) {
-        // Remove from favorites using raw SQL query instead of from()
-        const { error } = await supabase
+        // Remove from favorites using database function
+        const { data, error } = await supabase
           .rpc('delete_favorite_script', { 
             user_id_param: user.id,
             script_id_param: script.id
-          })
-          .maybeSingle();
+          });
           
         if (error) throw error;
         
@@ -62,13 +60,12 @@ export const ScriptCard = ({ script, isFavorite, onToggleFavorite }: ScriptCardP
           description: "This script has been removed from your favorites.",
         });
       } else {
-        // Add to favorites using raw SQL query instead of from()
-        const { error } = await supabase
+        // Add to favorites using database function
+        const { data, error } = await supabase
           .rpc('add_favorite_script', { 
             user_id_param: user.id,
             script_id_param: script.id
-          })
-          .maybeSingle();
+          });
           
         if (error) throw error;
         
