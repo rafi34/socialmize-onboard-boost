@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { Check, AlertTriangle, Info, X } from "lucide-react";
+import { ToastActionElement } from "@/components/ui/toast";
 
 type NotificationType = "success" | "error" | "info" | "warning";
 
@@ -10,7 +11,7 @@ interface NotificationOptions {
   description?: string;
   type?: NotificationType;
   duration?: number;
-  action?: React.ReactNode;
+  action?: ToastActionElement;
 }
 
 export const showNotification = ({
@@ -26,23 +27,18 @@ export const showNotification = ({
              <Info className="h-4 w-4" />;
   
   return toast({
-    title: (
-      <div className="flex items-center gap-2">
-        <span className={`
-          ${type === "success" ? "text-green-500" : 
-            type === "error" ? "text-red-500" : 
-            type === "warning" ? "text-yellow-500" : 
-            "text-blue-500"}
-        `}>
-          {icon}
-        </span>
-        {title}
-      </div>
-    ),
+    title: title,
     description: description,
     duration: duration,
     variant: type === "error" ? "destructive" : "default",
     action: action,
+    // Add the icon as part of the description instead of the title
+    icon: <span className={`
+      ${type === "success" ? "text-green-500" : 
+        type === "error" ? "text-red-500" : 
+        type === "warning" ? "text-yellow-500" : 
+        "text-blue-500"}
+    `}>{icon}</span>
   });
 };
 
