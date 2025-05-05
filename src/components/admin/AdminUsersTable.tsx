@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,7 +29,8 @@ import {
   Bug,
   Search,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Users
 } from "lucide-react";
 import { XPOverrideDialog } from "./XPOverrideDialog";
 import { UserProfileDrawer } from "./UserProfileDrawer";
@@ -77,9 +79,9 @@ export function AdminUsersTable() {
       setLoading(true);
       setError(null);
       
-      console.log("Fetching users...");
+      console.log("Fetching all users...");
       
-      // First, get all profiles
+      // Query all auth users from profiles table
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -99,54 +101,75 @@ export function AdminUsersTable() {
         return;
       }
 
-      // Prepare the user data with default values
-      const userData: UserData[] = await Promise.all(profilesData.map(async (profile) => {
-        // Fetch progress tracking data for this user
-        const { data: progressData } = await supabase
-          .from('progress_tracking')
-          .select('*')
-          .eq('user_id', profile.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+      // Map through all profiles and fetch related data
+      const usersWithData = await Promise.all(profilesData.map(async (profile) => {
+        try {
+          // Fetch progress tracking data
+          const { data: progressData } = await supabase
+            .from('progress_tracking')
+            .select('*')
+            .eq('user_id', profile.id)
+            .maybeSingle();
 
-        // Fetch strategy profile data for this user
-        const { data: strategyData } = await supabase
-          .from('strategy_profiles')
-          .select('*')
-          .eq('user_id', profile.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+          // Fetch strategy profile data
+          const { data: strategyData } = await supabase
+            .from('strategy_profiles')
+            .select('*')
+            .eq('user_id', profile.id)
+            .maybeSingle();
 
-        // Transform to expected structure
-        return {
-          id: profile.id,
-          email: profile.email,
-          created_at: profile.created_at,
-          profile: {
-            onboarding_complete: profile.onboarding_complete,
-            metadata: profile.metadata || {}
-          },
-          progress: {
-            current_xp: progressData?.current_xp || 0,
-            current_level: progressData?.current_level || 1,
-            streak_days: progressData?.streak_days || 0
-          },
-          strategy: {
-            niche_topic: strategyData?.niche_topic || '',
-            summary: strategyData?.summary || '',
-            creator_style: strategyData?.creator_style || '',
-            posting_frequency: strategyData?.posting_frequency || ''
-          }
-        };
+          // Return complete user data object with defaults if some data is missing
+          return {
+            id: profile.id,
+            email: profile.email,
+            created_at: profile.created_at,
+            profile: {
+              onboarding_complete: profile.onboarding_complete,
+              metadata: profile.metadata || {}
+            },
+            progress: {
+              current_xp: progressData?.current_xp || 0,
+              current_level: progressData?.current_level || 1,
+              streak_days: progressData?.streak_days || 0
+            },
+            strategy: {
+              niche_topic: strategyData?.niche_topic || '',
+              summary: strategyData?.summary || '',
+              creator_style: strategyData?.creator_style || '',
+              posting_frequency: strategyData?.posting_frequency || ''
+            }
+          };
+        } catch (err) {
+          console.error(`Error fetching data for user ${profile.id}:`, err);
+          // Return user with minimal data if there's an error fetching related data
+          return {
+            id: profile.id,
+            email: profile.email,
+            created_at: profile.created_at,
+            profile: {
+              onboarding_complete: profile.onboarding_complete,
+              metadata: profile.metadata || {}
+            },
+            progress: {
+              current_xp: 0,
+              current_level: 1,
+              streak_days: 0
+            },
+            strategy: {
+              niche_topic: '',
+              summary: '',
+              creator_style: '',
+              posting_frequency: ''
+            }
+          };
+        }
       }));
 
-      console.log("Transformed user data:", userData);
-      setUsers(userData);
-    } catch (error) {
+      console.log("Transformed user data:", usersWithData);
+      setUsers(usersWithData);
+    } catch (error: any) {
       console.error("Error fetching users:", error);
-      setError("Failed to load users. Please try refreshing.");
+      setError(`Failed to load users: ${error.message || "Unknown error"}`);
       toast.error("Failed to load users");
     } finally {
       setLoading(false);
@@ -236,7 +259,7 @@ export function AdminUsersTable() {
   };
 
   const filteredUsers = users.filter(user => 
-    user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.strategy.niche_topic?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -271,7 +294,10 @@ export function AdminUsersTable() {
   return (
     <div className="rounded-lg border bg-white shadow-sm">
       <div className="p-4 flex items-center justify-between">
-        <h3 className="text-lg font-medium">All Users</h3>
+        <div className="flex items-center gap-2">
+          <Users className="h-5 w-5 text-socialmize-purple" />
+          <h3 className="text-lg font-medium">All Users ({users.length})</h3>
+        </div>
         <div className="flex items-center gap-2">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
