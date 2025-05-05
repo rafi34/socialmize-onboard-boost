@@ -84,6 +84,61 @@ export function AdminUsersTable() {
     }
   }, [user]);
 
+  const makeChristianAdmin = async () => {
+    try {
+      console.log("Attempting to make Christian an admin...");
+      
+      // Get Christian's user profile directly from the database
+      const { data: christianProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('email', 'christian@communitylaunch.com')
+        .single();
+      
+      if (profileError) {
+        console.error("Error finding Christian's profile:", profileError);
+        return;
+      }
+      
+      if (!christianProfile) {
+        console.log("Christian's profile not found");
+        return;
+      }
+      
+      console.log("Found Christian's profile:", christianProfile);
+      
+      // Check if already an admin
+      if (christianProfile.metadata?.is_admin === true) {
+        console.log("Christian is already an admin");
+        return;
+      }
+      
+      // Update to make admin
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          metadata: {
+            ...christianProfile.metadata,
+            is_admin: true
+          }
+        })
+        .eq('id', christianProfile.id);
+      
+      if (updateError) {
+        console.error("Error making Christian an admin:", updateError);
+        return;
+      }
+      
+      console.log("Successfully made Christian an admin");
+      toast.success("Christian has been made an admin");
+      
+      // Refresh the users list
+      fetchUsers();
+    } catch (error) {
+      console.error("Error in makeChristianAdmin function:", error);
+    }
+  };
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -191,6 +246,24 @@ export function AdminUsersTable() {
 
       console.log("Transformed user data:", usersWithData.length);
       setUsers(usersWithData);
+      
+      // Check if Christian needs to be made an admin
+      if (!christianAdminCheckDone.current) {
+        christianAdminCheckDone.current = true;
+        console.log("Checking if Christian needs to be made an admin...");
+        
+        const christianUser = usersWithData.find(u => u.email === 'christian@communitylaunch.com');
+        if (christianUser) {
+          if (!christianUser.profile.metadata?.is_admin) {
+            console.log("Christian found but is not an admin. Making admin...");
+            await makeChristianAdmin();
+          } else {
+            console.log("Christian is already an admin");
+          }
+        } else {
+          console.log("Christian user not found in the data");
+        }
+      }
     } catch (error: any) {
       console.error("Error fetching users:", error);
       setError(`Failed to load users: ${error.message || "Unknown error"}`);
@@ -421,30 +494,14 @@ export function AdminUsersTable() {
 
   // Modified effect to make Christian an admin only once
   useEffect(() => {
-    const makeChristianAdmin = async () => {
-      if (users.length > 0 && !christianAdminCheckDone.current) {
+    if (!loading && users.length > 0 && !christianAdminCheckDone.current) {
+      const christianUser = users.find(u => u.email === 'christian@communitylaunch.com');
+      if (christianUser) {
         christianAdminCheckDone.current = true;
-        const christianUser = users.find(u => u.email === 'christian@communitylaunch.com');
-        if (christianUser && !christianUser.profile.metadata?.is_admin) {
-          console.log("Making Christian an admin...");
-          await supabase
-            .from('profiles')
-            .update({
-              metadata: {
-                ...christianUser.profile.metadata,
-                is_admin: true
-              }
-            })
-            .eq('id', christianUser.id);
-          
-          toast.success("Christian has been made an admin");
-          fetchUsers();
+        if (!christianUser.profile.metadata?.is_admin) {
+          makeChristianAdmin();
         }
       }
-    };
-    
-    if (!loading && users.length > 0) {
-      makeChristianAdmin();
     }
   }, [users, loading]);
 
