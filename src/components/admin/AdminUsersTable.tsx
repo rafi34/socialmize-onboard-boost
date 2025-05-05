@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -76,6 +76,7 @@ export function AdminUsersTable() {
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [showXPOverride, setShowXPOverride] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const christianAdminCheckDone = useRef(false);
 
   useEffect(() => {
     if (user) {
@@ -418,10 +419,11 @@ export function AdminUsersTable() {
     }
   };
 
-  // Effect to make Christian an admin when component loads
+  // Modified effect to make Christian an admin only once
   useEffect(() => {
     const makeChristianAdmin = async () => {
-      if (users.length > 0) {
+      if (users.length > 0 && !christianAdminCheckDone.current) {
+        christianAdminCheckDone.current = true;
         const christianUser = users.find(u => u.email === 'christian@communitylaunch.com');
         if (christianUser && !christianUser.profile.metadata?.is_admin) {
           console.log("Making Christian an admin...");
