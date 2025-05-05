@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,16 +36,16 @@ interface StrategyProfileData {
   summary?: string;
   phases?: Json;
   weekly_calendar?: Json;
-  content_types?: Json; // Updated: Accept Json type from Supabase
-  topic_ideas?: Json; // Updated: Accept Json type from Supabase
+  content_types?: Json;
+  topic_ideas?: Json;
   experience_level?: string;
   creator_style?: string;
   posting_frequency?: string;
   niche_topic?: string;
   full_plan_text?: string;
-  created_at?: string; // Added missing field
-  updated_at?: string; // Added missing field
-  first_five_scripts?: Json; // Added missing field
+  created_at?: string;
+  updated_at?: string;
+  first_five_scripts?: Json;
 }
 
 const StrategyChat = () => {
@@ -58,6 +59,7 @@ const StrategyChat = () => {
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const [strategyData, setStrategyData] = useState<StrategyProfileData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [redirectTriggered, setRedirectTriggered] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -155,6 +157,18 @@ const StrategyChat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Effect to handle redirection after content is generated
+  useEffect(() => {
+    if (contentIdeas.length > 0 && showConfetti && !redirectTriggered) {
+      const timer = setTimeout(() => {
+        setRedirectTriggered(true);
+        navigate('/review-ideas');
+      }, 2000); // Short delay to allow confetti to show
+      
+      return () => clearTimeout(timer);
+    }
+  }, [contentIdeas, showConfetti, navigate, redirectTriggered]);
+
   // Fetch message history from Supabase
   const fetchMessageHistory = async (threadId: string) => {
     if (!user) return;
@@ -217,10 +231,22 @@ const StrategyChat = () => {
     if (!user || ideas.length === 0) return;
     
     try {
+      // First, delete any existing unselected content ideas to avoid duplication
+      await supabase
+        .from('content_ideas')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('selected', false);
+      
+      // Now add the new content ideas
       const ideaObjects = ideas.map(idea => ({
         user_id: user.id,
         idea: idea,
-        selected: false
+        selected: false,
+        format_type: getRandomFormat(),
+        difficulty: getRandomDifficulty(),
+        xp_reward: getRandomXp(),
+        generated_at: new Date().toISOString()
       }));
       
       const { error } = await supabase
@@ -231,7 +257,7 @@ const StrategyChat = () => {
         throw error;
       }
       
-      console.log('Content ideas saved successfully');
+      console.log('Content ideas saved successfully:', ideaObjects.length);
     } catch (error) {
       console.error('Error saving content ideas:', error);
       toast({
@@ -240,6 +266,21 @@ const StrategyChat = () => {
         variant: "destructive"
       });
     }
+  };
+
+  // Helper functions for random attributes
+  const getRandomFormat = () => {
+    const formats = ["Video", "Carousel", "Talking Head", "Meme", "Duet"];
+    return formats[Math.floor(Math.random() * formats.length)];
+  };
+  
+  const getRandomDifficulty = () => {
+    const difficulties = ["Easy", "Medium", "Hard"];
+    return difficulties[Math.floor(Math.random() * difficulties.length)];
+  };
+  
+  const getRandomXp = () => {
+    return [25, 50, 75, 100][Math.floor(Math.random() * 4)];
   };
 
   // Get random waiting message
@@ -321,12 +362,33 @@ const StrategyChat = () => {
       // Check for completion
       if (data.completed) {
         setShowConfetti(true);
-        setTimeout(() => setCompletionModalOpen(true), 1000);
         
-        // Save content ideas if they exist
+        // Process content ideas if they exist
         if (data.contentIdeas && data.contentIdeas.length > 0) {
+          console.log('Content ideas received:', data.contentIdeas.length);
           setContentIdeas(data.contentIdeas);
           await saveContentIdeas(data.contentIdeas);
+          
+          // Show completion modal briefly before redirect
+          setCompletionModalOpen(true);
+        } else {
+          // If no content ideas, try to generate some using the refresh-topics function
+          try {
+            console.log('No content ideas from assistant, generating with refresh-topics');
+            const { data: topicsData, error: topicsError } = await supabase.functions.invoke('refresh-topics', {
+              body: { userId: user.id }
+            });
+            
+            if (topicsError) throw topicsError;
+            
+            if (topicsData && topicsData.topics && topicsData.topics.length > 0) {
+              console.log('Generated topics from refresh-topics:', topicsData.topics.length);
+              setContentIdeas(topicsData.topics);
+              await saveContentIdeas(topicsData.topics);
+            }
+          } catch (topicError) {
+            console.error('Error generating backup topics:', topicError);
+          }
         }
       }
     } catch (error: any) {

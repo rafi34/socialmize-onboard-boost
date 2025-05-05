@@ -1,18 +1,12 @@
 
-import { serve } from "https://deno.land/std@0.195.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
-// Get environment variables
-const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-
-// CORS headers for browser requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Main function to handle request
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -22,79 +16,66 @@ serve(async (req) => {
   try {
     const { userId, startDate } = await req.json();
 
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ success: false, error: "User ID is required" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
+    if (!userId || !startDate) {
+      throw new Error('Missing required parameters');
     }
 
-    // Initialize the Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Get Supabase credentials from environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    // Calculate one week ago if startDate not provided
-    const oneWeekAgo = startDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    
-    // Query the XP events table directly since we can't be sure the RPC function exists yet
-    const { data: xpEvents, error: xpError } = await supabase
-      .from('xp_events')
-      .select('amount')
-      .eq('user_id', userId)
-      .gte('created_at', oneWeekAgo);
-    
-    if (xpError) {
-      console.error("Error fetching XP events:", xpError);
-      
-      // Try the get_weekly_xp RPC function as a fallback
-      try {
-        const { data: rpcData, error: rpcError } = await supabase.rpc('get_weekly_xp', {
-          user_id_param: userId,
-          start_date_param: oneWeekAgo
-        });
-        
-        if (rpcError) {
-          throw rpcError;
-        }
-        
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            xp: rpcData || 0,
-            source: "rpc"
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      } catch (rpcFallbackError) {
-        console.error("RPC fallback error:", rpcFallbackError);
-        // If both methods fail, return 0 XP
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            xp: 0,
-            source: "default"
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase credentials not configured');
     }
 
-    // Calculate total XP from events
-    const totalXP = xpEvents?.reduce((sum, event) => sum + (event.amount || 0), 0) || 0;
+    console.log(`Fetching weekly XP for user ${userId} from ${startDate}`);
+
+    // Calculate total XP since the start date
+    const xpResponse = await fetch(`${supabaseUrl}/rest/v1/xp_events?user_id=eq.${userId}&created_at=gte.${startDate}`, {
+      headers: {
+        Authorization: `Bearer ${supabaseServiceKey}`,
+        apikey: supabaseServiceKey,
+      },
+    });
+
+    if (!xpResponse.ok) {
+      throw new Error(`Failed to fetch XP events: ${xpResponse.statusText}`);
+    }
+
+    const xpEvents = await xpResponse.json();
+    const totalXp = xpEvents.reduce((sum: number, event: any) => sum + (event.amount || 0), 0);
+
+    // Get the user's streak from progress_tracking
+    const progressResponse = await fetch(`${supabaseUrl}/rest/v1/progress_tracking?user_id=eq.${userId}&order=created_at.desc&limit=1`, {
+      headers: {
+        Authorization: `Bearer ${supabaseServiceKey}`,
+        apikey: supabaseServiceKey,
+      },
+    });
+
+    if (!progressResponse.ok) {
+      throw new Error(`Failed to fetch progress tracking: ${progressResponse.statusText}`);
+    }
+
+    const progressData = await progressResponse.json();
+    const streak = progressData.length > 0 ? progressData[0].streak_days || 0 : 0;
+
+    console.log(`User ${userId} has earned ${totalXp} XP this week with a streak of ${streak} days`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        xp: totalXP,
-        source: "direct_query" 
+        xp: totalXp, 
+        streak: streak 
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error("Error in get-weekly-xp:", error);
+    console.error('Error in get-weekly-xp function:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message || "An unexpected error occurred" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      JSON.stringify({ success: false, error: error.message || 'An error occurred' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });

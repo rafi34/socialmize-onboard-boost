@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -83,6 +84,9 @@ const ReviewIdeas = () => {
   const loadContentIdeas = async () => {
     try {
       setLoading(true);
+      
+      console.log("Loading content ideas for user:", user?.id);
+      
       const { data, error } = await supabase
         .from('content_ideas')
         .select('*')
@@ -93,7 +97,9 @@ const ReviewIdeas = () => {
         throw error;
       }
       
-      if (data) {
+      console.log("Content ideas loaded:", data?.length || 0);
+      
+      if (data && data.length > 0) {
         const enhancedIdeas = data.map(idea => ({
           ...idea,
           format_type: idea.format_type || getRandomFormat(),
@@ -106,6 +112,9 @@ const ReviewIdeas = () => {
         // Count already selected ideas
         const selected = enhancedIdeas.filter(idea => idea.selected).length;
         setSelectedCount(selected);
+      } else if (user) {
+        // No ideas found, try to generate some automatically
+        generateContentIdeas();
       }
     } catch (error) {
       console.error('Error loading content ideas:', error);
@@ -145,7 +154,7 @@ const ReviewIdeas = () => {
 
       // Call the edge function to generate new topics
       const { data, error } = await supabase.functions.invoke('refresh-topics', {
-        body: { userId: user.id } // Changed from user_id to userId to match function parameter
+        body: { userId: user.id }
       });
       
       if (error) {
@@ -155,33 +164,14 @@ const ReviewIdeas = () => {
       // Get the topics from the response
       const topicIdeas = data.topics || [];
       
-      // Convert topics to content ideas format for saving
       if (topicIdeas.length > 0) {
-        const ideaObjects = topicIdeas.map((idea: string) => ({
-          user_id: user.id,
-          idea: idea,
-          selected: false,
-          format_type: getRandomFormat(),
-          difficulty: getRandomDifficulty(),
-          xp_reward: getRandomXp()
-        }));
-        
-        // Save the content ideas to the database
-        const { error: saveError } = await supabase
-          .from('content_ideas')
-          .insert(ideaObjects);
-          
-        if (saveError) {
-          throw saveError;
-        }
+        console.log("Successfully generated content ideas, reloading...");
+        await loadContentIdeas();
         
         toast({
           title: "Content missions generated!",
           description: `${topicIdeas.length} new mission ideas have been created.`
         });
-        
-        // Reload the content ideas
-        await loadContentIdeas();
       } else {
         toast({
           title: "No new missions generated",
