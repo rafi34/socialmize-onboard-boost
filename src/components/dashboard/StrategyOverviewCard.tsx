@@ -18,37 +18,68 @@ export const StrategyOverviewCard = ({
 }: StrategyOverviewCardProps) => {
   const [showFullStrategy, setShowFullStrategy] = useState(false);
 
-  // Extract a summary from the full plan text
+  // Enhanced function to extract a summary from the full plan text
   const getSummaryFromFullPlan = () => {
     if (!fullPlanText) return null;
     
     try {
-      // Try to clean and parse as JSON first
+      // First attempt: Try to clean and parse as JSON
       const cleanedText = cleanJsonText(fullPlanText);
-      const parsedPlan = JSON.parse(cleanedText);
-      
-      // If we have a summary in the JSON, return it
-      if (parsedPlan.summary) return parsedPlan.summary;
-      
-      // If no summary in JSON, return null to fall back to other methods
-      return null;
-    } catch {
-      // Not valid JSON, extract the first few sentences
-      const sentences = fullPlanText.split(/[.!?]/);
-      if (sentences.length > 0) {
-        // Get up to first 3 sentences that have content
-        const firstSentences = sentences
-          .filter(s => s.trim().length > 0)
-          .slice(0, 3)
-          .join(". ");
+      try {
+        const parsedPlan = JSON.parse(cleanedText);
         
-        return firstSentences + (firstSentences.endsWith(".") ? "" : ".");
+        // If we have a summary in the JSON, return it
+        if (parsedPlan.summary) return parsedPlan.summary;
+        
+        // Try to build a summary from other JSON structure elements
+        if (parsedPlan.overview) return parsedPlan.overview;
+        if (parsedPlan.strategy_summary) return parsedPlan.strategy_summary;
+        if (parsedPlan.description) return parsedPlan.description;
+        
+        // If we have a weeks array, extract info from the first week
+        if (parsedPlan.weeks && parsedPlan.weeks.length > 0) {
+          const firstWeek = parsedPlan.weeks[0];
+          if (firstWeek.description) return firstWeek.description;
+          if (firstWeek.focus) return `Week 1 Focus: ${firstWeek.focus}`;
+        }
+      } catch (parseError) {
+        console.error("Error parsing JSON:", parseError);
+        // Not valid JSON, fall through to text extraction
       }
+      
+      // Second attempt: Extract from text
+      return extractSummaryFromText(fullPlanText);
+    } catch (error) {
+      console.error("Error getting summary:", error);
       return null;
     }
   };
 
-  // Function to clean JSON text that might have formatting
+  // Helper function to extract summary from plain text
+  const extractSummaryFromText = (text: string): string | null => {
+    // Look for patterns like "Summary: ..." or "Overview: ..."
+    const summaryMatch = text.match(/summary:([^.!?]*[.!?])/i);
+    if (summaryMatch && summaryMatch[1].trim().length > 10) {
+      return summaryMatch[1].trim();
+    }
+    
+    const overviewMatch = text.match(/overview:([^.!?]*[.!?])/i);
+    if (overviewMatch && overviewMatch[1].trim().length > 10) {
+      return overviewMatch[1].trim();
+    }
+    
+    // If no clear patterns, get the first few sentences
+    const sentences = text.split(/[.!?]/).filter(s => s.trim().length > 0);
+    if (sentences.length > 0) {
+      // Get up to first 3 sentences that have content
+      const firstSentences = sentences.slice(0, 3).join(". ");
+      return firstSentences + (firstSentences.endsWith(".") ? "" : ".");
+    }
+    
+    return null;
+  };
+
+  // Enhanced function to clean JSON text that might have formatting
   const cleanJsonText = (text?: string | null): string => {
     if (!text) return "";
     
@@ -64,6 +95,13 @@ export const StrategyOverviewCard = ({
     if (firstBrace !== -1 && lastBrace !== -1) {
       cleaned = cleaned.substring(firstBrace, lastBrace + 1);
     }
+    
+    // Fix common JSON string issues (escaped quotes, newlines)
+    cleaned = cleaned
+      .replace(/\\"/g, '"') // Fix escaped quotes inside already escaped content
+      .replace(/\\n/g, ' ') // Replace \n with spaces for better readability
+      .replace(/\r\n/g, ' ') // Replace Windows line breaks
+      .replace(/\n/g, ' '); // Replace Unix line breaks
     
     return cleaned;
   };

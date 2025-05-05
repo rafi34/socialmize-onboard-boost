@@ -1,66 +1,19 @@
 
-import { useEffect, useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { StrategyData } from "@/types/dashboard";
+import { useState } from "react";
+import { useStrategyData } from "@/hooks/useStrategyData";
 import { StrategyOverviewCard } from "./StrategyOverviewCard";
 import { FullStrategyModal } from "./FullStrategyModal";
-import { Card } from "@/components/ui/card";
 import { RegeneratePlanModal } from "./RegeneratePlanModal";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export const StrategyPlanSection = () => {
   const [isFullPlanOpen, setIsFullPlanOpen] = useState(false);
   const [isRegeneratePlanOpen, setIsRegeneratePlanOpen] = useState(false);
-  const [strategy, setStrategy] = useState<StrategyData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { strategy, loading, error, regenerateStrategy, fetchStrategyData } = useStrategyData();
 
-  useEffect(() => {
-    if (user) {
-      fetchStrategyData();
-    }
-  }, [user]);
-
-  const fetchStrategyData = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("strategy_profiles")
-        .select("*")
-        .eq("user_id", user?.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) throw error;
-      
-      if (data) {
-        const hasWeeklyCalendar = !!(data.weekly_calendar && 
-          typeof data.weekly_calendar === 'object');
-          
-        setStrategy({
-          experience_level: data.experience_level || "",
-          content_types: data.content_types as string[] || [],
-          weekly_calendar: data.weekly_calendar as Record<string, string[]> || {},
-          posting_frequency: data.posting_frequency || "",
-          creator_style: data.creator_style || "",
-          content_breakdown: {},
-          full_plan_text: data.full_plan_text,
-          niche_topic: data.niche_topic,
-          topic_ideas: data.topic_ideas as string[],
-          summary: data.summary
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching strategy data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
   const handleOpenFullPlan = () => {
     setIsFullPlanOpen(true);
   };
@@ -69,32 +22,53 @@ export const StrategyPlanSection = () => {
     setIsRegeneratePlanOpen(true);
   };
 
-  if (loading) {
-    return (
-      <Card className="p-4 mb-6">
-        <div className="h-36 bg-muted animate-pulse rounded"></div>
-      </Card>
-    );
-  }
+  const handleRegenerateSuccess = () => {
+    setIsRegeneratePlanOpen(false);
+    fetchStrategyData();
+  };
+
+  // Check if we have a valid strategy with a weekly calendar
+  const hasWeeklyCalendar = !!(strategy?.weekly_calendar && 
+    Object.keys(strategy.weekly_calendar).length > 0);
 
   return (
-    <>
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mb-6 flex flex-col md:flex-row items-start gap-4">
+      <div className="flex-grow w-full md:w-auto">
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Error loading strategy</AlertTitle>
+            <AlertDescription>
+              {error}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+                onClick={fetchStrategyData}
+              >
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <StrategyOverviewCard 
           onRegenerateClick={handleOpenRegenerate}
           fullPlanText={strategy?.full_plan_text}
           onViewFullPlan={handleOpenFullPlan}
         />
-        
-        <div className="flex-shrink-0 ml-4">
-          <Button asChild variant="outline" className="flex items-center gap-2">
+      </div>
+      
+      {hasWeeklyCalendar && (
+        <div className="flex-shrink-0 w-full md:w-auto mt-2 md:mt-0">
+          <Button asChild variant="outline" className="w-full md:w-auto flex items-center gap-2">
             <Link to="/weekly-calendar">
               <CalendarDays className="h-4 w-4" />
               View Full Calendar
             </Link>
           </Button>
         </div>
-      </div>
+      )}
       
       <FullStrategyModal 
         isOpen={isFullPlanOpen} 
@@ -106,9 +80,9 @@ export const StrategyPlanSection = () => {
       <RegeneratePlanModal
         isOpen={isRegeneratePlanOpen}
         onClose={() => setIsRegeneratePlanOpen(false)}
-        userId={user?.id || ""}
-        onSuccess={fetchStrategyData}
+        userId={localStorage.getItem("userId") || ""}
+        onSuccess={handleRegenerateSuccess}
       />
-    </>
+    </div>
   );
 };

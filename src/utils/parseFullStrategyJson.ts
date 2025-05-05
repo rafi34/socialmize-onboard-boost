@@ -1,160 +1,120 @@
 
 /**
- * Utility function to parse the strategy JSON from potentially formatted text
- * Handles markdown, escaped characters, and malformed JSON structures
+ * Utility functions for parsing and extracting data from strategy JSON
  */
-export function parseFullStrategyJson(raw: string | null): any {
-  if (!raw || raw.trim().length === 0) return null;
 
+// Attempt to parse the full strategy text as JSON
+export const parseFullStrategyJson = (text?: string | null): any => {
+  if (!text) return null;
+  
   try {
-    // Remove markdown code blocks
-    let cleaned = raw.trim()
-      .replace(/^```json\s*/i, '')
-      .replace(/^```\s*/i, '')
-      .replace(/```$/g, '');
-
-    // Attempt to extract the JSON body
-    const firstBrace = cleaned.indexOf('{');
-    const lastBrace = cleaned.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-    }
-
-    // Replace common GPT formatting issues
-    cleaned = cleaned
-      .replace(/\\"/g, '"')           // Unescape double quotes
-      .replace(/\\n/g, '\n')          // Fix escaped newlines
-      .replace(/\r/g, '')             // Remove carriage returns
-
-    // Attempt final parse
-    return JSON.parse(cleaned);
+    // Clean the text to handle potential formatting issues
+    const cleanedText = cleanJsonText(text);
+    return JSON.parse(cleanedText);
   } catch (error) {
-    console.error("❌ Failed to parse strategy JSON:", error);
-    console.log("↳ Raw strategy snippet:\n", raw?.slice(0, 200));
-    return null;
+    console.error("Error parsing strategy JSON:", error);
+    return extractStructuredData(text);
   }
-}
+};
 
-/**
- * Attempts to extract a summary string from parsed JSON or fallback from raw text
- */
-export function getStrategySummary(parsedJson: any, rawText: string | null): string | null {
-  // If there's a summary key in the top level, use that
-  if (parsedJson?.summary) return parsedJson.summary;
+// Clean JSON text that might have markdown or other formatting
+export const cleanJsonText = (text?: string | null): string => {
+  if (!text) return "";
   
-  // Try to get summary from phases
-  if (parsedJson?.phases && Array.isArray(parsedJson.phases) && parsedJson.phases.length > 0) {
-    if (parsedJson.phases[0].title) {
-      return `${parsedJson.phases[0].title}: ${parsedJson.phases[0].goal || ''}`;
+  // Remove markdown code block indicators
+  let cleaned = text.trim()
+    .replace(/^```json\s*/g, '')  // Remove opening ```json
+    .replace(/^```\s*/g, '')      // Remove opening ``` without json
+    .replace(/```$/g, '');        // Remove closing ```
+  
+  // Try to find JSON object boundaries if there's other text
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace !== -1) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+  
+  // Fix common JSON string issues
+  cleaned = cleaned
+    .replace(/\\"/g, '"') // Fix escaped quotes inside already escaped content
+    .replace(/\\n/g, ' ') // Replace \n with spaces for better readability
+    .replace(/\r\n/g, ' ') // Replace Windows line breaks
+    .replace(/\n/g, ' '); // Replace Unix line breaks
+    
+  return cleaned;
+};
+
+// When JSON parsing fails, try to extract structured data from the text
+export const extractStructuredData = (text: string): any => {
+  const result: any = {
+    weeks: [],
+    topic_ideas: []
+  };
+  
+  // Try to extract a summary
+  const summaryMatch = text.match(/summary:\s*([^.!?]*[.!?])/i);
+  if (summaryMatch && summaryMatch[1].trim().length > 10) {
+    result.summary = summaryMatch[1].trim();
+  }
+  
+  // Try to extract week information
+  const weekMatches = text.matchAll(/week\s*(\d+)[:\s]*([^#]*)/gi);
+  for (const match of weekMatches) {
+    if (match[1] && match[2]) {
+      result.weeks.push({
+        week: parseInt(match[1]),
+        description: match[2].trim()
+      });
     }
   }
-
-  // Fallback to extracting from raw text
-  if (rawText) {
-    const firstSentences = rawText.split(/[.!?]/)
-      .map(s => s.trim())
-      .filter(Boolean)
-      .slice(0, 2)
-      .join('. ');
-    return firstSentences ? firstSentences + '.' : null;
+  
+  // Try to extract topic ideas
+  const topicSection = text.match(/topic ideas:\s*([^#]*)/i);
+  if (topicSection && topicSection[1]) {
+    const topics = topicSection[1]
+      .split(/[\n\r]+/) // Split by lines
+      .map(line => line.trim().replace(/^[-*•]\s*/, '')) // Remove bullet points
+      .filter(line => line.length > 0);
+    
+    result.topic_ideas = topics;
   }
+  
+  return result;
+};
 
+// Get a human-readable summary from the strategy data
+export const getStrategySummary = (parsedJson: any, fullText?: string | null): string | null => {
+  if (!parsedJson && !fullText) return null;
+  
+  // If we have parsed JSON, try to extract summary from different fields
+  if (parsedJson) {
+    if (parsedJson.summary) return parsedJson.summary;
+    if (parsedJson.overview) return parsedJson.overview;
+    if (parsedJson.strategy_summary) return parsedJson.strategy_summary;
+    
+    // If we have weeks data, use the first week's description
+    if (parsedJson.weeks && parsedJson.weeks.length > 0) {
+      const firstWeek = parsedJson.weeks[0];
+      if (firstWeek.description) return firstWeek.description;
+    }
+  }
+  
+  // If no structured data found, extract from text
+  if (fullText) {
+    // Look for summary patterns
+    const summaryMatch = fullText.match(/summary:([^.!?]*[.!?])/i);
+    if (summaryMatch && summaryMatch[1].trim().length > 10) {
+      return summaryMatch[1].trim();
+    }
+    
+    // Get first few sentences
+    const sentences = fullText.split(/[.!?]/).filter(s => s.trim().length > 0);
+    if (sentences.length > 0) {
+      // Get first 2-3 sentences
+      const firstSentences = sentences.slice(0, 3).join(". ");
+      return firstSentences + (firstSentences.endsWith(".") ? "" : ".");
+    }
+  }
+  
   return null;
-}
-
-/**
- * Converts a JSON strategy to human-readable text
- */
-export function strategyJsonToText(parsedJson: any): string | null {
-  if (!parsedJson) return null;
-  
-  let text = '';
-  
-  // Add summary
-  if (parsedJson.summary) {
-    text += `${parsedJson.summary}\n\n`;
-  }
-  
-  // Handle the new weekly format
-  if (parsedJson.weeks && Array.isArray(parsedJson.weeks)) {
-    parsedJson.weeks.forEach((week: any, index: number) => {
-      text += `Week ${week.week || index + 1}:\n`;
-      
-      // Show schedule
-      if (week.schedule) {
-        text += 'Content Schedule:\n';
-        Object.entries(week.schedule).forEach(([contentType, count]) => {
-          const formattedType = contentType
-            .split('_')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
-          text += `- ${formattedType}: ${count}x per week\n`;
-        });
-        text += '\n';
-      }
-      
-      // Show example post ideas
-      if (week.example_post_ideas) {
-        text += 'Example Post Ideas:\n';
-        Object.entries(week.example_post_ideas).forEach(([contentType, ideas]) => {
-          if (Array.isArray(ideas)) {
-            const formattedType = contentType
-              .split('_')
-              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-              .join(' ');
-            text += `- ${formattedType}: ${(ideas as string[]).join(', ')}\n`;
-          }
-        });
-        text += '\n';
-      }
-    });
-  }
-  
-  // Handle the old phase format for backward compatibility
-  else if (parsedJson.phases && Array.isArray(parsedJson.phases)) {
-    parsedJson.phases.forEach((phase: any, index: number) => {
-      text += `Phase ${index + 1}: ${phase.title || ''}\n`;
-      
-      if (phase.goal) {
-        text += `Goal: ${phase.goal}\n`;
-      }
-      
-      if (phase.tactics && Array.isArray(phase.tactics)) {
-        text += 'Tactics:\n';
-        phase.tactics.forEach((tactic: string, i: number) => {
-          text += `- ${tactic}\n`;
-        });
-      }
-      
-      if (phase.content_plan) {
-        text += '\nContent Plan:\n';
-        
-        if (phase.content_plan.weekly_schedule) {
-          text += 'Weekly Schedule:\n';
-          Object.entries(phase.content_plan.weekly_schedule).forEach(([format, count]) => {
-            text += `- ${format}: ${count}x per week\n`;
-          });
-        }
-        
-        if (phase.content_plan.example_post_ideas && Array.isArray(phase.content_plan.example_post_ideas)) {
-          text += '\nExample Post Ideas:\n';
-          phase.content_plan.example_post_ideas.slice(0, 5).forEach((idea: string) => {
-            text += `- ${idea}\n`;
-          });
-        }
-      }
-      
-      text += '\n';
-    });
-  }
-  
-  // Add topic ideas
-  if (parsedJson.topic_ideas && Array.isArray(parsedJson.topic_ideas)) {
-    text += 'Content Topic Ideas:\n';
-    parsedJson.topic_ideas.forEach((topic: string) => {
-      text += `- ${topic}\n`;
-    });
-  }
-  
-  return text;
-}
+};
