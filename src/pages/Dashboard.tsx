@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { toast } from "@/components/ui/use-toast";
 import { Navigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart2, Calendar, Sparkles } from "lucide-react";
+import { BarChart2, Calendar, Sparkles, AlertTriangle } from "lucide-react";
 import { CreatorSummaryHeader, StrategyPlanSection } from "@/components/dashboard";
 import { DashboardContent } from "@/components/dashboard/DashboardContent";
 import { DashboardPlanner } from "@/components/dashboard/DashboardPlanner";
@@ -14,6 +14,7 @@ import { DashboardAnalytics } from "@/components/dashboard/DashboardAnalytics";
 import { StrategyGenerationState } from "@/components/dashboard/StrategyGenerationState";
 import { QueryClient } from "@tanstack/react-query";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -36,6 +37,17 @@ export default function Dashboard() {
     fetchUserData,
   } = useDashboardData();
 
+  // Display error toast on generation error
+  useEffect(() => {
+    if (generationStatus === 'error' && generationError) {
+      toast({
+        title: "Strategy Generation Issue",
+        description: generationError || "There was a problem generating your strategy. We'll try again automatically.",
+        variant: "destructive",
+      });
+    }
+  }, [generationStatus, generationError]);
+
   // Toggle visibility of content after initial load
   useEffect(() => {
     if (!showContent) {
@@ -48,6 +60,7 @@ export default function Dashboard() {
 
   if (profileComplete === false) return <Navigate to="/" replace />;
 
+  // Display a more informative generation state with better error handling
   if (isGeneratingStrategy && !showContent) {
     return (
       <StrategyGenerationState 
@@ -65,6 +78,22 @@ export default function Dashboard() {
       <main className="flex-grow container py-6 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
           <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
+          
+          {generationStatus === 'error' && generationError && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Strategy Generation Error</AlertTitle>
+              <AlertDescription>
+                {generationError}
+                <button 
+                  onClick={fetchUserData}
+                  className="block mt-2 underline text-sm hover:text-foreground/80"
+                >
+                  Try again manually
+                </button>
+              </AlertDescription>
+            </Alert>
+          )}
           
           <StrategyPlanSection />
 
