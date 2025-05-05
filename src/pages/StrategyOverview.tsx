@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { StrategyOverviewCard } from "@/components/strategy/StrategyOverviewCard";
@@ -11,6 +10,7 @@ import { Calendar, Bell, FileText, BarChart2, Zap, TrendingUp, Activity } from "
 import { Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AdminLogDialog } from "@/components/admin/AdminLogDialog";
 
 const StrategyOverview = () => {
   const [loading, setLoading] = useState(true);
@@ -18,14 +18,29 @@ const StrategyOverview = () => {
   const [usedTopicsCount, setUsedTopicsCount] = useState(0);
   const [totalTopicsCount, setTotalTopicsCount] = useState(0);
   const [activeTab, setActiveTab] = useState("overview");
+  const [isAdmin, setIsAdmin] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
     if (user) {
       fetchStrategyData();
       fetchTopicsData();
+      checkAdminStatus();
     }
   }, [user]);
+
+  const checkAdminStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .rpc('is_admin', { user_id: user?.id });
+      
+      if (error) throw error;
+      setIsAdmin(!!data);
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+      setIsAdmin(false);
+    }
+  };
 
   const fetchStrategyData = async () => {
     try {
@@ -112,6 +127,7 @@ const StrategyOverview = () => {
         description="View and manage your content creation strategy"
         actions={
           <div className="flex gap-2">
+            {isAdmin && <AdminLogDialog targetUserId={user?.id} />}
             <Button variant="outline" asChild>
               <Link to="/reminders" className="flex items-center gap-2">
                 <Bell className="h-4 w-4" />

@@ -1,4 +1,3 @@
-
 import { WeeklyCalendarGrid } from "./WeeklyCalendarGrid";
 import { CreatorSummaryHeader } from "./CreatorSummaryHeader";
 import { TodaysMissionCard } from "./TodaysMissionCard";
@@ -12,6 +11,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { StrategyData, ProgressData, ReminderData, GeneratedScript } from "@/types/dashboard";
+import { AdminLogDialog } from "../admin/AdminLogDialog";
+import { logStrategyAction } from "@/utils/adminLog";
 
 export const DashboardLayout = () => {
   const [loading, setLoading] = useState(true);
@@ -21,12 +22,39 @@ export const DashboardLayout = () => {
   const [activeTab, setActiveTab] = useState("today");
   const [scripts, setScripts] = useState<GeneratedScript[] | null>(null);
   const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
   
   useEffect(() => {
     if (user) {
       fetchDashboardData();
+      checkAdminStatus();
     }
   }, [user]);
+  
+  const checkAdminStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .rpc('is_admin', { user_id: user?.id });
+      
+      if (error) throw error;
+      setIsAdmin(!!data);
+      
+      // If user is an admin and viewing another user's data, log this action
+      if (data && window.location.search.includes('userId=')) {
+        const params = new URLSearchParams(window.location.search);
+        const targetUserId = params.get('userId');
+        if (targetUserId && user) {
+          logStrategyAction(user.id, targetUserId, "view", {
+            page: "dashboard",
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+      setIsAdmin(false);
+    }
+  };
   
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -142,25 +170,29 @@ export const DashboardLayout = () => {
       
       <div className="flex flex-col md:flex-row gap-6 mt-8">
         <div className="w-full md:w-2/3 space-y-6">
-          <div className="tabs flex border-b">
-            <button 
-              className={`px-4 py-2 font-medium ${activeTab === 'today' ? 'text-socialmize-purple border-b-2 border-socialmize-purple' : 'text-muted-foreground'}`}
-              onClick={() => setActiveTab('today')}
-            >
-              Today's Focus
-            </button>
-            <button 
-              className={`px-4 py-2 font-medium ${activeTab === 'missions' ? 'text-socialmize-purple border-b-2 border-socialmize-purple' : 'text-muted-foreground'}`}
-              onClick={() => setActiveTab('missions')}
-            >
-              Content Missions
-            </button>
-            <button 
-              className={`px-4 py-2 font-medium ${activeTab === 'strategy' ? 'text-socialmize-purple border-b-2 border-socialmize-purple' : 'text-muted-foreground'}`}
-              onClick={() => setActiveTab('strategy')}
-            >
-              Strategy Overview
-            </button>
+          <div className="flex justify-between items-center">
+            <div className="tabs flex border-b">
+              <button 
+                className={`px-4 py-2 font-medium ${activeTab === 'today' ? 'text-socialmize-purple border-b-2 border-socialmize-purple' : 'text-muted-foreground'}`}
+                onClick={() => setActiveTab('today')}
+              >
+                Today's Focus
+              </button>
+              <button 
+                className={`px-4 py-2 font-medium ${activeTab === 'missions' ? 'text-socialmize-purple border-b-2 border-socialmize-purple' : 'text-muted-foreground'}`}
+                onClick={() => setActiveTab('missions')}
+              >
+                Content Missions
+              </button>
+              <button 
+                className={`px-4 py-2 font-medium ${activeTab === 'strategy' ? 'text-socialmize-purple border-b-2 border-socialmize-purple' : 'text-muted-foreground'}`}
+                onClick={() => setActiveTab('strategy')}
+              >
+                Strategy Overview
+              </button>
+            </div>
+            
+            {isAdmin && <AdminLogDialog targetUserId={user?.id} />}
           </div>
           
           <div className="tab-content">

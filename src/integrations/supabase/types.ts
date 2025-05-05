@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_logs: {
+        Row: {
+          action: string
+          admin_user_id: string | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_messages: {
         Row: {
           created_at: string | null
@@ -265,6 +292,7 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          metadata: Json | null
           onboarding_complete: boolean
           profile_progress: number
           updated_at: string
@@ -273,6 +301,7 @@ export type Database = {
           created_at?: string
           email: string
           id: string
+          metadata?: Json | null
           onboarding_complete?: boolean
           profile_progress?: number
           updated_at?: string
@@ -281,6 +310,7 @@ export type Database = {
           created_at?: string
           email?: string
           id?: string
+          metadata?: Json | null
           onboarding_complete?: boolean
           profile_progress?: number
           updated_at?: string
@@ -530,6 +560,10 @@ export type Database = {
       get_weekly_xp: {
         Args: { user_id_param: string; start_date_param: string }
         Returns: number
+      }
+      is_admin: {
+        Args: { user_id: string }
+        Returns: boolean
       }
       update_profile_preferences: {
         Args: {
