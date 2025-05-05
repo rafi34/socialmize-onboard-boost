@@ -21,10 +21,17 @@ export const showNotification = ({
   duration = 5000,
   action
 }: NotificationOptions) => {
-  const icon = type === "success" ? <Check className="h-4 w-4" /> :
+  const iconComponent = type === "success" ? <Check className="h-4 w-4" /> :
              type === "error" ? <AlertTriangle className="h-4 w-4" /> :
              type === "warning" ? <AlertTriangle className="h-4 w-4" /> :
              <Info className="h-4 w-4" />;
+  
+  const iconClassName = `
+    ${type === "success" ? "text-green-500" : 
+      type === "error" ? "text-red-500" : 
+      type === "warning" ? "text-yellow-500" : 
+      "text-blue-500"}
+  `;
   
   return toast({
     title: title,
@@ -32,13 +39,14 @@ export const showNotification = ({
     duration: duration,
     variant: type === "error" ? "destructive" : "default",
     action: action,
-    // Add the icon as part of the description instead of the title
-    icon: <span className={`
-      ${type === "success" ? "text-green-500" : 
-        type === "error" ? "text-red-500" : 
-        type === "warning" ? "text-yellow-500" : 
-        "text-blue-500"}
-    `}>{icon}</span>
+    // Instead of using an icon prop directly (which causes type issues),
+    // prepend the icon to the title in a span
+    title: (
+      <div className="flex items-center gap-2">
+        <span className={iconClassName}>{iconComponent}</span>
+        <span>{title}</span>
+      </div>
+    ),
   });
 };
 
