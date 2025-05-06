@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,6 +15,7 @@ export function useDashboardData() {
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [reminder, setReminder] = useState<ReminderData | null>(null);
   const [scripts, setScripts] = useState<GeneratedScript[] | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [profileComplete, setProfileComplete] = useState<boolean | null>(null);
   const [isGeneratingStrategy, setIsGeneratingStrategy] = useState(false);
@@ -23,84 +23,70 @@ export function useDashboardData() {
   const [planConfirmed, setPlanConfirmed] = useState(false);
   const [generationStatus, setGenerationStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
   const [generationError, setGenerationError] = useState<string | null>(null);
-  const [lastFetchAttempt, setLastFetchAttempt] = useState<number>(0);
   const [retryCount, setRetryCount] = useState(0);
+  const errorToastShown = useRef(false);
+
   const MAX_RETRIES = 3;
-  
+
   const generateWaitingMessage = useCallback(async () => {
     if (!user) return;
-
     try {
-      const { data, error } = await supabase.functions.invoke(
-        "generate-waiting-message",
-        {
-          body: { userId: user.id },
-        }
-      );
-
+      const { data, error } = await supabase.functions.invoke("generate-waiting-message", {
+        body: { userId: user.id },
+      });
       if (error) {
-        console.error("Error from generate-waiting-message:", error);
+        console.warn("generate-waiting-message failed:", error.message);
         return;
       }
-
       if (data?.message) setWaitingMessage(data.message);
-    } catch (error) {
-      console.error("Error generating waiting message:", error);
-      // Don't show toast for this error as it's not critical
+    } catch (err) {
+      console.warn("Waiting message request failed", err);
     }
   }, [user]);
 
   const generateStrategy = async (onboardingData: any) => {
     if (!user || !onboardingData) return;
 
-    try {
-      await generateWaitingMessage();
-      setGenerationStatus('pending');
+    setIsGeneratingStrategy(true);
+    setGenerationStatus("pending");
 
-      try {
-        const response = await fetch("/functions/generate-strategy-plan", {
-          method: "POST",
-          body: JSON.stringify({ 
-            userId: user.id, 
-            onboardingData 
-          }),
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Strategy generation failed");
-        }
-        
-        const data = await response.json();
-        
-        if (data.mock) {
-          console.log("Using mock strategy data (OpenAI assistant not configured)");
-        }
-        
-        toast({
-          title: "Strategy Generated",
-          description: "Your personalized content strategy is ready!",
-        });
-        
-        setGenerationStatus('success');
-        setIsGeneratingStrategy(false);
-        setRetryCount(0); // Reset retry count on success
-        await fetchUserData();
-      } catch (error: any) {
-        console.error("Fetch error:", error);
-        setGenerationError(error.message);
-        setGenerationStatus('error');
-        throw error;
-      }
-    } catch (error: any) {
-      console.error("Error generating strategy:", error);
-      setGenerationStatus('error');
-      setGenerationError(error.message || "Unexpected error occurred");
-      toast({
-        title: "Strategy Generation Failed",
-        description: "Unexpected error occurred. Please try again.",
-        variant: "destructive",
+    await generateWaitingMessage();
+
+    try {
+      const res = await fetch("/functions/generate-strategy-plan", {
+        method: "POST",
+        body: JSON.stringify({ userId: user.id, onboardingData }),
       });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Strategy generation failed");
+      }
+
+      const data = await res.json();
+      if (data.mock) console.log("Using mock strategy");
+
+      toast({
+        title: "Strategy Generated",
+        description: "Your personalized content strategy is ready!",
+      });
+
+      setGenerationStatus("success");
+      setRetryCount(0);
+      await fetchUserData();
+    } catch (err: any) {
+      console.error("Strategy generation error:", err);
+      setGenerationError(err.message);
+      setGenerationStatus("error");
+
+      if (!errorToastShown.current) {
+        toast({
+          title: "Strategy Generation Failed",
+          description: err.message || "Unexpected error occurred",
+          variant: "destructive",
+        });
+        errorToastShown.current = true;
+      }
     } finally {
       setIsGeneratingStrategy(false);
     }
@@ -109,218 +95,94 @@ export function useDashboardData() {
   const fetchUserData = useCallback(async () => {
     if (!user) return;
 
-    // If we've hit the retry limit, don't try again until explicitly requested
-    if (retryCount >= MAX_RETRIES && generationStatus === 'error') {
-      console.log(`Reached max retries (${MAX_RETRIES}), stopping auto-refresh`);
-      return;
-    }
-
     setLoading(true);
+    errorToastShown.current = false;
 
     try {
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profileData } = await supabase
         .from("profiles")
         .select("onboarding_complete")
         .eq("id", user.id)
         .single();
 
-      if (profileError) {
-        console.error("Error fetching profile:", profileError);
-        setLoading(false);
-        return;
-      }
+      const onboarded = profileData?.onboarding_complete || false;
+      setProfileComplete(onboarded);
+      if (!onboarded) return;
 
-      setProfileComplete(profileData.onboarding_complete);
-      if (!profileData.onboarding_complete) {
-        setLoading(false);
-        return;
-      }
-
-      const { data: strategyData, error: strategyError } = await supabase
+      const { data: strategyData } = await supabase
         .from("strategy_profiles")
-        .select(
-          "id, user_id, experience_level, content_types, weekly_calendar, full_plan_text, niche_topic, topic_ideas, posting_frequency, creator_style"
-        )
+        .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (strategyError) {
-        console.error("Error fetching strategy:", strategyError);
-      }
-
-      if (strategyData && !strategyError) {
-        const confirmed = !!(strategyData.weekly_calendar && 
-          typeof strategyData.weekly_calendar === 'object');
-
+      if (strategyData && strategyData.weekly_calendar) {
+        const confirmed = typeof strategyData.weekly_calendar === "object";
         setPlanConfirmed(confirmed);
 
-        const processedStrategy: StrategyData = {
+        setStrategy({
           experience_level: strategyData.experience_level,
-          content_types: strategyData.content_types as string[],
-          weekly_calendar: strategyData.weekly_calendar as Record<
-            string,
-            string[]
-          >,
+          content_types: strategyData.content_types,
+          weekly_calendar: strategyData.weekly_calendar,
           posting_frequency: strategyData.posting_frequency || "3-5x per week",
           creator_style: strategyData.creator_style || "Authentic",
-          content_breakdown: {
-            Duet: 2,
-            Meme: 1,
-            Carousel: 2,
-            Voiceover: 1,
-          },
+          content_breakdown: {},
           full_plan_text: strategyData.full_plan_text,
           niche_topic: strategyData.niche_topic,
-          topic_ideas: strategyData.topic_ideas as string[],
-        };
-
-        setStrategy(processedStrategy);
-        setIsGeneratingStrategy(false);
-        setGenerationStatus('success');
-        setRetryCount(0); // Reset retry count on success
-      } else {
-        const { data: onboardingData, error: onboardingError } =
-          await supabase
-            .from("onboarding_answers")
-            .select("*")
-            .eq("user_id", user.id)
-            .maybeSingle();
-
-        if (onboardingError) {
-          console.error("Error fetching onboarding data:", onboardingError);
-        }
-
-        if (onboardingData) {
-          setIsGeneratingStrategy(true);
-          setGenerationStatus('pending');
-          await generateStrategy(onboardingData);
-        }
-
-        const storedStrategy = localStorage.getItem("userStrategy");
-        if (storedStrategy) {
-          try {
-            setStrategy(JSON.parse(storedStrategy));
-          } catch (error) {
-            console.error("Error parsing strategy from localStorage:", error);
-          }
-        }
-      }
-
-      const { data: progressData, error: progressError } = await supabase
-        .from("progress_tracking")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!progressError && progressData) {
-        setProgress({
-          current_xp: progressData.current_xp || 0,
-          current_level: progressData.current_level || 1,
-          streak_days: progressData.streak_days || 0,
-          last_activity_date:
-            progressData.last_activity_date || new Date().toISOString(),
-          xp_next_level: (progressData.current_level + 1) * 100,
-          level_tag:
-            progressData.current_level === 1
-              ? "Beginner"
-              : progressData.current_level === 2
-              ? "Explorer"
-              : "Creator",
+          topic_ideas: strategyData.topic_ideas,
         });
+
+        setGenerationStatus("success");
+        setRetryCount(0);
+        return;
       }
 
-      const { data: reminderData, error: reminderError } = await supabase
-        .from("reminders")
+      const { data: onboardingData } = await supabase
+        .from("onboarding_answers")
         .select("*")
         .eq("user_id", user.id)
-        .eq("is_active", true)
-        .order("reminder_time", { ascending: true })
-        .limit(1)
         .maybeSingle();
 
-      if (!reminderError && reminderData) {
-        setReminder(reminderData as ReminderData);
+      if (onboardingData) {
+        await generateStrategy(onboardingData);
       }
-
-      const { data: scriptsData, error: scriptsError } = await supabase.rpc(
-        "get_generated_scripts",
-        { user_id_param: user.id }
-      );
-
-      if (!scriptsError && scriptsData) {
-        setScripts(scriptsData as GeneratedScript[]);
+    } catch (err) {
+      console.error("Error in fetchUserData:", err);
+      if (!errorToastShown.current) {
+        toast({
+          title: "Dashboard Error",
+          description: "Failed to load dashboard data",
+          variant: "destructive",
+        });
+        errorToastShown.current = true;
       }
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      toast({
-        title: "Error loading data",
-        description: "There was a problem loading your dashboard data.",
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
-      setLastFetchAttempt(Date.now());
     }
-  }, [user, generateStrategy, generateWaitingMessage, retryCount, generationStatus, MAX_RETRIES]);
+  }, [user, generateStrategy]);
 
-  // Initialize data
+  // Initial fetch
   useEffect(() => {
-    if (user) {
-      fetchUserData();
-    }
-  }, [user, fetchUserData]);
+    if (user) fetchUserData();
+  }, [user]);
 
-  // Auto-refresh when waiting for strategy generation with exponential backoff
+  // Exponential backoff while waiting
   useEffect(() => {
-    if (generationStatus === 'pending') {
-      // Exponential backoff for retries: 5s, 10s, 20s...
-      const backoffTime = 5000 * Math.pow(2, retryCount);
-      const maxBackoff = 30000; // Cap at 30 seconds
-      const refreshTime = Math.min(backoffTime, maxBackoff);
-      
-      console.log(`Auto-refreshing data due to pending generation in ${refreshTime/1000}s (retry ${retryCount + 1}/${MAX_RETRIES})`);
-      
-      const refreshTimer = setTimeout(() => {
-        setRetryCount(prev => prev + 1);
+    if (generationStatus === "pending" && retryCount < MAX_RETRIES) {
+      const timeout = setTimeout(() => {
+        console.log(`Retry ${retryCount + 1}/${MAX_RETRIES}`);
+        setRetryCount((prev) => prev + 1);
         fetchUserData();
-      }, refreshTime);
-      
-      return () => clearTimeout(refreshTimer);
+      }, 3000 * Math.pow(2, retryCount));
+      return () => clearTimeout(timeout);
     }
-  }, [generationStatus, fetchUserData, lastFetchAttempt, retryCount]);
+  }, [generationStatus, retryCount]);
 
-  // Retry once in case of error, but with a limited retry count
-  useEffect(() => {
-    if (generationStatus === 'error' && generationError && retryCount < MAX_RETRIES) {
-      const retryTimeout = setTimeout(async () => {
-        console.log(`Retry attempt ${retryCount + 1}/${MAX_RETRIES} after error`);
-        
-        const { data: strategyData } = await supabase
-          .from("strategy_profiles")
-          .select("id")
-          .eq("user_id", user?.id)
-          .maybeSingle();
-          
-        if (strategyData) {
-          console.log("Strategy found on retry, refreshing data");
-          fetchUserData();
-        } else {
-          setRetryCount(prev => prev + 1);
-        }
-      }, 10000); // Wait 10 seconds before retrying
-      
-      return () => clearTimeout(retryTimeout);
-    }
-  }, [generationStatus, generationError, fetchUserData, user?.id, retryCount]);
-
-  // Expose a function to manually reset retry count
   const resetRetryCount = () => {
     setRetryCount(0);
     setGenerationError(null);
+    errorToastShown.current = false;
   };
 
   return {
