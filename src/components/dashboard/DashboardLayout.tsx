@@ -220,7 +220,7 @@ export const DashboardLayout = () => {
             loading={loading} 
             refetchReminders={handleRefetchReminders}
           />
-          <LevelProgressCard progress={progress} loading={loading} />
+          <LevelProgressCard loading={loading} />
           <WeeklyConsistencyCard />
         </div>
       </div>

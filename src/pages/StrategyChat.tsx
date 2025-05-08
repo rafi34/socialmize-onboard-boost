@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -16,7 +15,7 @@ import { Json } from "@/integrations/supabase/types";
 interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
-  message: string;
+  message: string;  // This will map to 'content' in the database
   created_at?: string;
 }
 
@@ -186,8 +185,16 @@ const StrategyChat = () => {
       }
       
       if (data && data.length > 0) {
+        // Map database fields to ChatMessage interface
+        const mappedMessages = data.map(msg => ({
+          id: msg.id,
+          role: msg.role,
+          message: msg.content, // Map 'content' from DB to 'message' in our interface
+          created_at: msg.created_at
+        }));
+        
         // If we have history, replace our initial message
-        setMessages(data as ChatMessage[]);
+        setMessages(mappedMessages as ChatMessage[]);
       }
     } catch (error) {
       console.error('Error fetching message history:', error);
@@ -210,7 +217,7 @@ const StrategyChat = () => {
           user_id: user.id,
           thread_id: currentThreadId,
           role: message.role,
-          message: message.message
+          content: message.message // Map 'message' from our interface to 'content' in DB
         });
         
       if (error) {

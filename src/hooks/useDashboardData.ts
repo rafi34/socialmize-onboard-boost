@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -121,16 +122,31 @@ export function useDashboardData() {
         const confirmed = typeof strategyData.weekly_calendar === "object";
         setPlanConfirmed(confirmed);
 
+        // Type assertions to ensure the data types are correct
+        const contentTypes = strategyData.content_types 
+          ? (Array.isArray(strategyData.content_types) 
+              ? strategyData.content_types as string[]
+              : [String(strategyData.content_types)]) 
+          : [];
+
+        const weeklyCalendar = strategyData.weekly_calendar && typeof strategyData.weekly_calendar === 'object' 
+          ? strategyData.weekly_calendar as Record<string, string[]>
+          : {};
+
         setStrategy({
           experience_level: strategyData.experience_level,
-          content_types: strategyData.content_types,
-          weekly_calendar: strategyData.weekly_calendar,
+          content_types: contentTypes,
+          weekly_calendar: weeklyCalendar,
           posting_frequency: strategyData.posting_frequency || "3-5x per week",
           creator_style: strategyData.creator_style || "Authentic",
           content_breakdown: {},
           full_plan_text: strategyData.full_plan_text,
           niche_topic: strategyData.niche_topic,
-          topic_ideas: strategyData.topic_ideas,
+          topic_ideas: strategyData.topic_ideas 
+            ? (Array.isArray(strategyData.topic_ideas) 
+                ? strategyData.topic_ideas as string[]
+                : [String(strategyData.topic_ideas)]) 
+            : [],
         });
 
         setGenerationStatus("success");
@@ -144,8 +160,23 @@ export function useDashboardData() {
         .eq("user_id", user.id)
         .maybeSingle();
 
+      console.log("Fetched onboarding data:", onboardingData);
+
       if (onboardingData) {
         await generateStrategy(onboardingData);
+      } else {
+        console.error("No onboarding data found for user:", user.id);
+        setGenerationError("Onboarding data is missing. Please complete the onboarding flow.");
+        setGenerationStatus("error");
+        
+        if (!errorToastShown.current) {
+          toast({
+            title: "Strategy Generation Failed",
+            description: "Onboarding data is missing. Please complete the onboarding flow.",
+            variant: "destructive",
+          });
+          errorToastShown.current = true;
+        }
       }
     } catch (err) {
       console.error("Error in fetchUserData:", err);
@@ -165,7 +196,7 @@ export function useDashboardData() {
   // Initial fetch
   useEffect(() => {
     if (user) fetchUserData();
-  }, [user]);
+  }, [user, fetchUserData]);
 
   // Exponential backoff while waiting
   useEffect(() => {
@@ -177,7 +208,7 @@ export function useDashboardData() {
       }, 3000 * Math.pow(2, retryCount));
       return () => clearTimeout(timeout);
     }
-  }, [generationStatus, retryCount]);
+  }, [generationStatus, retryCount, fetchUserData]);
 
   const resetRetryCount = () => {
     setRetryCount(0);

@@ -178,7 +178,6 @@ export default function Dashboard() {
                     <TabsContent value="planner">
                       <DashboardPlanner 
                         strategy={strategy}
-                        progress={progress}
                         reminder={reminder}
                         loading={loading}
                       />

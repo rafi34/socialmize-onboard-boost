@@ -66,16 +66,22 @@ export const RegeneratePlanModal = ({
       // Log onboarding data to help with debugging
       console.log("Onboarding data for strategy generation:", onboardingAnswers);
 
+      // Check if onboarding data has all required fields
+      if (!onboardingAnswers.creator_mission || !onboardingAnswers.content_format_preference || !onboardingAnswers.posting_frequency_goal) {
+        console.error("Incomplete onboarding data", onboardingAnswers);
+        throw new Error("Onboarding data is incomplete. Please complete all steps in the onboarding flow.");
+      }
+
       const { error } = await supabase.functions.invoke("generate-strategy-plan", {
         body: {
           userId,
           onboardingData: {
             creator_mission: onboardingAnswers.creator_mission,
             creator_style: onboardingAnswers.creator_style,
-            content_formats: onboardingAnswers.content_format_preference, // Fixed: using correct property name
+            content_formats: onboardingAnswers.content_format_preference,
             posting_frequency_goal: onboardingAnswers.posting_frequency_goal,
             niche_topic: onboardingAnswers.niche_topic,
-            experience_level: onboardingAnswers.content_format_preference === "tutorials_howto" ? "intermediate" : "beginner" // Fixed: providing a default value
+            experience_level: onboardingAnswers.content_format_preference === "tutorials_howto" ? "intermediate" : "beginner"
           }
         }
       });

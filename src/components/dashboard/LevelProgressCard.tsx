@@ -20,7 +20,7 @@ interface ProfileData {
 export const LevelProgressCard = ({ loading }: LevelProgressCardProps) => {
   const { user } = useAuth();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
-  const [isLoading, setIsLoading] = useState(loading || true);
+  const [isLoading, setIsLoading] = useState<boolean>(loading || true);
 
   useEffect(() => {
     if (user) {
@@ -41,7 +41,7 @@ export const LevelProgressCard = ({ loading }: LevelProgressCardProps) => {
     } catch (error) {
       console.error("Error fetching profile data:", error);
     } finally {
-      setIsLoading(false); // Fix: Changed from setIsLoading(false) to properly handle the state
+      setIsLoading(false); // Changed to properly handle the state with the correct type
     }
   };
 
