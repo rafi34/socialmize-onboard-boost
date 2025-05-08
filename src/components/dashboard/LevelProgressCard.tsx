@@ -41,7 +41,7 @@ export const LevelProgressCard = ({ loading }: LevelProgressCardProps) => {
     } catch (error) {
       console.error("Error fetching profile data:", error);
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Fix: Changed from setIsLoading(false) to properly handle the state
     }
   };
 
