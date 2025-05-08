@@ -1,16 +1,51 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Trophy } from "lucide-react";
-import { ProgressData } from "@/types/dashboard";
+import { Trophy, Star } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabaseClient";
+import { calculateLevelProgress, getXpForNextLevel } from "@/utils/xpUtils";
 
 interface LevelProgressCardProps {
-  progress: ProgressData | null;
-  loading: boolean;
+  loading?: boolean;
 }
 
-export const LevelProgressCard = ({ progress, loading }: LevelProgressCardProps) => {
-  if (loading) {
+interface ProfileData {
+  level: number;
+  xp: number;
+  strategist_persona?: string;
+}
+
+export const LevelProgressCard = ({ loading }: LevelProgressCardProps) => {
+  const { user } = useAuth();
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [isLoading, setIsLoading] = useState(loading || true);
+
+  useEffect(() => {
+    if (user) {
+      fetchProfileData();
+    }
+  }, [user]);
+
+  const fetchProfileData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('level, xp, strategist_persona')
+        .eq('id', user?.id)
+        .single();
+        
+      if (error) throw error;
+      setProfileData(data);
+    } catch (error) {
+      console.error("Error fetching profile data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
     return (
       <Card className="mb-6">
         <CardHeader className="pb-2">
@@ -23,26 +58,37 @@ export const LevelProgressCard = ({ progress, loading }: LevelProgressCardProps)
     );
   }
 
-  if (!progress) {
+  if (!profileData) {
     return null;
   }
 
-  // Calculate XP needed for next level
-  const currentXP = progress.current_xp || 0;
-  const nextLevelXP = progress.xp_next_level || (progress.current_level + 1) * 100;
+  // Calculate progress to next level
+  const currentLevel = profileData.level || 1;
+  const currentXP = profileData.xp || 0;
+  const nextLevelXP = getXpForNextLevel(currentLevel);
   const xpNeeded = Math.max(0, nextLevelXP - currentXP);
-  const xpPercentage = (currentXP / nextLevelXP) * 100;
+  const xpPercentage = calculateLevelProgress(currentXP, currentLevel);
 
-  const nextLevelReward = progress.current_level === 1 
-    ? "Unlock Custom Design Templates" 
-    : progress.current_level === 2 
-      ? "Unlock Skit Templates" 
-      : "Unlock Advanced Analytics";
+  const getNextLevelReward = (level: number): string => {
+    switch (level) {
+      case 1: return "Unlock Custom Design Templates";
+      case 2: return "Unlock Skit Templates";
+      case 3: return "Unlock Advanced Analytics";
+      case 4: return "Unlock AI Content Remixer";
+      case 5: return "Unlock Calendar Integration";
+      default: return "Unlock Special Templates";
+    }
+  };
+  
+  const nextLevelReward = getNextLevelReward(currentLevel);
 
   return (
     <Card className="mb-6">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Next Level Unlock</CardTitle>
+        <CardTitle className="text-lg flex items-center">
+          <Star className="h-5 w-5 mr-2 text-yellow-500" />
+          Level {currentLevel} Creator
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-3 mb-3">
@@ -50,21 +96,21 @@ export const LevelProgressCard = ({ progress, loading }: LevelProgressCardProps)
             <Trophy className="h-6 w-6 text-socialmize-purple" />
           </div>
           <div>
-            <h3 className="font-medium">Level {progress.current_level + 1}</h3>
+            <h3 className="font-medium">Next: Level {currentLevel + 1}</h3>
             <p className="text-sm text-muted-foreground">{nextLevelReward}</p>
           </div>
         </div>
 
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span>You're {xpNeeded} XP away from Level {progress.current_level + 1}</span>
+            <span>You're {xpNeeded} XP away from Level {currentLevel + 1}</span>
             <span>{currentXP}/{nextLevelXP}</span>
           </div>
           <Progress value={xpPercentage} className="h-2" />
         </div>
         
         <p className="text-sm text-center mt-3">
-          Post 3 more times this week to level up!
+          Post content regularly to earn more XP!
         </p>
       </CardContent>
     </Card>

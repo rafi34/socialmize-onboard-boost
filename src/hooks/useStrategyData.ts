@@ -1,9 +1,9 @@
-
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 import { StrategyData } from "@/types/dashboard";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { trackUserAction } from "@/utils/xpUtils";
 
 export function useStrategyData() {
   const [strategy, setStrategy] = useState<StrategyData | null>(null);
@@ -33,6 +33,7 @@ export function useStrategyData() {
         .from("strategy_profiles")
         .select("*")
         .eq("user_id", user.id)
+        .eq("is_active", true)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -45,6 +46,8 @@ export function useStrategyData() {
         // Process the strategy data
         const hasWeeklyCalendar = !!(data.weekly_calendar && 
           typeof data.weekly_calendar === 'object');
+        
+        const isConfirmed = !!data.confirmed_at;
           
         setStrategy({
           experience_level: data.experience_level || "",
@@ -56,7 +59,10 @@ export function useStrategyData() {
           full_plan_text: data.full_plan_text,
           niche_topic: data.niche_topic,
           topic_ideas: data.topic_ideas as string[] || [],
-          summary: data.summary
+          summary: data.summary,
+          strategy_type: data.strategy_type || "starter",
+          is_active: data.is_active !== false,
+          confirmed_at: data.confirmed_at
         });
         
         // Reset retry counter on success
@@ -147,6 +153,56 @@ export function useStrategyData() {
     setError(null);
   };
 
+  // Modified function to confirm a strategy plan
+  const confirmStrategyPlan = async (): Promise<boolean> => {
+    if (!user || !strategy) return false;
+    
+    try {
+      setLoading(true);
+      
+      const now = new Date().toISOString();
+      
+      const { error } = await supabase
+        .from("strategy_profiles")
+        .update({ 
+          confirmed_at: now,
+          is_active: true
+        })
+        .eq("user_id", user.id)
+        .eq("id", strategy.id);
+        
+      if (error) throw error;
+      
+      // Track user action for confirming strategy
+      await trackUserAction(user.id, 'strategy_confirmed', {
+        strategy_id: strategy.id,
+        strategy_type: strategy.strategy_type
+      });
+      
+      // Refresh strategy data
+      await fetchStrategyData();
+      
+      toast({
+        title: "Strategy Confirmed",
+        description: "Your content strategy has been confirmed!",
+      });
+      
+      return true;
+    } catch (err: any) {
+      console.error("Error confirming strategy:", err);
+      
+      toast({
+        title: "Error",
+        description: err.message || "Failed to confirm strategy",
+        variant: "destructive",
+      });
+      
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     strategy,
     loading,
@@ -155,6 +211,7 @@ export function useStrategyData() {
     regenerateStrategy,
     lastFetchTime,
     resetRetries,
-    retryCount
+    retryCount,
+    confirmStrategyPlan
   };
 }

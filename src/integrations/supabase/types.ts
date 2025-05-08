@@ -38,28 +38,87 @@ export type Database = {
       }
       ai_messages: {
         Row: {
+          content: string
           created_at: string | null
           id: string
-          message: string
           role: string
           thread_id: string
           user_id: string
         }
         Insert: {
+          content: string
           created_at?: string | null
           id?: string
-          message: string
           role: string
           thread_id: string
           user_id: string
         }
         Update: {
+          content?: string
           created_at?: string | null
           id?: string
-          message?: string
           role?: string
           thread_id?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      branding_configs: {
+        Row: {
+          app_name: string | null
+          client_id: string | null
+          created_at: string | null
+          font_family: string | null
+          id: string
+          logo_url: string | null
+          primary_color: string | null
+        }
+        Insert: {
+          app_name?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          font_family?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+        }
+        Update: {
+          app_name?: string | null
+          client_id?: string | null
+          created_at?: string | null
+          font_family?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branding_configs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string | null
+          owner_user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          owner_user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          owner_user_id?: string | null
         }
         Relationships: []
       }
@@ -93,6 +152,36 @@ export type Database = {
         }
         Relationships: []
       }
+      connected_accounts: {
+        Row: {
+          access_token: string | null
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          platform: string | null
+          refresh_token: string | null
+          user_id: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          platform?: string | null
+          refresh_token?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          platform?: string | null
+          refresh_token?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       content_ideas: {
         Row: {
           difficulty: string | null
@@ -100,7 +189,10 @@ export type Database = {
           generated_at: string | null
           id: string
           idea: string
+          idea_level: number | null
+          idea_source: string | null
           selected: boolean | null
+          status: string | null
           user_id: string
           xp_reward: number | null
         }
@@ -110,7 +202,10 @@ export type Database = {
           generated_at?: string | null
           id?: string
           idea: string
+          idea_level?: number | null
+          idea_source?: string | null
           selected?: boolean | null
+          status?: string | null
           user_id: string
           xp_reward?: number | null
         }
@@ -120,7 +215,10 @@ export type Database = {
           generated_at?: string | null
           id?: string
           idea?: string
+          idea_level?: number | null
+          idea_source?: string | null
           selected?: boolean | null
+          status?: string | null
           user_id?: string
           xp_reward?: number | null
         }
@@ -242,6 +340,27 @@ export type Database = {
         }
         Relationships: []
       }
+      leaderboard_entries: {
+        Row: {
+          level: number | null
+          updated_at: string | null
+          user_id: string
+          xp: number | null
+        }
+        Insert: {
+          level?: number | null
+          updated_at?: string | null
+          user_id: string
+          xp?: number | null
+        }
+        Update: {
+          level?: number | null
+          updated_at?: string | null
+          user_id?: string
+          xp?: number | null
+        }
+        Relationships: []
+      }
       onboarding_answers: {
         Row: {
           content_format_preference: string | null
@@ -287,33 +406,78 @@ export type Database = {
         }
         Relationships: []
       }
+      post_metrics: {
+        Row: {
+          comments: number | null
+          id: string
+          likes: number | null
+          platform: string | null
+          post_id: string | null
+          posted_at: string | null
+          shares: number | null
+          user_id: string | null
+          views: number | null
+        }
+        Insert: {
+          comments?: number | null
+          id?: string
+          likes?: number | null
+          platform?: string | null
+          post_id?: string | null
+          posted_at?: string | null
+          shares?: number | null
+          user_id?: string | null
+          views?: number | null
+        }
+        Update: {
+          comments?: number | null
+          id?: string
+          likes?: number | null
+          platform?: string | null
+          post_id?: string | null
+          posted_at?: string | null
+          shares?: number | null
+          user_id?: string | null
+          views?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
           email: string
           id: string
+          level: number | null
           metadata: Json | null
           onboarding_complete: boolean
           profile_progress: number
+          strategist_persona: string | null
           updated_at: string
+          xp: number | null
         }
         Insert: {
           created_at?: string
           email: string
           id: string
+          level?: number | null
           metadata?: Json | null
           onboarding_complete?: boolean
           profile_progress?: number
+          strategist_persona?: string | null
           updated_at?: string
+          xp?: number | null
         }
         Update: {
           created_at?: string
           email?: string
           id?: string
+          level?: number | null
           metadata?: Json | null
           onboarding_complete?: boolean
           profile_progress?: number
+          strategist_persona?: string | null
           updated_at?: string
+          xp?: number | null
         }
         Relationships: []
       }
@@ -360,6 +524,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           message: string | null
+          related_content_id: string | null
           reminder_time: string
           reminder_type: string
           updated_at: string
@@ -375,6 +540,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           message?: string | null
+          related_content_id?: string | null
           reminder_time: string
           reminder_type: string
           updated_at?: string
@@ -390,13 +556,22 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           message?: string | null
+          related_content_id?: string | null
           reminder_time?: string
           reminder_type?: string
           updated_at?: string
           user_id?: string
           xp_awarded?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "reminders_related_content_id_fkey"
+            columns: ["related_content_id"]
+            isOneToOne: false
+            referencedRelation: "content_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       strategy_onboarding_answers: {
         Row: {
@@ -448,6 +623,7 @@ export type Database = {
       }
       strategy_profiles: {
         Row: {
+          confirmed_at: string | null
           content_types: Json | null
           created_at: string
           creator_style: string | null
@@ -455,9 +631,11 @@ export type Database = {
           first_five_scripts: Json | null
           full_plan_text: string | null
           id: string
+          is_active: boolean | null
           niche_topic: string | null
           phases: Json | null
           posting_frequency: string | null
+          strategy_type: string | null
           summary: string | null
           topic_ideas: Json | null
           updated_at: string
@@ -465,6 +643,7 @@ export type Database = {
           weekly_calendar: Json | null
         }
         Insert: {
+          confirmed_at?: string | null
           content_types?: Json | null
           created_at?: string
           creator_style?: string | null
@@ -472,9 +651,11 @@ export type Database = {
           first_five_scripts?: Json | null
           full_plan_text?: string | null
           id?: string
+          is_active?: boolean | null
           niche_topic?: string | null
           phases?: Json | null
           posting_frequency?: string | null
+          strategy_type?: string | null
           summary?: string | null
           topic_ideas?: Json | null
           updated_at?: string
@@ -482,6 +663,7 @@ export type Database = {
           weekly_calendar?: Json | null
         }
         Update: {
+          confirmed_at?: string | null
           content_types?: Json | null
           created_at?: string
           creator_style?: string | null
@@ -489,9 +671,11 @@ export type Database = {
           first_five_scripts?: Json | null
           full_plan_text?: string | null
           id?: string
+          is_active?: boolean | null
           niche_topic?: string | null
           phases?: Json | null
           posting_frequency?: string | null
+          strategy_type?: string | null
           summary?: string | null
           topic_ideas?: Json | null
           updated_at?: string
@@ -521,6 +705,54 @@ export type Database = {
           topic?: string
           used_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_actions: {
+        Row: {
+          action: string | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      xp_progress: {
+        Row: {
+          created_at: string | null
+          event: string | null
+          id: string
+          user_id: string | null
+          xp_earned: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          event?: string | null
+          id?: string
+          user_id?: string | null
+          xp_earned?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          event?: string | null
+          id?: string
+          user_id?: string | null
+          xp_earned?: number | null
         }
         Relationships: []
       }

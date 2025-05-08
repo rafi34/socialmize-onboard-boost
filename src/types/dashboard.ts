@@ -1,6 +1,6 @@
-
 // Strategy and planning types
 export interface StrategyData {
+  id?: string;
   experience_level: string;
   content_types: string[];
   weekly_calendar: Record<string, string[]>;
@@ -12,6 +12,9 @@ export interface StrategyData {
   niche_topic?: string;
   topic_ideas?: string[];
   summary?: string;
+  strategy_type?: string;
+  is_active?: boolean;
+  confirmed_at?: string;
 }
 
 // Progress and gamification
@@ -82,4 +85,68 @@ export interface TopicProgress {
 export interface WeekdayPostingSchedule {
   day: string;
   count: number;
+}
+
+// New interfaces for the new tables:
+
+export interface XpProgressEvent {
+  id: string;
+  user_id: string;
+  event: string;
+  xp_earned: number;
+  created_at: string;
+}
+
+export interface UserAction {
+  id: string;
+  user_id: string;
+  action: string;
+  metadata: Record<string, any>;
+  created_at: string;
+}
+
+export interface PostMetric {
+  id: string;
+  user_id: string;
+  platform: string;
+  post_id: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  posted_at: string;
+}
+
+export interface ConnectedAccount {
+  id: string;
+  user_id: string;
+  platform: string;
+  access_token: string;
+  refresh_token?: string;
+  expires_at?: string;
+  created_at: string;
+}
+
+export interface LeaderboardEntry {
+  user_id: string;
+  level: number;
+  xp: number;
+  updated_at: string;
+}
+
+export interface Client {
+  id: string;
+  name: string;
+  owner_user_id: string;
+  created_at: string;
+}
+
+export interface BrandingConfig {
+  id: string;
+  client_id: string;
+  logo_url?: string;
+  primary_color?: string;
+  font_family?: string;
+  app_name?: string;
+  created_at: string;
 }

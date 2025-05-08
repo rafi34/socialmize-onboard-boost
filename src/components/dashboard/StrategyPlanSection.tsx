@@ -6,13 +6,21 @@ import { FullStrategyModal } from "./FullStrategyModal";
 import { RegeneratePlanModal } from "./RegeneratePlanModal";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { CalendarDays, AlertTriangle } from "lucide-react";
+import { CalendarDays, AlertTriangle, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { formatDistanceToNow } from "date-fns";
 
 export const StrategyPlanSection = () => {
   const [isFullPlanOpen, setIsFullPlanOpen] = useState(false);
   const [isRegeneratePlanOpen, setIsRegeneratePlanOpen] = useState(false);
-  const { strategy, loading, error, regenerateStrategy, fetchStrategyData } = useStrategyData();
+  const { 
+    strategy, 
+    loading, 
+    error, 
+    regenerateStrategy, 
+    fetchStrategyData,
+    confirmStrategyPlan 
+  } = useStrategyData();
 
   const handleOpenFullPlan = () => {
     setIsFullPlanOpen(true);
@@ -26,10 +34,18 @@ export const StrategyPlanSection = () => {
     setIsRegeneratePlanOpen(false);
     fetchStrategyData();
   };
+  
+  const handleConfirmStrategy = async () => {
+    const success = await confirmStrategyPlan();
+    if (success) {
+      fetchStrategyData();
+    }
+  };
 
-  // Check if we have a valid strategy with a weekly calendar
+  // Check if we have a valid strategy with a weekly calendar and if it's confirmed
   const hasWeeklyCalendar = !!(strategy?.weekly_calendar && 
     Object.keys(strategy.weekly_calendar).length > 0);
+  const isConfirmed = !!strategy?.confirmed_at;
 
   return (
     <div className="mb-6 flex flex-col md:flex-row items-start gap-4">
@@ -52,10 +68,24 @@ export const StrategyPlanSection = () => {
           </Alert>
         )}
         
+        {strategy && isConfirmed && (
+          <Alert variant="default" className="mb-4 bg-green-50 border-green-200">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <AlertTitle>Strategy Confirmed</AlertTitle>
+            <AlertDescription className="text-gray-600">
+              {strategy.confirmed_at && 
+                `You confirmed this ${strategy.strategy_type || ''} strategy plan ${formatDistanceToNow(new Date(strategy.confirmed_at))} ago.`}
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <StrategyOverviewCard 
           onRegenerateClick={handleOpenRegenerate}
           fullPlanText={strategy?.full_plan_text}
           onViewFullPlan={handleOpenFullPlan}
+          isConfirmed={isConfirmed}
+          onConfirmClick={handleConfirmStrategy}
+          strategyType={strategy?.strategy_type}
         />
       </div>
       
