@@ -54,12 +54,10 @@ const PremiumAppLayout = ({ children }: { children: React.ReactNode }) => (
   </AppLayout>
 );
 
-import SupabaseTest from "./SupabaseTest";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    {/* Supabase connection test - remove after verification */}
-    <SupabaseTest />
+
     <TooltipProvider>
       <BrowserRouter>
         <AuthProvider>
