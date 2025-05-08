@@ -9,7 +9,8 @@ const SupabaseTest: React.FC = () => {
   useEffect(() => {
     async function testConnection() {
       try {
-        const { data, error } = await supabase.from("users").select("*").limit(1);
+        // Using 'profiles' table which exists in the database
+        const { data, error } = await supabase.from("profiles").select("*").limit(1);
         
         if (error) {
           console.error("Supabase connection error:", error);
