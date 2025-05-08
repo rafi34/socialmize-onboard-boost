@@ -1,4 +1,5 @@
-import { supabase } from './lib/supabaseClient';
+
+import { supabase } from './integrations/supabase/client';
 
 async function testConnection() {
   // Replace 'users' with your actual table name if needed
