@@ -1,5 +1,6 @@
+
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/integrations/supabase/client";
 import { StrategyData } from "@/types/dashboard";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,7 +63,8 @@ export function useStrategyData() {
           summary: data.summary,
           strategy_type: data.strategy_type || "starter",
           is_active: data.is_active !== false,
-          confirmed_at: data.confirmed_at
+          confirmed_at: data.confirmed_at,
+          id: data.id, // Make sure id is included
         });
         
         // Reset retry counter on success
@@ -110,6 +112,9 @@ export function useStrategyData() {
       if (onboardingError) throw onboardingError;
       if (!onboardingData) throw new Error("Onboarding data not found");
       
+      // Log onboarding data to help with debugging
+      console.log("Onboarding data for strategy regeneration:", onboardingData);
+      
       // Call the Supabase Edge Function to regenerate strategy
       const { data, error } = await supabase.functions.invoke("generate-strategy-plan", {
         body: {
@@ -119,6 +124,8 @@ export function useStrategyData() {
       });
       
       if (error) throw error;
+      
+      console.log("Strategy regeneration completed:", data);
       
       // Reset retry counter
       setRetryCount(0);

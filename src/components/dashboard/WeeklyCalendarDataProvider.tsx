@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -38,6 +37,7 @@ export const WeeklyCalendarDataProvider = ({ children }: WeeklyCalendarDataProvi
   // Initialize calendar data from strategy
   useEffect(() => {
     if (!strategyLoading && strategy?.weekly_calendar) {
+      console.log("Setting calendar data from strategy:", strategy.weekly_calendar);
       setCalendarData(strategy.weekly_calendar);
       setIsLoading(false);
     } else if (!strategyLoading) {
@@ -63,6 +63,8 @@ export const WeeklyCalendarDataProvider = ({ children }: WeeklyCalendarDataProvi
     setError(null);
     
     try {
+      console.log(`Updating calendar data for ${day}:`, contentTypes);
+      
       // Create a copy of the current calendar data
       const updatedCalendar = { ...calendarData };
       updatedCalendar[day] = contentTypes;

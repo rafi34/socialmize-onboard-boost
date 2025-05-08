@@ -72,7 +72,7 @@ export const RegeneratePlanModal = ({
         throw new Error("Onboarding data is incomplete. Please complete all steps in the onboarding flow.");
       }
 
-      const { error } = await supabase.functions.invoke("generate-strategy-plan", {
+      const { data, error } = await supabase.functions.invoke("generate-strategy-plan", {
         body: {
           userId,
           onboardingData: {
@@ -87,6 +87,8 @@ export const RegeneratePlanModal = ({
       });
 
       if (error) throw error;
+      
+      console.log("Strategy regeneration completed successfully:", data);
 
       queryClient.invalidateQueries({ queryKey: ['strategy_profiles'] });
       queryClient.invalidateQueries({ queryKey: ['strategyPlan', userId] });

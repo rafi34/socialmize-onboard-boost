@@ -54,18 +54,17 @@ export function useDashboardData() {
     await generateWaitingMessage();
 
     try {
-      const res = await fetch("/functions/generate-strategy-plan", {
-        method: "POST",
-        body: JSON.stringify({ userId: user.id, onboardingData }),
+      console.log("Generating strategy with onboarding data:", onboardingData);
+      
+      const { data, error } = await supabase.functions.invoke("generate-strategy-plan", {
+        body: { userId: user.id, onboardingData },
       });
 
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Strategy generation failed");
-      }
+      if (error) throw error;
 
-      const data = await res.json();
-      if (data.mock) console.log("Using mock strategy");
+      console.log("Strategy generation result:", data);
+      
+      if (data?.mock) console.log("Using mock strategy");
 
       toast({
         title: "Strategy Generated",
@@ -100,6 +99,7 @@ export function useDashboardData() {
     errorToastShown.current = false;
 
     try {
+      console.log("Fetching user profile data for:", user.id);
       const { data: profileData } = await supabase
         .from("profiles")
         .select("onboarding_complete")
@@ -108,8 +108,15 @@ export function useDashboardData() {
 
       const onboarded = profileData?.onboarding_complete || false;
       setProfileComplete(onboarded);
-      if (!onboarded) return;
+      
+      console.log("User onboarding complete:", onboarded);
+      
+      if (!onboarded) {
+        setLoading(false);
+        return;
+      }
 
+      console.log("Fetching strategy profile data");
       const { data: strategyData } = await supabase
         .from("strategy_profiles")
         .select("*")
@@ -117,6 +124,8 @@ export function useDashboardData() {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      console.log("Strategy data retrieved:", strategyData);
 
       if (strategyData && strategyData.weekly_calendar) {
         const confirmed = typeof strategyData.weekly_calendar === "object";
@@ -154,6 +163,7 @@ export function useDashboardData() {
         return;
       }
 
+      console.log("No strategy found, fetching onboarding data");
       const { data: onboardingData } = await supabase
         .from("onboarding_answers")
         .select("*")

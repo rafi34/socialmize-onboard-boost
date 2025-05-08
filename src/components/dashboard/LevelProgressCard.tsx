@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { Trophy, Star } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "@/integrations/supabase/client";
 import { calculateLevelProgress, getXpForNextLevel } from "@/utils/xpUtils";
 
 interface LevelProgressCardProps {
@@ -41,7 +41,7 @@ export const LevelProgressCard = ({ loading }: LevelProgressCardProps) => {
     } catch (error) {
       console.error("Error fetching profile data:", error);
     } finally {
-      setIsLoading(false); // Changed to properly handle the state with the correct type
+      setIsLoading(false);
     }
   };
 
