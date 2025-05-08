@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -123,14 +123,18 @@ export function useDashboardData() {
 
         setStrategy({
           experience_level: strategyData.experience_level,
-          content_types: strategyData.content_types,
-          weekly_calendar: strategyData.weekly_calendar,
+          content_types: Array.isArray(strategyData.content_types) 
+            ? strategyData.content_types as string[]
+            : [],
+          weekly_calendar: strategyData.weekly_calendar as Record<string, string[]> || {},
           posting_frequency: strategyData.posting_frequency || "3-5x per week",
           creator_style: strategyData.creator_style || "Authentic",
           content_breakdown: {},
           full_plan_text: strategyData.full_plan_text,
           niche_topic: strategyData.niche_topic,
-          topic_ideas: strategyData.topic_ideas,
+          topic_ideas: Array.isArray(strategyData.topic_ideas) 
+            ? strategyData.topic_ideas as string[]
+            : [],
         });
 
         setGenerationStatus("success");

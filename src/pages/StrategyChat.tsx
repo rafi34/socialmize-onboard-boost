@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,6 +16,15 @@ interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   message: string;
+  created_at?: string;
+}
+
+interface DBChatMessage {
+  id: string;
+  role: string;
+  content: string;
+  thread_id: string;
+  user_id: string;
   created_at?: string;
 }
 
@@ -186,8 +194,16 @@ const StrategyChat = () => {
       }
       
       if (data && data.length > 0) {
+        // Map the db messages to our ChatMessage format
+        const chatMessages: ChatMessage[] = (data as DBChatMessage[]).map(dbMsg => ({
+          id: dbMsg.id,
+          role: dbMsg.role as 'user' | 'assistant' | 'system',
+          message: dbMsg.content,
+          created_at: dbMsg.created_at
+        }));
+        
         // If we have history, replace our initial message
-        setMessages(data as ChatMessage[]);
+        setMessages(chatMessages);
       }
     } catch (error) {
       console.error('Error fetching message history:', error);
@@ -210,7 +226,7 @@ const StrategyChat = () => {
           user_id: user.id,
           thread_id: currentThreadId,
           role: message.role,
-          message: message.message
+          content: message.message // Map message to content
         });
         
       if (error) {
