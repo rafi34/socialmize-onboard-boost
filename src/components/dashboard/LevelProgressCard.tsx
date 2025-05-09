@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { calculateLevelProgress, getXpForNextLevel } from "@/utils/xpUtils";
-import ReminderConfetti from "./ReminderConfetti";
+import { ReminderConfetti } from "./ReminderConfetti"; // 🛠️ Fix default import
 
 interface LevelProgressCardProps {
   loading?: boolean;
