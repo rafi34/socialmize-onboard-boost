@@ -1,3 +1,4 @@
+
 // supabase/functions/generate-strategy-chat/index.ts
 import { serve } from "https://deno.land/std@0.195.0/http/server.ts";
 import OpenAI from "https://esm.sh/openai@4.28.0";
@@ -9,11 +10,11 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const openaiApiKey = Deno.env.get("OPENAI_API_KEY") || "";
 const assistantId = Deno.env.get("ASSISTANT_ID") || "";
 
-// Initialize OpenAI client with v2 header
+// Initialize OpenAI client with v2 header - Fixed the header
 const openai = new OpenAI({
   apiKey: openaiApiKey,
   defaultHeaders: {
-    "OpenAI-Beta": "assistants=v2" // Set v2 header for Assistants API
+    "OpenAI-Beta": "assistants=v2" // Ensure correct v2 header
   }
 });
 
@@ -83,34 +84,73 @@ serve(async (req) => {
           currentThreadId = thread.id;
           console.log("New thread created:", currentThreadId);
           
-          // If this is a new thread, add context info about the user's profile
-          const contextData = {
+          // If this is a new thread, add comprehensive context info about the user's profile and strategy
+          // Include both onboarding data AND full strategy details
+          const combinedData = {
             ...onboardingData,
-            ...(strategyProfileData || {})
+            ...strategyProfileData
           };
           
-          // Create a context message with combined data
+          // Format strategy details in a more readable way
+          const strategyDetails = strategyProfileData ? {
+            strategy_type: strategyProfileData.strategy_type || "starter",
+            confirmed: strategyProfileData.confirmed_at ? "yes" : "no",
+            content_types: strategyProfileData.content_types,
+            posting_frequency: strategyProfileData.posting_frequency,
+            niche_topic: strategyProfileData.niche_topic,
+            experience_level: strategyProfileData.experience_level,
+            creator_style: strategyProfileData.creator_style,
+            has_full_plan: strategyProfileData.full_plan_text ? "yes" : "no"
+          } : {};
+          
+          // Create a much more detailed context message with combined data
           const contextMessage = `
-User Profile Information:
-${Object.entries(contextData)
+I'm your AI Strategy Assistant. Here's the complete information about the user I'm helping:
+
+USER PROFILE:
+${Object.entries(onboardingData || {})
   .filter(([key, value]) => value !== null && value !== undefined && !key.includes('id') && key !== 'created_at' && key !== 'updated_at')
   .map(([key, value]) => {
-    // Format JSON values to be more readable
-    const formattedValue = typeof value === 'object' 
-      ? JSON.stringify(value, null, 2) 
-      : value;
-    return `- ${key.replace(/_/g, ' ')}: ${formattedValue}`;
+    const formattedKey = key.replace(/_/g, ' ');
+    const formattedValue = typeof value === 'object' ? JSON.stringify(value) : value;
+    return `- ${formattedKey}: ${formattedValue}`;
   })
   .join('\n')}
+
+STRATEGY DETAILS:
+${Object.entries(strategyDetails)
+  .map(([key, value]) => {
+    const formattedKey = key.replace(/_/g, ' ');
+    const formattedValue = typeof value === 'object' ? JSON.stringify(value) : value;
+    return `- ${formattedKey}: ${formattedValue}`;
+  })
+  .join('\n')}
+
+${strategyProfileData && strategyProfileData.summary ? 
+`STRATEGY SUMMARY:
+${strategyProfileData.summary}` : ''}
+
+${strategyProfileData && strategyProfileData.full_plan_text ? 
+`FULL STRATEGY PLAN:
+${strategyProfileData.full_plan_text}` : ''}
+
+As the user's AI Strategy Assistant, your role is to:
+1. Reference their strategy details and provide insights based on their confirmed plan
+2. Answer questions about their content strategy and creator journey
+3. Offer personalized advice based on their niche, style, and posting frequency
+4. Suggest content ideas that align with their strategy plan
+5. Use a conversational, supportive tone
+
+If the user asks for content ideas, provide them in a structured format at the end of your message using [CONTENT_IDEAS] marker followed by a list of ideas.
 `;
 
           // Add initial context message to the thread
           await openai.beta.threads.messages.create(currentThreadId, {
             role: "user",
-            content: `Here's my profile information for context:\n${contextMessage}\n\nI'm ready to start building my content strategy.`,
+            content: `Here's my complete profile and strategy information for context:\n${contextMessage}\n\nI'm ready to talk about my content strategy.`,
           });
           
-          console.log("Added context message to new thread");
+          console.log("Added comprehensive context message to new thread");
         } else {
           console.log("Using existing thread:", currentThreadId);
         }

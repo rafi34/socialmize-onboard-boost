@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,6 +40,7 @@ interface StrategyProfileData {
   updated_at?: string;
   first_five_scripts?: Json;
   strategy_type?: string;
+  confirmed_at?: string;
 }
 
 interface UserProfileData {
@@ -122,9 +124,11 @@ export const useStrategyChat = () => {
     // Format the name with capitalized first letter
     const formattedName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
     
-    // Create personalized welcome message
+    // Create personalized welcome message with strategy information
     const strategyType = strategyData?.strategy_type || "starter";
-    const welcomeMessage = `
+    
+    // Enhanced welcome message that includes strategy details
+    let welcomeMessage = `
 Hi ${formattedName}! 👋 Welcome to your strategy session!
 
 Based on your profile, I see that:
@@ -132,10 +136,26 @@ ${onboardingData.niche_topic ? `- You create content about ${onboardingData.nich
 ${onboardingData.creator_style ? `- Your creator style is ${onboardingData.creator_style?.replace('_', ' ')}` : ''}
 ${onboardingData.posting_frequency_goal ? `- You aim to post ${onboardingData.posting_frequency_goal?.replace('_', ' ')}` : ''}
 ${onboardingData.content_format_preference ? `- You prefer creating ${onboardingData.content_format_preference?.replace('_', ' ')} content` : ''}
+`;
 
+    // Add strategy details if available
+    if (strategyData) {
+      welcomeMessage += `
 You're currently on our ${strategyType.charAt(0).toUpperCase() + strategyType.slice(1)} strategy plan.
 
-I'm your AI Strategist, and I'll help build your personalized content plan. Click the Start Session button when you're ready to begin our conversation!
+${strategyData.confirmed_at ? '✅ Your content strategy has been confirmed!' : 'Your content strategy is awaiting confirmation.'}
+
+${strategyData.content_types && Array.isArray(strategyData.content_types) ? 
+`🎯 Your content mix includes: ${(strategyData.content_types as string[]).join(', ')}` : ''}
+
+${strategyData.posting_frequency ? `📆 Recommended posting frequency: ${strategyData.posting_frequency}` : ''}
+
+${strategyData.summary ? `💡 Strategy summary: ${strategyData.summary}` : ''}
+`;
+    }
+
+    welcomeMessage += `
+I'm your AI Strategist, and I'll help you with your personalized content plan. Click the Start Session button when you're ready to begin our conversation!
 `;
 
     const initialMessage: ChatMessage = {
@@ -384,7 +404,7 @@ I'm your AI Strategist, and I'll help build your personalized content plan. Clic
     setErrorMessage(null);
     setSessionStarted(true);
     
-    // Gather all relevant context data
+    // Gather all relevant context data including strategy data
     const contextData = {
       onboarding: onboardingData,
       strategy: strategyData,
@@ -396,6 +416,27 @@ I'm your AI Strategist, and I'll help build your personalized content plan. Clic
     };
     
     // Prepare initial context message with comprehensive user data
+    // Include detailed strategy information if available
+    let strategyDetails = "";
+    if (strategyData) {
+      strategyDetails = `
+STRATEGY DETAILS:
+${strategyData.strategy_type ? `- Strategy Type: ${strategyData.strategy_type}` : ''}
+${strategyData.confirmed_at ? '- Status: Confirmed' : '- Status: Not yet confirmed'}
+${strategyData.content_types ? `- Content Types: ${JSON.stringify(strategyData.content_types)}` : ''}
+${strategyData.posting_frequency ? `- Posting Frequency: ${strategyData.posting_frequency}` : ''}
+${strategyData.niche_topic ? `- Niche: ${strategyData.niche_topic}` : ''}
+${strategyData.experience_level ? `- Experience Level: ${strategyData.experience_level}` : ''}
+${strategyData.creator_style ? `- Creator Style: ${strategyData.creator_style}` : ''}
+${strategyData.summary ? `\nSTRATEGY SUMMARY:\n${strategyData.summary}` : ''}
+`;
+
+      // Include full strategy plan if it exists
+      if (strategyData.full_plan_text) {
+        strategyDetails += `\nFULL STRATEGY PLAN:\n${strategyData.full_plan_text}`;
+      }
+    }
+    
     const contextMessage = `
 I am starting a new strategy session. Here's my complete profile info:
 
@@ -407,12 +448,9 @@ CREATOR PROFILE:
 - Niche topic: ${onboardingData?.niche_topic || 'Not specified'}
 - Experience level: ${strategyData?.experience_level || 'Beginner'}
 
-EXISTING STRATEGY:
-${strategyData?.strategy_type ? `- Current strategy type: ${strategyData.strategy_type}` : '- No current strategy'}
-${strategyData?.posting_frequency ? `- Posting frequency: ${strategyData.posting_frequency}` : ''}
-${strategyData?.content_types ? `- Content types: ${JSON.stringify(strategyData.content_types)}` : ''}
+${strategyDetails}
 
-Help me develop or improve my content strategy for my ${onboardingData?.niche_topic || 'content'}.`;
+Help me understand and improve my content strategy for ${onboardingData?.niche_topic || 'my content'}. Summarize my strategy and provide advice on how to execute it effectively.`;
 
     // Add user context message to state
     const userContextMessage: ChatMessage = {
