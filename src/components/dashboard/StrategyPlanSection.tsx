@@ -11,7 +11,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { trackUserAction } from "@/utils/xpUtils";
-import { supabase } from "@/lib/supabaseClient"; // Added the missing import
+import { supabase } from "@/lib/supabaseClient";
+import { useProgressTracking } from "@/hooks/dashboard/useProgressTracking"; 
 
 export const StrategyPlanSection = () => {
   const [isFullPlanOpen, setIsFullPlanOpen] = useState(false);
@@ -25,6 +26,7 @@ export const StrategyPlanSection = () => {
     confirmStrategyPlan 
   } = useStrategyData();
   const { user } = useAuth();
+  const { fetchProgressData } = useProgressTracking();
 
   // Add effect to refresh strategy data when component mounts
   useEffect(() => {
@@ -66,6 +68,47 @@ export const StrategyPlanSection = () => {
             event: 'strategy_confirmed',
             xp_earned: 100
           });
+          
+          // Also update progress_tracking table to reflect XP increase immediately
+          const { data: currentProgress, error: progressError } = await supabase
+            .from('progress_tracking')
+            .select('current_xp, current_level, streak_days')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+            
+          if (!progressError && currentProgress) {
+            const newXP = (currentProgress.current_xp || 0) + 100;
+            const currentLevel = currentProgress.current_level || 1;
+            // Check if user should level up (100 XP per level)
+            const newLevel = newXP >= currentLevel * 100 ? currentLevel + 1 : currentLevel;
+            
+            await supabase
+              .from('progress_tracking')
+              .update({
+                current_xp: newXP,
+                current_level: newLevel,
+                updated_at: new Date().toISOString()
+              })
+              .eq('user_id', user.id);
+          }
+          
+          // Directly update the profiles table XP as well
+          await supabase
+            .from('profiles')
+            .update({ 
+              xp: supabase.rpc('get_weekly_xp', { 
+                user_id_param: user.id, 
+                start_date_param: new Date(0).toISOString() 
+              })
+            })
+            .eq('id', user.id);
+            
+          // Force refresh progress data to show updated XP and level
+          fetchProgressData();
+          
+          console.log("XP rewarded and progress updated for strategy confirmation");
         } catch (err) {
           console.error("Error awarding strategy confirmation XP:", err);
         }

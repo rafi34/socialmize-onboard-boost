@@ -1,4 +1,3 @@
-
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -50,33 +49,21 @@ export default function Dashboard() {
     hasAttemptedRetry
   } = useDashboardData();
 
+  // Updated useEffect to refresh data more frequently
   useEffect(() => {
-    const checkOnboardingAnswers = async () => {
-      if (!user) return;
-      const { data, error } = await supabase
-        .from('onboarding_answers')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (error) {
-        console.error('Error checking onboarding answers:', error);
-        setHasOnboardingAnswers(false);
-        setOnboardingChecked(true);
-        return;
-      }
-      if (!data) {
-        setHasOnboardingAnswers(false);
-        setOnboardingChecked(true);
-        navigate('/onboarding');
-        return;
-      }
-      setHasOnboardingAnswers(true);
-      setOnboardingChecked(true);
-    };
     if (user && user.id) {
       checkOnboardingAnswers();
+      
+      // Set up an interval to refresh data on dashboard when strategy is confirmed
+      const refreshInterval = setInterval(() => {
+        if (isStrategyConfirmed) {
+          fetchUserData();
+        }
+      }, 30000); // Refresh every 30 seconds if strategy is confirmed
+      
+      return () => clearInterval(refreshInterval);
     }
-  }, [user, navigate]);
+  }, [user, navigate, isStrategyConfirmed, fetchUserData]);
 
   // Debug logging
   console.log('Dashboard debug:', {
@@ -96,6 +83,13 @@ export default function Dashboard() {
     errorShown,
     hasAttemptedRetry
   });
+
+  // Refresh data whenever the strategy confirmed status changes
+  useEffect(() => {
+    if (strategy?.confirmed_at) {
+      fetchUserData();
+    }
+  }, [strategy?.confirmed_at, fetchUserData]);
 
   // Display error toast on generation error, but only once
   useEffect(() => {
