@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,6 +49,89 @@ interface UserProfileData {
   email?: string;
   level?: number;
 }
+
+// Helper function to format strategy data for better readability
+const formatStrategyData = (strategyData: StrategyProfileData | null): string => {
+  if (!strategyData) return "Strategy information not available";
+  
+  // Create a readable format for the strategy data
+  let formattedText = '';
+  
+  // Basic strategy information
+  formattedText += `- Strategy Type: ${strategyData.strategy_type ? strategyData.strategy_type.charAt(0).toUpperCase() + strategyData.strategy_type.slice(1) : "Starter"}\n`;
+  formattedText += `- Status: ${strategyData.confirmed_at ? "Confirmed" : "Not yet confirmed"}\n`;
+  
+  // Add content types if available
+  if (strategyData.content_types && Array.isArray(strategyData.content_types)) {
+    formattedText += `- Content Types: ${(strategyData.content_types as string[]).join(', ')}\n`;
+  }
+  
+  // Add other strategy details
+  if (strategyData.posting_frequency) {
+    formattedText += `- Posting Frequency: ${strategyData.posting_frequency}\n`;
+  }
+  if (strategyData.niche_topic) {
+    formattedText += `- Niche: ${strategyData.niche_topic}\n`;
+  }
+  if (strategyData.experience_level) {
+    formattedText += `- Experience Level: ${strategyData.experience_level.charAt(0).toUpperCase() + strategyData.experience_level.slice(1)}\n`;
+  }
+  if (strategyData.creator_style) {
+    formattedText += `- Creator Style: ${strategyData.creator_style.replace(/_/g, ' ').charAt(0).toUpperCase() + strategyData.creator_style.replace(/_/g, ' ').slice(1)}\n`;
+  }
+  
+  // Add summary if available
+  if (strategyData.summary) {
+    formattedText += `\n### Strategy Summary\n${strategyData.summary}\n`;
+  }
+  
+  // Parse the full plan text if available
+  if (strategyData.full_plan_text) {
+    try {
+      const parsedPlan = parseFullStrategyJson(strategyData.full_plan_text);
+      if (parsedPlan) {
+        // Extract key information from the parsed plan
+        if (parsedPlan.summary) {
+          formattedText += `\n### Plan Summary\n${parsedPlan.summary}\n`;
+        }
+        
+        if (parsedPlan.weeks && Array.isArray(parsedPlan.weeks)) {
+          formattedText += `\n### Weekly Content Plan\n`;
+          
+          parsedPlan.weeks.forEach((week, index) => {
+            formattedText += `\nWeek ${index + 1}:\n`;
+            
+            // Add content frequency
+            if (week.weekly_table && Array.isArray(week.weekly_table)) {
+              week.weekly_table.forEach(item => {
+                const contentType = item.label || item.content_type || "Content";
+                formattedText += `- ${contentType}: ${item.frequency_per_week || 'N/A'} times per week\n`;
+              });
+            }
+            
+            // Add example post ideas
+            if (week.example_post_ideas) {
+              formattedText += `\nExample Ideas:\n`;
+              Object.entries(week.example_post_ideas).forEach(([type, ideas]) => {
+                if (Array.isArray(ideas)) {
+                  ideas.slice(0, 3).forEach(idea => {
+                    formattedText += `- ${idea}\n`;
+                  });
+                }
+              });
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error parsing full plan text:", error);
+      // Add a basic version of the full plan text if parsing fails
+      formattedText += `\n### Strategy Plan\n${strategyData.full_plan_text.substring(0, 300)}...\n`;
+    }
+  }
+  
+  return formattedText;
+};
 
 export const useStrategyChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
