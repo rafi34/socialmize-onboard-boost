@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { trackUserAction } from "@/utils/xpUtils";
+import { supabase } from "@/lib/supabaseClient"; // Added the missing import
 
 export const StrategyPlanSection = () => {
   const [isFullPlanOpen, setIsFullPlanOpen] = useState(false);
