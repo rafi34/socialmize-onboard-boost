@@ -1,3 +1,4 @@
+
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,7 +15,6 @@ import { QueryClient } from "@tanstack/react-query";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { showNotification } from "@/components/ui/notification-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Dashboard() {
@@ -22,8 +22,6 @@ export default function Dashboard() {
   const [queryClient] = useState(() => new QueryClient());
   const [showContent, setShowContent] = useState(false);
   const [activeTab, setActiveTab] = useState<'content' | 'analytics' | 'planner'>('content');
-  const [hasAttemptedRetry, setHasAttemptedRetry] = useState(false);
-  const [errorShown, setErrorShown] = useState(false);
   
   const {
     strategy,
@@ -39,33 +37,23 @@ export default function Dashboard() {
     generationError,
     fetchUserData,
     resetRetryCount,
-    retryCount
+    retryCount,
+    showErrorNotification,
+    errorShown,
+    hasAttemptedRetry
   } = useDashboardData();
 
   // Display error toast on generation error, but only once
   useEffect(() => {
     if (generationStatus === 'error' && generationError && !hasAttemptedRetry && retryCount >= 3 && !errorShown) {
-      showNotification({
-        title: "Strategy Generation Issue",
-        description: "We encountered an issue while creating your strategy. Please try again manually.",
-        type: "error",
-        duration: 8000,
-        action: (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => {
-              resetRetryCount();
-              fetchUserData();
-              setHasAttemptedRetry(true);
-            }}
-          >
-            <RefreshCw className="h-4 w-4 mr-1" />
-            Retry
-          </Button>
-        ),
-      });
-      setErrorShown(true);
+      showErrorNotification(
+        "Strategy Generation Issue",
+        "We encountered an issue while creating your strategy. Please try again manually.",
+        () => {
+          resetRetryCount();
+          fetchUserData();
+        }
+      );
     }
   }, [generationStatus, generationError, hasAttemptedRetry, fetchUserData, resetRetryCount, retryCount, errorShown]);
 
@@ -78,13 +66,6 @@ export default function Dashboard() {
       return () => clearTimeout(timer);
     }
   }, [showContent]);
-
-  // Reset error shown state when generation status changes
-  useEffect(() => {
-    if (generationStatus !== 'error') {
-      setErrorShown(false);
-    }
-  }, [generationStatus]);
 
   if (profileComplete === false) return <Navigate to="/" replace />;
 
@@ -128,7 +109,6 @@ export default function Dashboard() {
                       onClick={() => {
                         resetRetryCount();
                         fetchUserData();
-                        setErrorShown(false);
                       }}
                       className="mt-2 inline-flex items-center"
                       size="sm"

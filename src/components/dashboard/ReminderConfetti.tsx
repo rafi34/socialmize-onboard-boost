@@ -3,12 +3,12 @@ import { useState, useEffect } from 'react';
 import Confetti from 'react-confetti';
 
 interface ReminderConfettiProps {
-  active: boolean;
+  active?: boolean; // Make the prop optional with a default value
   duration?: number;
 }
 
-export const ReminderConfetti = ({ active, duration = 3000 }: ReminderConfettiProps) => {
-  const [showConfetti, setShowConfetti] = useState(active); // Changed to boolean type
+export const ReminderConfetti = ({ active = true, duration = 3000 }: ReminderConfettiProps) => {
+  const [showConfetti, setShowConfetti] = useState(active);
   const [windowDimension, setWindowDimension] = useState({
     width: window.innerWidth,
     height: window.innerHeight,

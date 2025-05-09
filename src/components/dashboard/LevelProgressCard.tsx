@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, Star } from "lucide-react";
@@ -5,7 +6,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { calculateLevelProgress, getXpForNextLevel } from "@/utils/xpUtils";
-import { ReminderConfetti } from "./ReminderConfetti"; // 🛠️ Fix default import
+import { ReminderConfetti } from "./ReminderConfetti";
 
 interface LevelProgressCardProps {
   loading?: boolean;
@@ -22,7 +23,7 @@ export const LevelProgressCard = ({ loading: initialLoading, progress: progressP
   const { user } = useAuth();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(initialLoading || true);
-  const [showCelebration, setShowCelebration] = useState<boolean>(false);
+  const [showCelebration, setShowCelebration] = useState<boolean>(false); // Fixed: Changed to boolean
 
   useEffect(() => {
     if (user && !progressProp) {
@@ -109,14 +110,14 @@ export const LevelProgressCard = ({ loading: initialLoading, progress: progressP
             <p className="text-sm mt-1">Unlocked: {getNextLevelReward(currentLevel)}</p>
           </div>
           <button
-            onClick={() => setShowCelebration(false)}
+            onClick={() => setShowCelebration(false)} // Now correctly passing boolean
             className="bg-white text-black rounded px-3 py-1 text-xs"
           >
             Dismiss
           </button>
         </div>
       )}
-      {showCelebration && <ReminderConfetti />}
+      {showCelebration && <ReminderConfetti active={true} />}
 
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center">
