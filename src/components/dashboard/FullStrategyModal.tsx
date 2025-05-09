@@ -9,7 +9,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { parseFullStrategyJson } from "@/utils/parseFullStrategyJson";
 import { RefreshCw, Copy, Check } from "lucide-react";
@@ -28,9 +27,8 @@ export const FullStrategyModal = ({
   fullPlanText,
   onRegenerateClick,
 }: FullStrategyModalProps) => {
-  const [activeTab, setActiveTab] = useState("formatted");
-  const [parsedJson, setParsedJson] = useState<any>(null);
   const [copied, setCopied] = useState(false);
+  const [parsedJson, setParsedJson] = useState<any>(null);
 
   useEffect(() => {
     if (fullPlanText) {
@@ -144,24 +142,9 @@ export const FullStrategyModal = ({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-4">
-            <TabsTrigger value="formatted">Formatted</TabsTrigger>
-            <TabsTrigger value="raw">Raw JSON</TabsTrigger>
-          </TabsList>
-
-          <ScrollArea className="h-[400px] rounded-md border p-4">
-            <TabsContent value="formatted" className="mt-0">
-              {renderFormattedContent()}
-            </TabsContent>
-
-            <TabsContent value="raw" className="mt-0">
-              <pre className="text-xs font-mono whitespace-pre-wrap break-words">
-                {fullPlanText}
-              </pre>
-            </TabsContent>
-          </ScrollArea>
-        </Tabs>
+        <ScrollArea className="h-[400px] rounded-md border p-4">
+          {renderFormattedContent()}
+        </ScrollArea>
 
         <DialogFooter className="flex items-center justify-between">
           <Button
