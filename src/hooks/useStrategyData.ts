@@ -5,6 +5,7 @@ import { StrategyData } from "@/types/dashboard";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { trackUserAction } from "@/utils/xpUtils";
+import { parseFullStrategyJson, getStrategySummary } from "@/utils/parseFullStrategyJson";
 
 export function useStrategyData() {
   const [strategy, setStrategy] = useState<StrategyData | null>(null);
@@ -49,9 +50,13 @@ export function useStrategyData() {
           typeof data.weekly_calendar === 'object');
         
         const isConfirmed = !!data.confirmed_at;
+        
+        // Parse the full plan text to extract JSON data if possible
+        const parsedData = parseFullStrategyJson(data.full_plan_text);
+        const summary = getStrategySummary(parsedData, data.full_plan_text);
           
         setStrategy({
-          id: data.id, // Make sure to include the ID
+          id: data.id,
           experience_level: data.experience_level || "",
           content_types: data.content_types as string[] || [],
           weekly_calendar: data.weekly_calendar as Record<string, string[]> || {},
@@ -61,7 +66,7 @@ export function useStrategyData() {
           full_plan_text: data.full_plan_text,
           niche_topic: data.niche_topic,
           topic_ideas: data.topic_ideas as string[] || [],
-          summary: data.summary,
+          summary: summary || data.summary,
           strategy_type: data.strategy_type || "starter",
           is_active: data.is_active !== false,
           confirmed_at: data.confirmed_at
@@ -112,11 +117,18 @@ export function useStrategyData() {
       if (onboardingError) throw onboardingError;
       if (!onboardingData) throw new Error("Onboarding data not found");
       
+      // Determine strategy type based on experience level
+      const strategyType = onboardingData.experience_level === "expert" ? "advanced" :
+                          onboardingData.experience_level === "intermediate" ? "intermediate" : "starter";
+      
       // Call the Supabase Edge Function to regenerate strategy
       const { data, error } = await supabase.functions.invoke("generate-strategy-plan", {
         body: {
           userId: user.id,
-          onboardingData
+          onboardingData: {
+            ...onboardingData,
+            strategy_type: strategyType
+          }
         }
       });
       
@@ -125,13 +137,15 @@ export function useStrategyData() {
       // Reset retry counter
       setRetryCount(0);
       
-      // Fetch the updated strategy data
-      await fetchStrategyData();
-      
-      toast({
-        title: "Strategy Regenerated",
-        description: "Your content strategy has been updated successfully.",
-      });
+      // Wait a bit longer before fetching the updated strategy data to ensure it's saved
+      setTimeout(async () => {
+        await fetchStrategyData();
+        
+        toast({
+          title: "Strategy Regenerated",
+          description: "Your content strategy has been updated successfully.",
+        });
+      }, 2000);
       
       return true;
     } catch (err: any) {
@@ -168,7 +182,9 @@ export function useStrategyData() {
         .from("strategy_profiles")
         .update({ 
           confirmed_at: now,
-          is_active: true
+          is_active: true,
+          // Make sure strategy_type is set
+          strategy_type: strategy.strategy_type || "starter"
         })
         .eq("user_id", user.id)
         .eq("id", strategy.id);

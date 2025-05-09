@@ -9,7 +9,7 @@ import { Link } from "react-router-dom";
 import { CalendarDays, AlertTriangle, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
-import { useAuth } from "@/contexts/AuthContext"; // Add this import
+import { useAuth } from "@/contexts/AuthContext";
 
 export const StrategyPlanSection = () => {
   const [isFullPlanOpen, setIsFullPlanOpen] = useState(false);
@@ -22,7 +22,7 @@ export const StrategyPlanSection = () => {
     fetchStrategyData,
     confirmStrategyPlan 
   } = useStrategyData();
-  const { user } = useAuth(); // Get the authenticated user
+  const { user } = useAuth();
 
   // Add effect to refresh strategy data when component mounts
   useEffect(() => {
@@ -41,10 +41,10 @@ export const StrategyPlanSection = () => {
 
   const handleRegenerateSuccess = () => {
     setIsRegeneratePlanOpen(false);
-    // Add a small delay before fetching to ensure the database has updated
+    // Add a longer delay before fetching to ensure the database has updated
     setTimeout(() => {
       fetchStrategyData();
-    }, 1000);
+    }, 2500);
   };
   
   const handleConfirmStrategy = async () => {
@@ -122,7 +122,7 @@ export const StrategyPlanSection = () => {
       <RegeneratePlanModal
         isOpen={isRegeneratePlanOpen}
         onClose={() => setIsRegeneratePlanOpen(false)}
-        userId={user?.id || ""} // Use the user ID from Auth context instead of localStorage
+        userId={user?.id || ""} 
         onSuccess={handleRegenerateSuccess}
         onGenerationStart={() => setIsRegeneratePlanOpen(false)} // Close modal when generation starts
       />

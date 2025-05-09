@@ -80,6 +80,10 @@ export const RegeneratePlanModal = ({
       // Log onboarding data to help with debugging
       console.log("Onboarding data for strategy generation:", onboardingAnswers);
 
+      // Determine strategy type based on experience level or other factors
+      const strategyType = onboardingAnswers.experience_level === "expert" ? "advanced" :
+                          onboardingAnswers.experience_level === "intermediate" ? "intermediate" : "starter";
+
       const { error } = await supabase.functions.invoke("generate-strategy-plan", {
         body: {
           userId,
@@ -89,7 +93,8 @@ export const RegeneratePlanModal = ({
             content_formats: onboardingAnswers.content_format_preference, 
             posting_frequency_goal: onboardingAnswers.posting_frequency_goal,
             niche_topic: onboardingAnswers.niche_topic,
-            experience_level: onboardingAnswers.experience_level || "beginner"
+            experience_level: onboardingAnswers.experience_level || "beginner",
+            strategy_type: strategyType
           }
         }
       });
@@ -105,7 +110,7 @@ export const RegeneratePlanModal = ({
         description: "Your content strategy has been updated successfully."
       });
 
-      if (onSuccess) setTimeout(onSuccess, 1000);
+      if (onSuccess) setTimeout(onSuccess, 2000); // Increased timeout to ensure data is refreshed
     } catch (err: any) {
       console.error("❌ Strategy generation error:", err);
       toast({

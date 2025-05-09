@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, FileText, RefreshCw, CheckCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { parseFullStrategyJson, getStrategySummary } from "@/utils/parseFullStrategyJson";
 
 interface StrategyOverviewCardProps {
   onRegenerateClick?: () => void;
@@ -32,13 +33,14 @@ export const StrategyOverviewCard = ({
       );
     }
 
-    // Just display the first paragraph or first 300 characters
-    const summary = fullPlanText.split('\n\n')[0].substring(0, 300);
+    // Parse the JSON and extract a readable summary
+    const parsedData = parseFullStrategyJson(fullPlanText);
+    const summary = getStrategySummary(parsedData, fullPlanText);
     
     return (
       <div>
         <p className="mb-4 text-sm text-muted-foreground">
-          {summary}...
+          {summary || "Your content strategy includes recommendations based on your creator profile. View the full plan for detailed suggestions."}
         </p>
       </div>
     );
@@ -49,7 +51,7 @@ export const StrategyOverviewCard = ({
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-lg">
           <span className="flex items-center">
-            Your {strategyType?.charAt(0).toUpperCase() + strategyType?.slice(1)} Content Strategy
+            Your {strategyType ? (strategyType.charAt(0).toUpperCase() + strategyType.slice(1)) : "Content"} Strategy
             {isConfirmed && <CheckCircle className="ml-2 h-4 w-4 text-green-500" />}
           </span>
           {onRegenerateClick && (
