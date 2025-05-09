@@ -13,8 +13,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { trackUserAction } from "@/utils/xpUtils";
 import { supabase } from "@/lib/supabaseClient";
 import { useProgressTracking } from "@/hooks/dashboard/useProgressTracking"; 
+import { toast } from "@/hooks/use-toast";
 
-export const StrategyPlanSection = () => {
+export const StrategyPlanSection = ({ refreshData }: { refreshData?: () => void }) => {
   const [isFullPlanOpen, setIsFullPlanOpen] = useState(false);
   const [isRegeneratePlanOpen, setIsRegeneratePlanOpen] = useState(false);
   const { 
@@ -48,6 +49,7 @@ export const StrategyPlanSection = () => {
     // Add a longer delay before fetching to ensure the database has updated
     setTimeout(() => {
       fetchStrategyData();
+      if (refreshData) refreshData();
     }, 2500);
   };
   
@@ -92,6 +94,8 @@ export const StrategyPlanSection = () => {
                 updated_at: new Date().toISOString()
               })
               .eq('user_id', user.id);
+              
+            console.log(`XP updated: ${currentProgress.current_xp} -> ${newXP}, Level: ${currentProgress.current_level} -> ${newLevel}`);
           }
           
           // Directly update the profiles table XP as well
@@ -108,7 +112,20 @@ export const StrategyPlanSection = () => {
           // Force refresh progress data to show updated XP and level
           fetchProgressData();
           
+          // Call parent refresh function if available
+          if (refreshData) {
+            setTimeout(() => {
+              refreshData();
+            }, 1000);
+          }
+          
           console.log("XP rewarded and progress updated for strategy confirmation");
+          
+          // Show toast notification
+          toast({
+            title: "Strategy Confirmed!",
+            description: `You earned +100 XP for confirming your strategy. Great work!`,
+          });
         } catch (err) {
           console.error("Error awarding strategy confirmation XP:", err);
         }

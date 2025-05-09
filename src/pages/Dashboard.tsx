@@ -17,6 +17,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabaseClient";
+import { toast } from "@/hooks/use-toast";
 
 console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
 console.log('VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY);
@@ -29,6 +30,7 @@ export default function Dashboard() {
   const [queryClient] = useState(() => new QueryClient());
   const [showContent, setShowContent] = useState(false);
   const [activeTab, setActiveTab] = useState<'content' | 'analytics' | 'planner'>('content');
+  const [dataRefreshTrigger, setDataRefreshTrigger] = useState(0);
   
   const {
     strategy,
@@ -54,21 +56,29 @@ export default function Dashboard() {
   const isStrategyConfirmed = !!(strategy?.confirmed_at);
   const isStarterStrategy = strategy?.strategy_type === 'starter';
 
-  // Updated useEffect to refresh data more frequently
+  // Force refresh data when component mounts and when refreshTrigger changes
   useEffect(() => {
     if (user && user.id) {
+      console.log("Dashboard initializing - fetching user data");
+      fetchUserData();
       checkUserOnboardingAnswers();
+    }
+  }, [user, fetchUserData, dataRefreshTrigger]);
+
+  // Updated useEffect to refresh data more frequently when strategy is confirmed
+  useEffect(() => {
+    if (user && user.id && isStrategyConfirmed) {
+      console.log("Setting up refresh interval for confirmed strategy");
       
       // Set up an interval to refresh data on dashboard when strategy is confirmed
       const refreshInterval = setInterval(() => {
-        if (isStrategyConfirmed) {
-          fetchUserData();
-        }
+        console.log("Auto-refreshing dashboard data");
+        fetchUserData();
       }, 30000); // Refresh every 30 seconds if strategy is confirmed
       
       return () => clearInterval(refreshInterval);
     }
-  }, [user, navigate, isStrategyConfirmed, fetchUserData]);
+  }, [user, isStrategyConfirmed, fetchUserData]);
 
   // Function to check if user has onboarding answers
   const checkUserOnboardingAnswers = async () => {
@@ -109,15 +119,37 @@ export default function Dashboard() {
     generationError,
     retryCount,
     errorShown,
-    hasAttemptedRetry
+    hasAttemptedRetry,
+    isStrategyConfirmed,
+    isStarterStrategy
   });
 
   // Refresh data whenever the strategy confirmed status changes
   useEffect(() => {
     if (strategy?.confirmed_at) {
+      console.log("Strategy confirmed, refreshing data");
       fetchUserData();
+      
+      // Show success toast
+      toast({
+        title: "Strategy Confirmed",
+        description: "Your content strategy has been confirmed and XP has been awarded!",
+        variant: "default",
+      });
     }
   }, [strategy?.confirmed_at, fetchUserData]);
+
+  // Function to manually refresh dashboard data
+  const refreshDashboard = () => {
+    console.log("Manual refresh triggered");
+    setDataRefreshTrigger(prev => prev + 1);
+    fetchUserData();
+    
+    toast({
+      title: "Refreshing Data",
+      description: "Dashboard data is being updated...",
+    });
+  };
 
   // Display error toast on generation error, but only once
   useEffect(() => {
@@ -167,6 +199,19 @@ export default function Dashboard() {
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
       <main className="flex-grow container py-6 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Your Dashboard</h1>
+            <Button 
+              onClick={refreshDashboard} 
+              variant="outline" 
+              size="sm" 
+              className="flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
+          
           {loading ? (
             <div className="space-y-4">
               <Skeleton className="h-20 w-full" />
@@ -174,7 +219,12 @@ export default function Dashboard() {
             </div>
           ) : (
             <>
-              <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
+              <CreatorSummaryHeader 
+                user={user} 
+                progress={progress} 
+                loading={loading} 
+                refreshData={refreshDashboard}
+              />
               
               {/* Only show error alert if there's a persistent error after multiple attempts */}
               {generationStatus === 'error' && generationError && retryCount >= 3 && (
@@ -210,7 +260,7 @@ export default function Dashboard() {
                 </Alert>
               )}
               
-              <StrategyPlanSection />
+              <StrategyPlanSection refreshData={refreshDashboard} />
 
               {isStrategyConfirmed ? (
                 <>
