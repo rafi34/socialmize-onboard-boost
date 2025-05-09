@@ -177,13 +177,13 @@ ${Object.entries(formattedOnboarding)
   .join('\n')}
 
 ## Strategy Information
-- Strategy Type: ${formattedStrategy.type.charAt(0).toUpperCase() + formattedStrategy.type.slice(1)}
+- Strategy Type: ${formattedStrategy.type?.charAt(0).toUpperCase() + formattedStrategy.type?.slice(1) || 'Starter'}
 - Status: ${formattedStrategy.is_confirmed ? 'Confirmed' : 'Not yet confirmed'}
 - Content Types: ${Array.isArray(formattedStrategy.content_types) ? formattedStrategy.content_types.join(', ') : 'Not specified'}
-- Posting Frequency: ${formattedStrategy.posting_frequency}
-- Niche: ${formattedStrategy.niche}
-- Experience Level: ${formattedStrategy.experience_level.charAt(0).toUpperCase() + formattedStrategy.experience_level.slice(1)}
-- Creator Style: ${formattedStrategy.creator_style}
+- Posting Frequency: ${formattedStrategy.posting_frequency || 'Not specified'}
+- Niche: ${formattedStrategy.niche || 'Not specified'}
+- Experience Level: ${formattedStrategy.experience_level?.charAt(0).toUpperCase() + formattedStrategy.experience_level?.slice(1) || 'Beginner'}
+- Creator Style: ${formattedStrategy.creator_style || 'Not specified'}
 
 ${formattedStrategy.summary ? `## Strategy Summary\n${formattedStrategy.summary}` : ''}
 
@@ -197,6 +197,7 @@ When responding:
 - Format your advice to be easily scannable and digestible
 - If providing content ideas, format them as a bulleted list at the end of your message
 - Address the user directly and be encouraging
+- Start with a brief welcome and summary of their strategy
 
 Remember that the user wants practical guidance on implementing their strategy, not technical explanations about the strategy itself.
 `;
@@ -300,9 +301,9 @@ Never include raw JSON in your responses.
         
         // Check for completion markers in the message
         const isCompleted = messageContent.includes("[content_ideas_ready]") || 
-                            messageContent.includes("[CONTENT_IDEAS]") ||
-                            messageContent.includes("[STRATEGY_COMPLETE]") ||
-                            messageContent.includes("[COMPLETED]");
+                          messageContent.includes("[CONTENT_IDEAS]") ||
+                          messageContent.includes("[STRATEGY_COMPLETE]") ||
+                          messageContent.includes("[COMPLETED]");
 
         // Extract content ideas if present
         let contentIdeas = [];

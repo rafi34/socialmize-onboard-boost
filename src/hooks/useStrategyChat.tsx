@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -534,9 +533,6 @@ I'm your AI Strategy Assistant, here to help you implement and refine your conte
       }
     };
     
-    // Prepare initial context message with comprehensive user data
-    // Include detailed strategy information if available
-    
     // Format creator details for better readability
     const formatCreatorDetail = (key: string, value: string | undefined) => {
       if (!value) return null;
@@ -570,20 +566,14 @@ I'm your AI Strategy Assistant, here to help you implement and refine your conte
       ? `## Creator Profile\n${creatorProfileItems.join('\n')}\n\n`
       : '';
     
-    // Generate the context message
+    // Generate the context message - REMOVING the specific instructions that were showing up
     const contextMessage = `
 ${creatorProfile}
 ## Content Strategy
 ${formattedStrategy}
 
-I would like you to analyze my content strategy for ${onboardingData?.niche_topic || 'my content'} and help me understand how to execute it effectively. Please:
-
-1. Provide a concise summary of my strategy in a conversational tone
-2. Explain how this strategy will help me achieve my goal to ${onboardingData?.creator_mission || 'grow my audience'}
-3. Give me actionable tips for creating ${onboardingData?.content_format_preference?.replace(/_/g, ' ') || 'content'} in my ${strategyData?.creator_style || ''} style
-4. Suggest how I should organize my content creation process for maximum efficiency
-
-Please respond in a conversational, friendly tone. Use markdown formatting for readability, including headings, bullet points, and bold text for emphasis. Do not show me raw JSON data.`;
+I would like you to welcome the user and provide a brief overview of their content strategy.
+`;
 
     // Add user context message to state
     const userContextMessage: ChatMessage = {
