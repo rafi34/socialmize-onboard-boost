@@ -18,7 +18,6 @@ export const StartSessionButton = ({
   sessionStarted,
   hasMessages 
 }: StartSessionButtonProps) => {
-  // Always show the button, regardless of message state
   return (
     <div className="flex justify-center mt-6">
       {!sessionStarted ? (

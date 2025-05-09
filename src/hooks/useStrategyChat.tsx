@@ -127,36 +127,68 @@ export const useStrategyChat = () => {
     // Create personalized welcome message with strategy information
     const strategyType = strategyData?.strategy_type || "starter";
     
-    // Enhanced welcome message that includes strategy details
-    let welcomeMessage = `
-Hi ${formattedName}! 👋 Welcome to your strategy session!
+    // Create sections for the welcome message
+    let welcomeMessage = `## Welcome to Your Content Strategy Session, ${formattedName}! 👋
 
-Based on your profile, I see that:
-${onboardingData.niche_topic ? `- You create content about ${onboardingData.niche_topic}` : ''}
-${onboardingData.creator_style ? `- Your creator style is ${onboardingData.creator_style?.replace('_', ' ')}` : ''}
-${onboardingData.posting_frequency_goal ? `- You aim to post ${onboardingData.posting_frequency_goal?.replace('_', ' ')}` : ''}
-${onboardingData.content_format_preference ? `- You prefer creating ${onboardingData.content_format_preference?.replace('_', ' ')} content` : ''}
-`;
+I'm your AI Strategy Assistant, here to help you implement and refine your content strategy.`;
+
+    // Add personalized profile section
+    welcomeMessage += `\n\n### Your Creator Profile\n`;
+    
+    if (onboardingData.niche_topic) {
+      welcomeMessage += `- **Content Niche:** ${onboardingData.niche_topic}\n`;
+    }
+    
+    if (onboardingData.creator_style) {
+      const style = onboardingData.creator_style.replace(/_/g, ' ');
+      welcomeMessage += `- **Creator Style:** ${style.charAt(0).toUpperCase() + style.slice(1)}\n`;
+    }
+    
+    if (onboardingData.posting_frequency_goal) {
+      const frequency = onboardingData.posting_frequency_goal.replace(/_/g, ' ');
+      welcomeMessage += `- **Posting Goal:** ${frequency.charAt(0).toUpperCase() + frequency.slice(1)}\n`;
+    }
+    
+    if (onboardingData.content_format_preference) {
+      const format = onboardingData.content_format_preference.replace(/_/g, ' ');
+      welcomeMessage += `- **Content Format:** ${format.charAt(0).toUpperCase() + format.slice(1)}\n`;
+    }
 
     // Add strategy details if available
     if (strategyData) {
-      welcomeMessage += `
-You're currently on our ${strategyType.charAt(0).toUpperCase() + strategyType.slice(1)} strategy plan.
-
-${strategyData.confirmed_at ? '✅ Your content strategy has been confirmed!' : 'Your content strategy is awaiting confirmation.'}
-
-${strategyData.content_types && Array.isArray(strategyData.content_types) ? 
-`🎯 Your content mix includes: ${(strategyData.content_types as string[]).join(', ')}` : ''}
-
-${strategyData.posting_frequency ? `📆 Recommended posting frequency: ${strategyData.posting_frequency}` : ''}
-
-${strategyData.summary ? `💡 Strategy summary: ${strategyData.summary}` : ''}
-`;
+      welcomeMessage += `\n\n### Your Content Strategy\n`;
+      
+      welcomeMessage += `- **Plan Type:** ${strategyType.charAt(0).toUpperCase() + strategyType.slice(1)}\n`;
+      
+      if (strategyData.confirmed_at) {
+        welcomeMessage += `- **Status:** ✅ Confirmed and ready to implement\n`;
+      } else {
+        welcomeMessage += `- **Status:** Awaiting confirmation\n`;
+      }
+      
+      if (strategyData.content_types && Array.isArray(strategyData.content_types)) {
+        welcomeMessage += `- **Content Mix:** ${(strategyData.content_types as string[]).join(', ')}\n`;
+      }
+      
+      if (strategyData.posting_frequency) {
+        welcomeMessage += `- **Recommended Frequency:** ${strategyData.posting_frequency}\n`;
+      }
+      
+      if (strategyData.summary) {
+        welcomeMessage += `\n### Strategy Summary\n${strategyData.summary}\n`;
+      }
+      
+      // Add a condensed version of the full plan if it exists
+      if (strategyData.full_plan_text) {
+        // Only include the first few sentences of the plan as a teaser
+        const planPreview = strategyData.full_plan_text.split('.').slice(0, 3).join('.') + '.';
+        welcomeMessage += `\n### Plan Highlights\n${planPreview}\n\n*Click "Start Chat" below to discuss your strategy in detail!*`;
+      }
     }
 
-    welcomeMessage += `
-I'm your AI Strategist, and I'll help you with your personalized content plan. Click the Start Session button when you're ready to begin our conversation!
-`;
+    if (!strategyData) {
+      welcomeMessage += `\n\nLet's develop your content strategy together! Click "Start Chat" to begin our conversation.`;
+    }
 
     const initialMessage: ChatMessage = {
       id: "welcome",

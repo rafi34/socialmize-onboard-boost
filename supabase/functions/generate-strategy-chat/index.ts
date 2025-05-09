@@ -10,7 +10,7 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const openaiApiKey = Deno.env.get("OPENAI_API_KEY") || "";
 const assistantId = Deno.env.get("ASSISTANT_ID") || "";
 
-// Initialize OpenAI client with v2 header - Fixed the header
+// Initialize OpenAI client with correct v2 header
 const openai = new OpenAI({
   apiKey: openaiApiKey,
   defaultHeaders: {
