@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
 interface AuthContextType {
@@ -33,12 +33,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (event === 'SIGNED_IN' && currentSession) {
           console.log('User signed in:', currentSession.user);
+          
+          // Add extra debug logging
+          console.log('User ID:', currentSession.user.id);
+          console.log('User session:', currentSession);
+          
           toast({
             title: "Welcome!",
             description: "You've successfully signed in.",
           });
-
-          // No need to navigate immediately, let the app handle routing based on onboarding status
         }
 
         if (event === 'SIGNED_OUT') {
@@ -59,6 +62,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Then check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       console.log('Initial session check:', currentSession?.user?.email);
+      console.log('Session data:', currentSession);
+      
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       setLoading(false);

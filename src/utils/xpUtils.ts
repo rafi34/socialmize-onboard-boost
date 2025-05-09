@@ -44,17 +44,8 @@ export async function awardXp(userId: string, event: string, amount: number): Pr
       })
       .eq('id', userId);
     
-    // Update leaderboard entry
-    const { error: leaderboardError } = await supabase
-      .from('leaderboard_entries')
-      .upsert({
-        user_id: userId,
-        level: newLevel,
-        xp: newXp,
-        updated_at: new Date().toISOString(),
-      });
-      
-    if (leaderboardError) console.error("Failed to update leaderboard:", leaderboardError);
+    // Update leaderboard entry - no longer needed as we're using the profiles table
+    // The profiles table already has the XP and level information
     
     // Track user action
     if (shouldLevelUp) {

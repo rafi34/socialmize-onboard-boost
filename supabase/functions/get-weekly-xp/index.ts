@@ -39,10 +39,13 @@ serve(async (req) => {
     });
 
     if (!xpResponse.ok) {
+      console.error(`XP events fetch failed with status: ${xpResponse.status}`);
       throw new Error(`Failed to fetch XP events: ${xpResponse.statusText}`);
     }
 
     const xpEvents = await xpResponse.json();
+    console.log(`Found ${xpEvents.length} XP events for user ${userId}`);
+    
     const totalXp = xpEvents.reduce((sum: number, event: any) => sum + (event.amount || 0), 0);
 
     // Get the user's streak from progress_tracking
@@ -54,6 +57,7 @@ serve(async (req) => {
     });
 
     if (!progressResponse.ok) {
+      console.error(`Progress tracking fetch failed with status: ${progressResponse.status}`);
       throw new Error(`Failed to fetch progress tracking: ${progressResponse.statusText}`);
     }
 
