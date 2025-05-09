@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,7 @@ export const LeaderboardSection = () => {
   const [leaderboardUsers, setLeaderboardUsers] = useState<LeaderboardUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [userRank, setUserRank] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
     if (user) {
@@ -28,32 +28,30 @@ export const LeaderboardSection = () => {
   const fetchLeaderboardData = async () => {
     try {
       setLoading(true);
+      setError(null);
       
-      // Get top 10 users by XP
-      const { data: leaderboardData, error: leaderboardError } = await supabase
-        .from('leaderboard_entries')
+      // Get top users by XP from profiles table instead of leaderboard_entries
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
         .select(`
-          user_id,
+          id,
           level,
           xp,
-          updated_at,
-          profiles:user_id (
-            email
-          )
+          email
         `)
         .order('xp', { ascending: false })
         .limit(10);
         
-      if (leaderboardError) throw leaderboardError;
+      if (profilesError) throw profilesError;
       
       // Format the data
-      const formattedData: LeaderboardUser[] = leaderboardData?.map(entry => ({
-        user_id: entry.user_id,
-        level: entry.level,
-        xp: entry.xp,
-        updated_at: entry.updated_at,
-        email: (entry.profiles as any)?.email || "Unknown",
-        name: maskEmail((entry.profiles as any)?.email || "Unknown")
+      const formattedData: LeaderboardUser[] = profilesData?.map(profile => ({
+        user_id: profile.id,
+        level: profile.level || 1,
+        xp: profile.xp || 0,
+        updated_at: new Date().toISOString(),
+        email: profile.email || "Unknown",
+        name: maskEmail(profile.email || "Unknown")
       })) || [];
       
       setLeaderboardUsers(formattedData);
@@ -66,7 +64,7 @@ export const LeaderboardSection = () => {
         } else {
           // If user not in top 10, get their rank
           const { count: betterUsers, error: countError } = await supabase
-            .from('leaderboard_entries')
+            .from('profiles')
             .select('*', { count: 'exact', head: true })
             .gt('xp', (formattedData.find(entry => entry.user_id === user.id)?.xp || 0));
             
@@ -78,8 +76,9 @@ export const LeaderboardSection = () => {
         }
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching leaderboard data:", error);
+      setError("Failed to load leaderboard data");
     } finally {
       setLoading(false);
     }
@@ -143,7 +142,21 @@ export const LeaderboardSection = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {leaderboardUsers.length > 0 ? (
+        {error && (
+          <div className="text-center py-4 text-red-500 mb-4">
+            {error}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={fetchLeaderboardData}
+              className="ml-2"
+            >
+              Try Again
+            </Button>
+          </div>
+        )}
+        
+        {!error && leaderboardUsers.length > 0 ? (
           <div className="space-y-1">
             {leaderboardUsers.map((entry, index) => (
               <div 
@@ -171,12 +184,14 @@ export const LeaderboardSection = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            No leaderboard data available yet.
-          </div>
+          !error && (
+            <div className="text-center py-8 text-muted-foreground">
+              No leaderboard data available yet.
+            </div>
+          )
         )}
         
-        {userRank && userRank > 10 && (
+        {!error && userRank && userRank > 10 && (
           <div className="mt-4 pt-4 border-t">
             <div className="flex items-center justify-between py-2 px-3 rounded-md bg-muted/50">
               <div className="flex items-center">
