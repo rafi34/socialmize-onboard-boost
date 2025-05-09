@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -186,8 +185,16 @@ const StrategyChat = () => {
       }
       
       if (data && data.length > 0) {
+        // Map the data from database format to ChatMessage format
+        const formattedMessages: ChatMessage[] = data.map(msg => ({
+          id: msg.id,
+          role: msg.role,
+          message: msg.content, // Map content field to message
+          created_at: msg.created_at
+        }));
+        
         // If we have history, replace our initial message
-        setMessages(data as ChatMessage[]);
+        setMessages(formattedMessages);
       }
     } catch (error) {
       console.error('Error fetching message history:', error);
@@ -210,7 +217,7 @@ const StrategyChat = () => {
           user_id: user.id,
           thread_id: currentThreadId,
           role: message.role,
-          message: message.message
+          content: message.message // Map message field to content
         });
         
       if (error) {

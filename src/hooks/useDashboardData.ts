@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -121,16 +121,30 @@ export function useDashboardData() {
         const confirmed = typeof strategyData.weekly_calendar === "object";
         setPlanConfirmed(confirmed);
 
+        // Safely handle JSON types from Supabase
+        const contentTypes = Array.isArray(strategyData.content_types) 
+          ? strategyData.content_types as string[] 
+          : [];
+          
+        const weeklyCalendar = typeof strategyData.weekly_calendar === 'object' 
+          ? strategyData.weekly_calendar as Record<string, string[]> 
+          : {};
+          
+        const topicIdeas = Array.isArray(strategyData.topic_ideas) 
+          ? strategyData.topic_ideas as string[] 
+          : [];
+
         setStrategy({
-          experience_level: strategyData.experience_level,
-          content_types: strategyData.content_types,
-          weekly_calendar: strategyData.weekly_calendar,
+          experience_level: strategyData.experience_level || '',
+          content_types: contentTypes,
+          weekly_calendar: weeklyCalendar,
           posting_frequency: strategyData.posting_frequency || "3-5x per week",
           creator_style: strategyData.creator_style || "Authentic",
           content_breakdown: {},
           full_plan_text: strategyData.full_plan_text,
           niche_topic: strategyData.niche_topic,
-          topic_ideas: strategyData.topic_ideas,
+          topic_ideas: topicIdeas,
+          summary: strategyData.summary
         });
 
         setGenerationStatus("success");

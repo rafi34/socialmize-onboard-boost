@@ -9,6 +9,7 @@ import { calculateLevelProgress, getXpForNextLevel } from "@/utils/xpUtils";
 
 interface LevelProgressCardProps {
   loading?: boolean;
+  progress?: any; // Allow progress to be passed optionally
 }
 
 interface ProfileData {
@@ -17,16 +18,24 @@ interface ProfileData {
   strategist_persona?: string;
 }
 
-export const LevelProgressCard = ({ loading }: LevelProgressCardProps) => {
+export const LevelProgressCard = ({ loading: initialLoading, progress: progressProp }: LevelProgressCardProps) => {
   const { user } = useAuth();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
-  const [isLoading, setIsLoading] = useState(loading || true);
+  const [isLoading, setIsLoading] = useState(initialLoading || true);
 
   useEffect(() => {
-    if (user) {
+    if (user && !progressProp) {
       fetchProfileData();
+    } else if (progressProp) {
+      // If progress is directly passed as prop, use it
+      setProfileData({
+        level: progressProp.current_level || 1,
+        xp: progressProp.current_xp || 0,
+        strategist_persona: progressProp.level_tag
+      });
+      setIsLoading(false);
     }
-  }, [user]);
+  }, [user, progressProp]);
 
   const fetchProfileData = async () => {
     try {
@@ -41,7 +50,7 @@ export const LevelProgressCard = ({ loading }: LevelProgressCardProps) => {
     } catch (error) {
       console.error("Error fetching profile data:", error);
     } finally {
-      setIsLoading(false); // Fix: Changed from setIsLoading(false) to properly handle the state
+      setIsLoading(false);
     }
   };
 

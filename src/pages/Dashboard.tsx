@@ -1,4 +1,3 @@
-
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -178,9 +177,9 @@ export default function Dashboard() {
                     <TabsContent value="planner">
                       <DashboardPlanner 
                         strategy={strategy}
-                        progress={progress}
                         reminder={reminder}
                         loading={loading}
+                        progress={progress}
                       />
                     </TabsContent>
                     
