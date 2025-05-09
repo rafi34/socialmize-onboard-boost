@@ -1,4 +1,5 @@
 
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, FileText, RefreshCw, CheckCircle } from "lucide-react";
@@ -46,12 +47,17 @@ export const StrategyOverviewCard = ({
     );
   };
 
+  // Format the strategy type for display with first letter capitalized
+  const formattedType = strategyType ? 
+    (strategyType.charAt(0).toUpperCase() + strategyType.slice(1)) : 
+    "Content";
+
   return (
     <Card className="w-full">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-lg">
           <span className="flex items-center">
-            Your {strategyType ? (strategyType.charAt(0).toUpperCase() + strategyType.slice(1)) : "Content"} Strategy
+            {`Your ${formattedType} Strategy`}
             {isConfirmed && <CheckCircle className="ml-2 h-4 w-4 text-green-500" />}
           </span>
           {onRegenerateClick && (
@@ -81,7 +87,7 @@ export const StrategyOverviewCard = ({
           {!isConfirmed && onConfirmClick && (
             <Button size="sm" onClick={onConfirmClick} className="flex items-center gap-1">
               <CheckCircle className="h-4 w-4" />
-              Confirm Strategy
+              {`Confirm ${formattedType} Strategy`}
             </Button>
           )}
         </div>
@@ -113,3 +119,4 @@ export const StrategyCardSkeleton = () => {
     </Card>
   );
 };
+

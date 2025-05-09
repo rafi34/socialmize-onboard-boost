@@ -143,6 +143,7 @@ export default function Dashboard() {
 
   // Check if strategy is confirmed based on confirmed_at (not the weekly_calendar)
   const isStrategyConfirmed = !!(strategy?.confirmed_at);
+  const isStarterStrategy = strategy?.strategy_type === 'starter';
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
@@ -176,6 +177,17 @@ export default function Dashboard() {
                       <RefreshCw className="h-4 w-4 mr-1" />
                       Try again manually
                     </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* Updated Strategy Confirmed Alert */}
+              {strategy && isStrategyConfirmed && (
+                <Alert variant="default" className="mb-4 bg-green-50 border-green-200">
+                  <Sparkles className="h-5 w-5 text-green-500" />
+                  <AlertTitle>{isStarterStrategy ? "Starter Strategy Confirmed" : "Strategy Confirmed"}</AlertTitle>
+                  <AlertDescription className="text-gray-600">
+                    🎉 You unlocked the {isStarterStrategy ? "Starter Strategy" : "Monthly Strategy"} and earned <strong>+100 XP</strong>.
                   </AlertDescription>
                 </Alert>
               )}
@@ -229,6 +241,19 @@ export default function Dashboard() {
                       />
                     </TabsContent>
                   </Tabs>
+                  
+                  {/* Advanced Strategy Upgrade Banner */}
+                  {isStrategyConfirmed && isStarterStrategy && (
+                    <div className="bg-primary/5 p-4 rounded-md mt-6 text-center">
+                      <h4 className="text-lg font-semibold mb-2">Ready to go deeper?</h4>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        You can now unlock your next-level plan with advanced strategy questions.
+                      </p>
+                      <Button onClick={() => navigate('/strategy-onboarding')}>
+                        Unlock Advanced Strategy
+                      </Button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="text-center py-12 bg-muted rounded-lg">

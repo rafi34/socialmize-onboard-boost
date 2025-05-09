@@ -10,6 +10,7 @@ import { CalendarDays, AlertTriangle, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
+import { trackUserAction } from "@/utils/xpUtils";
 
 export const StrategyPlanSection = () => {
   const [isFullPlanOpen, setIsFullPlanOpen] = useState(false);
@@ -49,7 +50,26 @@ export const StrategyPlanSection = () => {
   
   const handleConfirmStrategy = async () => {
     const success = await confirmStrategyPlan();
-    if (success) {
+    if (success && user) {
+      // Add XP reward for confirming strategy
+      await trackUserAction(user.id, 'strategy_confirmed', {
+        strategy_id: strategy?.id,
+        strategy_type: strategy?.strategy_type || 'starter'
+      });
+      
+      // Award +100 XP directly to xp_progress
+      if (user.id) {
+        try {
+          await supabase.from('xp_progress').insert({
+            user_id: user.id,
+            event: 'strategy_confirmed',
+            xp_earned: 100
+          });
+        } catch (err) {
+          console.error("Error awarding strategy confirmation XP:", err);
+        }
+      }
+      
       fetchStrategyData();
     }
   };
@@ -58,6 +78,7 @@ export const StrategyPlanSection = () => {
   const hasWeeklyCalendar = !!(strategy?.weekly_calendar && 
     Object.keys(strategy.weekly_calendar).length > 0);
   const isConfirmed = !!strategy?.confirmed_at;
+  const isStarterStrategy = strategy?.strategy_type === 'starter';
 
   return (
     <div className="mb-6 flex flex-col md:flex-row items-start gap-4">
@@ -80,15 +101,12 @@ export const StrategyPlanSection = () => {
           </Alert>
         )}
         
-        {strategy && isConfirmed && (
-          <Alert variant="default" className="mb-4 bg-green-50 border-green-200">
-            <CheckCircle className="h-4 w-4 text-green-500" />
-            <AlertTitle>Strategy Confirmed</AlertTitle>
-            <AlertDescription className="text-gray-600">
-              {strategy.confirmed_at && 
-                `You confirmed this ${strategy.strategy_type || 'starter'} strategy plan ${formatDistanceToNow(new Date(strategy.confirmed_at))} ago.`}
-            </AlertDescription>
-          </Alert>
+        {/* Title adjusted based on strategy type */}
+        {strategy && (
+          <h2 className="text-xl font-semibold mb-4">
+            {isStarterStrategy ? "Your Starter Strategy" : "Your Monthly Strategy"}
+            {isConfirmed && <span className="ml-2 text-green-500">✅</span>}
+          </h2>
         )}
         
         <StrategyOverviewCard 

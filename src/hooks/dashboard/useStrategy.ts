@@ -68,9 +68,13 @@ export function useStrategy() {
       const data = await res.json();
       if (data.mock) console.log("Using mock strategy");
 
+      // Update toast message to include strategy type
+      const strategyType = onboardingData?.strategy_type || "starter";
+      const strategyTypeDisplay = strategyType.charAt(0).toUpperCase() + strategyType.slice(1);
+
       toast({
-        title: "Strategy Generated",
-        description: "Your personalized content strategy is ready!",
+        title: `${strategyTypeDisplay} Strategy Generated`,
+        description: `Your personalized ${strategyType} content strategy is ready!`,
       });
 
       setGenerationStatus("success");

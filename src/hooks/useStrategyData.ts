@@ -219,7 +219,7 @@ export function useStrategyData() {
       
       toast({
         title: "Strategy Confirmed",
-        description: "Your content strategy has been confirmed!",
+        description: `Your ${strategy.strategy_type === "starter" ? "Starter" : ""} content strategy has been confirmed! +100 XP`,
       });
       
       return true;
