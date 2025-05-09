@@ -1,3 +1,4 @@
+
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,7 +16,7 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 
 console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
 console.log('VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY);
@@ -49,10 +50,14 @@ export default function Dashboard() {
     hasAttemptedRetry
   } = useDashboardData();
 
+  // Check if strategy is confirmed based on confirmed_at (not the weekly_calendar)
+  const isStrategyConfirmed = !!(strategy?.confirmed_at);
+  const isStarterStrategy = strategy?.strategy_type === 'starter';
+
   // Updated useEffect to refresh data more frequently
   useEffect(() => {
     if (user && user.id) {
-      checkOnboardingAnswers();
+      checkUserOnboardingAnswers();
       
       // Set up an interval to refresh data on dashboard when strategy is confirmed
       const refreshInterval = setInterval(() => {
@@ -64,6 +69,29 @@ export default function Dashboard() {
       return () => clearInterval(refreshInterval);
     }
   }, [user, navigate, isStrategyConfirmed, fetchUserData]);
+
+  // Function to check if user has onboarding answers
+  const checkUserOnboardingAnswers = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('onboarding_answers')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('Error checking onboarding answers:', error);
+        return;
+      }
+      
+      setHasOnboardingAnswers(!!data);
+      setOnboardingChecked(true);
+    } catch (err) {
+      console.error("Error checking onboarding status:", err);
+      setOnboardingChecked(true);
+    }
+  };
 
   // Debug logging
   console.log('Dashboard debug:', {
@@ -134,10 +162,6 @@ export default function Dashboard() {
       />
     );
   }
-
-  // Check if strategy is confirmed based on confirmed_at (not the weekly_calendar)
-  const isStrategyConfirmed = !!(strategy?.confirmed_at);
-  const isStarterStrategy = strategy?.strategy_type === 'starter';
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
