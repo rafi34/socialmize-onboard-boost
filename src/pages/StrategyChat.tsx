@@ -186,9 +186,10 @@ const StrategyChat = () => {
       
       if (data && data.length > 0) {
         // Map the data from database format to ChatMessage format
+        // Ensure the roles match the expected union type
         const formattedMessages: ChatMessage[] = data.map(msg => ({
           id: msg.id,
-          role: msg.role,
+          role: normalizeRole(msg.role),
           message: msg.content, // Map content field to message
           created_at: msg.created_at
         }));
@@ -204,6 +205,14 @@ const StrategyChat = () => {
         variant: "destructive"
       });
     }
+  };
+
+  // Helper function to normalize role to the expected union type
+  const normalizeRole = (role: string): 'user' | 'assistant' | 'system' => {
+    if (role === 'user' || role === 'assistant' || role === 'system') {
+      return role as 'user' | 'assistant' | 'system';
+    }
+    return 'user'; // Default fallback
   };
 
   // Save message to Supabase

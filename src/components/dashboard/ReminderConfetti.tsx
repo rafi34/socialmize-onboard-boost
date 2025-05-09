@@ -8,7 +8,7 @@ interface ReminderConfettiProps {
 }
 
 export const ReminderConfetti = ({ active, duration = 3000 }: ReminderConfettiProps) => {
-  const [showConfetti, setShowConfetti] = useState(active);
+  const [showConfetti, setShowConfetti] = useState(active); // Changed to boolean type
   const [windowDimension, setWindowDimension] = useState({
     width: window.innerWidth,
     height: window.innerHeight,

@@ -1,4 +1,3 @@
-
 import { EnhancedWeeklyCalendarGrid } from "./EnhancedWeeklyCalendarGrid";
 import { CreatorSummaryHeader } from "./CreatorSummaryHeader";
 import { TodaysMissionCard } from "./TodaysMissionCard";
@@ -23,7 +22,7 @@ export const DashboardLayout = () => {
   const [reminder, setReminder] = useState<ReminderData | null>(null);
   const [activeTab, setActiveTab] = useState("today");
   const [scripts, setScripts] = useState<GeneratedScript[] | null>(null);
-  const [showCelebration, setShowCelebration] = useState(false);
+  const [showCelebration, setShowCelebration] = useState<boolean>(false); // Changed to boolean type
   const [level, setLevel] = useState(1);
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
