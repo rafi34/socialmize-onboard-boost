@@ -23,6 +23,7 @@ const StrategyChat = () => {
     sessionStarted,
     hasExistingChat,
     handleStartSession,
+    handleEndSession,
     handleSendMessage,
     handleViewContentIdeas,
     handleBackToDashboard,
@@ -48,8 +49,10 @@ const StrategyChat = () => {
       {/* Header */}
       <StrategyChatHeader
         hasExistingChat={hasExistingChat}
+        sessionStarted={sessionStarted}
         onBackToDashboard={handleBackToDashboard}
         onNewSession={handleNewSession}
+        onEndSession={handleEndSession}
       />
       
       {/* Chat area */}
@@ -64,9 +67,10 @@ const StrategyChat = () => {
             />
           ))}
           
-          {/* Start Session button */}
+          {/* Start/End Session button */}
           <StartSessionButton
             onStartSession={handleStartSession}
+            onEndSession={handleEndSession}
             isLoading={isLoading}
             sessionStarted={sessionStarted}
             hasMessages={messages.length > 0}
@@ -82,7 +86,7 @@ const StrategyChat = () => {
         </div>
       </div>
       
-      {/* Input area - only shown after session has started */}
+      {/* Input area - only shown after session has started and not ended */}
       <StrategyChatInput
         inputMessage={inputMessage}
         setInputMessage={setInputMessage}

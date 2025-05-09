@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -385,8 +384,22 @@ I'm your AI Strategist, and I'll help build your personalized content plan. Clic
     setErrorMessage(null);
     setSessionStarted(true);
     
-    // Prepare initial context message with user data
-    const contextMessage = `I am starting a new strategy session. Here's my profile info:
+    // Gather all relevant context data
+    const contextData = {
+      onboarding: onboardingData,
+      strategy: strategyData,
+      user: {
+        id: user?.id,
+        email: userProfile?.email,
+        level: userProfile?.level || 1
+      }
+    };
+    
+    // Prepare initial context message with comprehensive user data
+    const contextMessage = `
+I am starting a new strategy session. Here's my complete profile info:
+
+CREATOR PROFILE:
 - Creator type: ${onboardingData?.creator_mission || 'Not specified'}
 - Style: ${onboardingData?.creator_style || 'Not specified'}
 - Content format: ${onboardingData?.content_format_preference || 'Not specified'}
@@ -394,7 +407,12 @@ I'm your AI Strategist, and I'll help build your personalized content plan. Clic
 - Niche topic: ${onboardingData?.niche_topic || 'Not specified'}
 - Experience level: ${strategyData?.experience_level || 'Beginner'}
 
-Help me develop a content strategy for my ${onboardingData?.niche_topic || 'content'}.`;
+EXISTING STRATEGY:
+${strategyData?.strategy_type ? `- Current strategy type: ${strategyData.strategy_type}` : '- No current strategy'}
+${strategyData?.posting_frequency ? `- Posting frequency: ${strategyData.posting_frequency}` : ''}
+${strategyData?.content_types ? `- Content types: ${JSON.stringify(strategyData.content_types)}` : ''}
+
+Help me develop or improve my content strategy for my ${onboardingData?.niche_topic || 'content'}.`;
 
     // Add user context message to state
     const userContextMessage: ChatMessage = {
@@ -412,14 +430,16 @@ Help me develop a content strategy for my ${onboardingData?.niche_topic || 'cont
     setMessages(prev => [...prev, { id: tempAssistantId, role: "assistant", message: waitingMessage }]);
     
     try {
-      // Call the edge function with context data
+      // Call the edge function with comprehensive context data
       const { data, error } = await supabase.functions.invoke("generate-strategy-chat", {
         body: {
           userId: user?.id,
           userMessage: contextMessage,
           threadId: null, // Create a new thread
           onboardingData: onboardingData,
-          strategyData: strategyData
+          strategyData: strategyData,
+          userProfile: userProfile,
+          isSessionStart: true // Flag to indicate this is a session start
         }
       });
       
@@ -462,6 +482,50 @@ Help me develop a content strategy for my ${onboardingData?.niche_topic || 'cont
       
       // Remove the waiting message on error
       setMessages(prev => prev.filter(msg => msg.id !== tempAssistantId));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle ending the session
+  const handleEndSession = async () => {
+    if (!sessionStarted) return;
+    
+    setIsLoading(true);
+    
+    try {
+      // Add a system message indicating the session has ended
+      const systemMessage: ChatMessage = {
+        id: `system-${Date.now()}`,
+        role: 'system',
+        message: "Chat session ended by user. You can start a new session or continue this conversation later."
+      };
+      
+      // Add the system message to the UI
+      setMessages(prev => [...prev, systemMessage]);
+      
+      // Save the system message to Supabase if we have a thread ID
+      if (threadId && user) {
+        await saveMessage({
+          role: 'system',
+          message: systemMessage.message
+        }, threadId);
+      }
+      
+      // Mark session as ended but keep messages visible
+      setSessionStarted(false);
+      
+      toast({
+        title: "Session Ended",
+        description: "Your strategy session has been saved. You can return to it anytime.",
+      });
+    } catch (error) {
+      console.error("Error ending session:", error);
+      toast({
+        title: "Error",
+        description: "There was a problem ending your session.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -620,6 +684,7 @@ Help me develop a content strategy for my ${onboardingData?.niche_topic || 'cont
     sessionStarted,
     hasExistingChat,
     handleStartSession,
+    handleEndSession,
     handleSendMessage,
     handleViewContentIdeas,
     handleBackToDashboard,

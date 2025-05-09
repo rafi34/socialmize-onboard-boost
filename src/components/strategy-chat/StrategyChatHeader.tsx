@@ -1,19 +1,23 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles, StopCircle } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface StrategyChatHeaderProps {
   hasExistingChat: boolean;
+  sessionStarted: boolean;
   onBackToDashboard: () => void;
   onNewSession: () => void;
+  onEndSession: () => void;
 }
 
 export const StrategyChatHeader = ({ 
   hasExistingChat, 
+  sessionStarted,
   onBackToDashboard, 
-  onNewSession 
+  onNewSession,
+  onEndSession
 }: StrategyChatHeaderProps) => {
   return (
     <div className="premium-header p-4 md:p-6 sticky top-0 z-10 backdrop-blur-md bg-background/80 border-b border-border/20 shadow-sm">
@@ -35,17 +39,31 @@ export const StrategyChatHeader = ({
           <p className="text-sm md:text-base text-muted-foreground">Let's build your personalized content strategy</p>
         </div>
         
-        {/* New Session Button (only shown if there's an existing chat) */}
-        {hasExistingChat && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="ml-auto"
-            onClick={onNewSession}
-          >
-            New Session
-          </Button>
-        )}
+        <div className="ml-auto flex gap-2">
+          {/* End Session Button (only shown if session has started) */}
+          {sessionStarted && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
+              onClick={onEndSession}
+            >
+              <StopCircle className="h-4 w-4 mr-1" />
+              End Chat
+            </Button>
+          )}
+          
+          {/* New Session Button (only shown if there's an existing chat) */}
+          {hasExistingChat && !sessionStarted && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={onNewSession}
+            >
+              New Session
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
