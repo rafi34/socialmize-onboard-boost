@@ -1,4 +1,3 @@
-
 // supabase/functions/generate-strategy-chat/index.ts
 import { serve } from "https://deno.land/std@0.195.0/http/server.ts";
 import OpenAI from "https://esm.sh/openai@4.28.0";
@@ -23,6 +22,61 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Helper function to parse JSON strategy data
+function parseStrategyJson(text) {
+  if (!text) return null;
+  
+  try {
+    // Clean the text to handle potential formatting issues
+    let cleaned = text.trim()
+      .replace(/^```json\s*/g, '')  // Remove opening ```json
+      .replace(/^```\s*/g, '')      // Remove opening ``` without json
+      .replace(/```$/g, '');        // Remove closing ```
+    
+    // Try to find JSON object boundaries if there's other text
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+    }
+    
+    // Fix common JSON string issues
+    cleaned = cleaned
+      .replace(/\\"/g, '"') // Fix escaped quotes inside already escaped content
+      .replace(/\\n/g, ' ') // Replace \n with spaces for better readability
+      .replace(/\r\n/g, ' ') // Replace Windows line breaks
+      .replace(/\n/g, ' '); // Replace Unix line breaks
+      
+    return JSON.parse(cleaned);
+  } catch (error) {
+    console.error("Error parsing strategy JSON:", error);
+    return null;
+  }
+}
+
+// Helper function to format strategy data
+function formatStrategyData(strategyData) {
+  if (!strategyData) return {};
+  
+  // Parse full plan text if it exists
+  const parsedPlan = strategyData.full_plan_text ? 
+    parseStrategyJson(strategyData.full_plan_text) : null;
+  
+  // Extract key information
+  return {
+    type: strategyData.strategy_type || "starter",
+    is_confirmed: !!strategyData.confirmed_at,
+    content_types: strategyData.content_types || [],
+    posting_frequency: strategyData.posting_frequency || "Not specified",
+    niche: strategyData.niche_topic || "Not specified",
+    experience_level: strategyData.experience_level || "beginner",
+    creator_style: strategyData.creator_style || "Not specified",
+    summary: strategyData.summary || (parsedPlan?.summary || ""),
+    plan_details: parsedPlan || {},
+    has_full_plan: !!strategyData.full_plan_text
+  };
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -74,6 +128,9 @@ serve(async (req) => {
       
       console.log("Strategy profile data retrieved:", strategyProfileData ? "yes" : "no");
       
+      // Format strategy data for better context
+      const formattedStrategy = formatStrategyData(strategyProfileData || strategyData);
+      
       // Create or retrieve a thread
       let currentThreadId = threadId;
       
@@ -84,70 +141,70 @@ serve(async (req) => {
           currentThreadId = thread.id;
           console.log("New thread created:", currentThreadId);
           
-          // If this is a new thread, add comprehensive context info about the user's profile and strategy
-          // Include both onboarding data AND full strategy details
-          const combinedData = {
-            ...onboardingData,
-            ...strategyProfileData
-          };
+          // Format onboarding data for better readability
+          const formattedOnboarding = {};
           
-          // Format strategy details in a more readable way
-          const strategyDetails = strategyProfileData ? {
-            strategy_type: strategyProfileData.strategy_type || "starter",
-            confirmed: strategyProfileData.confirmed_at ? "yes" : "no",
-            content_types: strategyProfileData.content_types,
-            posting_frequency: strategyProfileData.posting_frequency,
-            niche_topic: strategyProfileData.niche_topic,
-            experience_level: strategyProfileData.experience_level,
-            creator_style: strategyProfileData.creator_style,
-            has_full_plan: strategyProfileData.full_plan_text ? "yes" : "no"
-          } : {};
+          // Convert snake_case keys and values to readable format
+          if (onboardingData) {
+            Object.entries(onboardingData).forEach(([key, value]) => {
+              if (typeof value === 'string' && !key.includes('id') && key !== 'created_at' && key !== 'updated_at') {
+                // Format the key
+                const formattedKey = key.replace(/_/g, ' ')
+                  .split(' ')
+                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                  .join(' ');
+                
+                // Format the value
+                const formattedValue = typeof value === 'string' ? 
+                  value.replace(/_/g, ' ')
+                    .split(' ')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ') : 
+                  value;
+                  
+                formattedOnboarding[formattedKey] = formattedValue;
+              }
+            });
+          }
           
-          // Create a much more detailed context message with combined data
+          // Create a detailed but well-formatted context message
           const contextMessage = `
-I'm your AI Strategy Assistant. Here's the complete information about the user I'm helping:
+# Content Strategy Assistant Context
 
-USER PROFILE:
-${Object.entries(onboardingData || {})
-  .filter(([key, value]) => value !== null && value !== undefined && !key.includes('id') && key !== 'created_at' && key !== 'updated_at')
-  .map(([key, value]) => {
-    const formattedKey = key.replace(/_/g, ' ');
-    const formattedValue = typeof value === 'object' ? JSON.stringify(value) : value;
-    return `- ${formattedKey}: ${formattedValue}`;
-  })
+## User Profile
+${Object.entries(formattedOnboarding)
+  .map(([key, value]) => `- ${key}: ${value}`)
   .join('\n')}
 
-STRATEGY DETAILS:
-${Object.entries(strategyDetails)
-  .map(([key, value]) => {
-    const formattedKey = key.replace(/_/g, ' ');
-    const formattedValue = typeof value === 'object' ? JSON.stringify(value) : value;
-    return `- ${formattedKey}: ${formattedValue}`;
-  })
-  .join('\n')}
+## Strategy Information
+- Strategy Type: ${formattedStrategy.type.charAt(0).toUpperCase() + formattedStrategy.type.slice(1)}
+- Status: ${formattedStrategy.is_confirmed ? 'Confirmed' : 'Not yet confirmed'}
+- Content Types: ${Array.isArray(formattedStrategy.content_types) ? formattedStrategy.content_types.join(', ') : 'Not specified'}
+- Posting Frequency: ${formattedStrategy.posting_frequency}
+- Niche: ${formattedStrategy.niche}
+- Experience Level: ${formattedStrategy.experience_level.charAt(0).toUpperCase() + formattedStrategy.experience_level.slice(1)}
+- Creator Style: ${formattedStrategy.creator_style}
 
-${strategyProfileData && strategyProfileData.summary ? 
-`STRATEGY SUMMARY:
-${strategyProfileData.summary}` : ''}
+${formattedStrategy.summary ? `## Strategy Summary\n${formattedStrategy.summary}` : ''}
 
-${strategyProfileData && strategyProfileData.full_plan_text ? 
-`FULL STRATEGY PLAN:
-${strategyProfileData.full_plan_text}` : ''}
+## Assistant Instructions
+You are a friendly Content Strategy Assistant helping creators implement their content strategy plans.
+When responding:
+- Use a conversational, helpful tone
+- Organize your responses with clear headings and bullet points using markdown
+- Provide specific, actionable advice related to their content niche and creator style
+- Never show raw JSON data in your responses
+- Format your advice to be easily scannable and digestible
+- If providing content ideas, format them as a bulleted list at the end of your message
+- Address the user directly and be encouraging
 
-As the user's AI Strategy Assistant, your role is to:
-1. Reference their strategy details and provide insights based on their confirmed plan
-2. Answer questions about their content strategy and creator journey
-3. Offer personalized advice based on their niche, style, and posting frequency
-4. Suggest content ideas that align with their strategy plan
-5. Use a conversational, supportive tone
-
-If the user asks for content ideas, provide them in a structured format at the end of your message using [CONTENT_IDEAS] marker followed by a list of ideas.
+Remember that the user wants practical guidance on implementing their strategy, not technical explanations about the strategy itself.
 `;
 
           // Add initial context message to the thread
           await openai.beta.threads.messages.create(currentThreadId, {
             role: "user",
-            content: `Here's my complete profile and strategy information for context:\n${contextMessage}\n\nI'm ready to talk about my content strategy.`,
+            content: contextMessage,
           });
           
           console.log("Added comprehensive context message to new thread");
@@ -163,9 +220,24 @@ If the user asks for content ideas, provide them in a structured format at the e
         
         console.log("Added user message to thread");
         
+        // Add instructions to respond in a conversational format
+        const instructionsMessage = `
+Remember to respond in a conversational, helpful tone. 
+Format your response with clear markdown structure for readability.
+Provide specific, actionable advice tailored to the user's content niche and creator style.
+Never include raw JSON in your responses.
+`;
+
+        // Add formatting instructions
+        await openai.beta.threads.messages.create(currentThreadId, {
+          role: "user", 
+          content: instructionsMessage
+        });
+        
         // Run the assistant
         const run = await openai.beta.threads.runs.create(currentThreadId, {
           assistant_id: assistantId,
+          instructions: "Respond in a conversational tone. Always format your responses with clear markdown structure for readability. Provide specific, actionable advice tailored to the user's content niche and creator style. Never include raw JSON or technical code in your responses."
         });
         
         console.log("Run created:", run.id);
@@ -215,6 +287,12 @@ If the user asks for content ideas, provide them in a structured format at the e
         
         if (latestMessage.content && latestMessage.content.length > 0 && latestMessage.content[0].type === "text") {
           messageContent = latestMessage.content[0].text.value;
+          
+          // Make a final check for raw JSON in the response and clean if needed
+          if (messageContent.includes('```json')) {
+            messageContent = messageContent.replace(/```json[\s\S]*?```/g, 
+              '*(Strategy information available but shown in a more readable format)*');
+          }
         } else {
           console.warn("Unexpected message format:", JSON.stringify(latestMessage.content));
           messageContent = "I'm having trouble generating a response right now. Please try again.";

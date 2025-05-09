@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Json } from "@/integrations/supabase/types";
+import { parseFullStrategyJson } from "@/utils/parseFullStrategyJson";
 
 interface ChatMessage {
   id: string;
@@ -436,6 +436,9 @@ I'm your AI Strategy Assistant, here to help you implement and refine your conte
     setErrorMessage(null);
     setSessionStarted(true);
     
+    // Format strategy data
+    const formattedStrategy = formatStrategyData(strategyData);
+    
     // Gather all relevant context data including strategy data
     const contextData = {
       onboarding: onboardingData,
@@ -449,40 +452,54 @@ I'm your AI Strategy Assistant, here to help you implement and refine your conte
     
     // Prepare initial context message with comprehensive user data
     // Include detailed strategy information if available
-    let strategyDetails = "";
-    if (strategyData) {
-      strategyDetails = `
-STRATEGY DETAILS:
-${strategyData.strategy_type ? `- Strategy Type: ${strategyData.strategy_type}` : ''}
-${strategyData.confirmed_at ? '- Status: Confirmed' : '- Status: Not yet confirmed'}
-${strategyData.content_types ? `- Content Types: ${JSON.stringify(strategyData.content_types)}` : ''}
-${strategyData.posting_frequency ? `- Posting Frequency: ${strategyData.posting_frequency}` : ''}
-${strategyData.niche_topic ? `- Niche: ${strategyData.niche_topic}` : ''}
-${strategyData.experience_level ? `- Experience Level: ${strategyData.experience_level}` : ''}
-${strategyData.creator_style ? `- Creator Style: ${strategyData.creator_style}` : ''}
-${strategyData.summary ? `\nSTRATEGY SUMMARY:\n${strategyData.summary}` : ''}
-`;
-
-      // Include full strategy plan if it exists
-      if (strategyData.full_plan_text) {
-        strategyDetails += `\nFULL STRATEGY PLAN:\n${strategyData.full_plan_text}`;
-      }
-    }
     
+    // Format creator details for better readability
+    const formatCreatorDetail = (key: string, value: string | undefined) => {
+      if (!value) return null;
+      
+      // Convert snake_case to readable format
+      const formattedKey = key.replace(/_/g, ' ')
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      
+      // Convert snake_case values to readable format
+      const formattedValue = value.replace(/_/g, ' ')
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      
+      return `- **${formattedKey}:** ${formattedValue}`;
+    };
+    
+    // Build creator profile section
+    const creatorProfileItems = [
+      formatCreatorDetail('creator_mission', onboardingData?.creator_mission),
+      formatCreatorDetail('creator_style', onboardingData?.creator_style),
+      formatCreatorDetail('content_format_preference', onboardingData?.content_format_preference),
+      formatCreatorDetail('posting_frequency_goal', onboardingData?.posting_frequency_goal),
+      formatCreatorDetail('niche_topic', onboardingData?.niche_topic),
+      formatCreatorDetail('experience_level', strategyData?.experience_level)
+    ].filter(item => item !== null);
+    
+    const creatorProfile = creatorProfileItems.length > 0
+      ? `## Creator Profile\n${creatorProfileItems.join('\n')}\n\n`
+      : '';
+    
+    // Generate the context message
     const contextMessage = `
-I am starting a new strategy session. Here's my complete profile info:
+${creatorProfile}
+## Content Strategy
+${formattedStrategy}
 
-CREATOR PROFILE:
-- Creator type: ${onboardingData?.creator_mission || 'Not specified'}
-- Style: ${onboardingData?.creator_style || 'Not specified'}
-- Content format: ${onboardingData?.content_format_preference || 'Not specified'}
-- Posting frequency: ${onboardingData?.posting_frequency_goal || 'Not specified'}
-- Niche topic: ${onboardingData?.niche_topic || 'Not specified'}
-- Experience level: ${strategyData?.experience_level || 'Beginner'}
+I would like you to analyze my content strategy for ${onboardingData?.niche_topic || 'my content'} and help me understand how to execute it effectively. Please:
 
-${strategyDetails}
+1. Provide a concise summary of my strategy in a conversational tone
+2. Explain how this strategy will help me achieve my goal to ${onboardingData?.creator_mission || 'grow my audience'}
+3. Give me actionable tips for creating ${onboardingData?.content_format_preference?.replace(/_/g, ' ') || 'content'} in my ${strategyData?.creator_style || ''} style
+4. Suggest how I should organize my content creation process for maximum efficiency
 
-Help me understand and improve my content strategy for ${onboardingData?.niche_topic || 'my content'}. Summarize my strategy and provide advice on how to execute it effectively.`;
+Please respond in a conversational, friendly tone. Use markdown formatting for readability, including headings, bullet points, and bold text for emphasis. Do not show me raw JSON data.`;
 
     // Add user context message to state
     const userContextMessage: ChatMessage = {
@@ -494,7 +511,7 @@ Help me understand and improve my content strategy for ${onboardingData?.niche_t
     setMessages(prev => [...prev, userContextMessage]);
     setIsLoading(true);
     
-    // Add temporary waiting message
+    // Add temporary placeholder for assistant's response with waiting message
     const waitingMessage = await getWaitingMessage();
     const tempAssistantId = `temp-assistant-${Date.now()}`;
     setMessages(prev => [...prev, { id: tempAssistantId, role: "assistant", message: waitingMessage }]);
