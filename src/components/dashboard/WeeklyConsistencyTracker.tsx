@@ -12,7 +12,11 @@ interface ActivityRecord {
   count: number;
 }
 
-export const WeeklyConsistencyTracker = () => {
+interface WeeklyConsistencyTrackerProps {
+  userId?: string;
+}
+
+export const WeeklyConsistencyTracker = ({ userId }: WeeklyConsistencyTrackerProps) => {
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<"week" | "month">("week");
   const [activityData, setActivityData] = useState<ActivityRecord[]>([]);
@@ -31,7 +35,9 @@ export const WeeklyConsistencyTracker = () => {
 
   useEffect(() => {
     const fetchActivityData = async () => {
-      if (!user) return;
+      // Use userId prop if provided, otherwise use the authenticated user
+      const currentUserId = userId || user?.id;
+      if (!currentUserId) return;
 
       setLoading(true);
       try {
@@ -42,7 +48,7 @@ export const WeeklyConsistencyTracker = () => {
         const { data: scriptData, error: scriptError } = await supabase
           .from('generated_scripts')
           .select('created_at')
-          .eq('user_id', user.id)
+          .eq('user_id', currentUserId)
           .gte('created_at', dateRange[0]);
           
         if (scriptError) throw scriptError;
@@ -50,7 +56,7 @@ export const WeeklyConsistencyTracker = () => {
         const { data: reminderData, error: reminderError } = await supabase
           .from('reminders')
           .select('updated_at')
-          .eq('user_id', user.id)
+          .eq('user_id', currentUserId)
           .eq('completed', true)
           .gte('updated_at', dateRange[0]);
           
@@ -98,7 +104,7 @@ export const WeeklyConsistencyTracker = () => {
     };
 
     fetchActivityData();
-  }, [user, currentView]);
+  }, [user, currentView, userId]);
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
