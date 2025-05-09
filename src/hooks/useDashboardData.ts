@@ -107,7 +107,10 @@ export function useDashboardData() {
 
       const onboarded = profileData?.onboarding_complete || false;
       setProfileComplete(onboarded);
-      if (!onboarded) return;
+      if (!onboarded) {
+        setLoading(false); // ✅ Fix infinite spinner if not onboarded
+        return;
+      }
 
       const { data: strategyData } = await supabase
         .from("strategy_profiles")
@@ -121,17 +124,16 @@ export function useDashboardData() {
         const confirmed = typeof strategyData.weekly_calendar === "object";
         setPlanConfirmed(confirmed);
 
-        // Safely handle JSON types from Supabase
-        const contentTypes = Array.isArray(strategyData.content_types) 
-          ? strategyData.content_types as string[] 
+        const contentTypes = Array.isArray(strategyData.content_types)
+          ? strategyData.content_types as string[]
           : [];
-          
-        const weeklyCalendar = typeof strategyData.weekly_calendar === 'object' 
-          ? strategyData.weekly_calendar as Record<string, string[]> 
+
+        const weeklyCalendar = typeof strategyData.weekly_calendar === 'object'
+          ? strategyData.weekly_calendar as Record<string, string[]>
           : {};
-          
-        const topicIdeas = Array.isArray(strategyData.topic_ideas) 
-          ? strategyData.topic_ideas as string[] 
+
+        const topicIdeas = Array.isArray(strategyData.topic_ideas)
+          ? strategyData.topic_ideas as string[]
           : [];
 
         setStrategy({
@@ -176,12 +178,10 @@ export function useDashboardData() {
     }
   }, [user, generateStrategy]);
 
-  // Initial fetch
   useEffect(() => {
     if (user) fetchUserData();
   }, [user]);
 
-  // Exponential backoff while waiting
   useEffect(() => {
     if (generationStatus === "pending" && retryCount < MAX_RETRIES) {
       const timeout = setTimeout(() => {
