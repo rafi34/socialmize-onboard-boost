@@ -9,7 +9,7 @@ import { ChatBubble } from "@/components/strategy-chat/ChatBubble";
 import { ConfettiExplosion } from "@/components/strategy-chat/ConfettiExplosion";
 import { CompletionModal } from "@/components/strategy-chat/CompletionModal";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Sparkles, Send, ArrowLeft, AlertCircle } from "lucide-react";
+import { Sparkles, Send, ArrowLeft, AlertCircle, Play } from "lucide-react";
 import { Json } from "@/integrations/supabase/types";
 
 interface ChatMessage {
@@ -45,6 +45,13 @@ interface StrategyProfileData {
   created_at?: string;
   updated_at?: string;
   first_five_scripts?: Json;
+  strategy_type?: string;
+}
+
+interface UserProfileData {
+  id?: string;
+  email?: string;
+  level?: number;
 }
 
 const StrategyChat = () => {
@@ -57,17 +64,27 @@ const StrategyChat = () => {
   const [contentIdeas, setContentIdeas] = useState<string[]>([]);
   const [onboardingData, setOnboardingData] = useState<OnboardingData | null>(null);
   const [strategyData, setStrategyData] = useState<StrategyProfileData | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [redirectTriggered, setRedirectTriggered] = useState(false);
+  const [sessionStarted, setSessionStarted] = useState(false);
+  const [hasExistingChat, setHasExistingChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   
-  // Initial welcome message from the assistant
+  // Initial data loading
   useEffect(() => {
     const fetchInitialData = async () => {
       if (!user) return;
+      
+      // Try to retrieve the thread ID from localStorage
+      const storedThreadId = localStorage.getItem('strategyThreadId');
+      if (storedThreadId) {
+        setThreadId(storedThreadId);
+        setHasExistingChat(true);
+      }
       
       // Fetch onboarding data
       await fetchOnboardingData();
@@ -75,28 +92,57 @@ const StrategyChat = () => {
       // Fetch strategy profile data
       await fetchStrategyData();
       
-      const initialMessage: ChatMessage = {
-        id: "welcome",
-        role: "assistant",
-        message: "Welcome to your strategy onboarding session! I'm your AI Strategist, and I'll help build your personalized content plan. To start, could you tell me your main goal as a content creator? (For example: grow followers, get leads, build a community, etc.)"
-      };
-      
-      setMessages([initialMessage]);
-      
-      // Try to retrieve the thread ID from localStorage
-      const storedThreadId = localStorage.getItem('strategyThreadId');
-      if (storedThreadId) {
-        setThreadId(storedThreadId);
-      }
+      // Fetch user profile data
+      await fetchUserProfile();
       
       // Fetch existing message history from Supabase if a threadId exists
       if (storedThreadId && user) {
-        fetchMessageHistory(storedThreadId);
+        await fetchMessageHistory(storedThreadId);
+      } else {
+        // No existing thread, set up welcome message
+        prepareWelcomeMessage();
       }
     };
 
     fetchInitialData();
   }, [user]);
+
+  // Create personalized welcome message
+  const prepareWelcomeMessage = () => {
+    if (!userProfile || !onboardingData) return;
+    
+    // Extract first name from email if available
+    const firstName = userProfile.email 
+      ? userProfile.email.split('@')[0].split('.')[0]
+      : 'there';
+    
+    // Format the name with capitalized first letter
+    const formattedName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+    
+    // Create personalized welcome message
+    const strategyType = strategyData?.strategy_type || "starter";
+    const welcomeMessage = `
+Hi ${formattedName}! 👋 Welcome to your strategy session!
+
+Based on your profile, I see that:
+${onboardingData.niche_topic ? `- You create content about ${onboardingData.niche_topic}` : ''}
+${onboardingData.creator_style ? `- Your creator style is ${onboardingData.creator_style?.replace('_', ' ')}` : ''}
+${onboardingData.posting_frequency_goal ? `- You aim to post ${onboardingData.posting_frequency_goal?.replace('_', ' ')}` : ''}
+${onboardingData.content_format_preference ? `- You prefer creating ${onboardingData.content_format_preference?.replace('_', ' ')} content` : ''}
+
+You're currently on our ${strategyType.charAt(0).toUpperCase() + strategyType.slice(1)} strategy plan.
+
+I'm your AI Strategist, and I'll help build your personalized content plan. Click the Start Session button when you're ready to begin our conversation!
+`;
+
+    const initialMessage: ChatMessage = {
+      id: "welcome",
+      role: "assistant",
+      message: welcomeMessage
+    };
+    
+    setMessages([initialMessage]);
+  };
 
   // Fetch user's onboarding data
   const fetchOnboardingData = async () => {
@@ -123,6 +169,31 @@ const StrategyChat = () => {
     }
   };
 
+  // Fetch user's profile data
+  const fetchUserProfile = async () => {
+    if (!user || !user.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, level')
+        .eq('id', user.id)
+        .maybeSingle();
+        
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return;
+      }
+      
+      if (data) {
+        console.log('Fetched user profile:', data);
+        setUserProfile(data);
+      }
+    } catch (error) {
+      console.error('Error in fetchUserProfile:', error);
+    }
+  };
+
   // Fetch user's strategy profile data
   const fetchStrategyData = async () => {
     if (!user) return;
@@ -132,6 +203,7 @@ const StrategyChat = () => {
         .from('strategy_profiles')
         .select('*')
         .eq('user_id', user.id)
+        .eq('is_active', true) // Only fetch active strategies
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -143,7 +215,6 @@ const StrategyChat = () => {
       
       if (data) {
         console.log('Fetched strategy profile data:', data);
-        // Directly set the data as is - our interface now matches the structure
         setStrategyData(data);
       }
     } catch (error) {
@@ -190,12 +261,15 @@ const StrategyChat = () => {
         const formattedMessages: ChatMessage[] = data.map(msg => ({
           id: msg.id,
           role: normalizeRole(msg.role),
-          message: msg.content, // Map content field to message
+          message: msg.message || msg.content, // Handle both field names
           created_at: msg.created_at
         }));
         
-        // If we have history, replace our initial message
         setMessages(formattedMessages);
+        setSessionStarted(true); // Mark session as started since we have existing messages
+      } else {
+        // No messages found for this thread
+        prepareWelcomeMessage();
       }
     } catch (error) {
       console.error('Error fetching message history:', error);
@@ -204,6 +278,9 @@ const StrategyChat = () => {
         description: "There was a problem loading your previous messages.",
         variant: "destructive"
       });
+      
+      // Fall back to welcome message
+      prepareWelcomeMessage();
     }
   };
 
@@ -226,7 +303,8 @@ const StrategyChat = () => {
           user_id: user.id,
           thread_id: currentThreadId,
           role: message.role,
-          content: message.message // Map message field to content
+          content: message.message, // Map message field to content
+          message: message.message  // Also save to message field for compatibility
         });
         
       if (error) {
@@ -284,7 +362,7 @@ const StrategyChat = () => {
     }
   };
 
-  // Helper functions for random attributes
+  // Helper functions
   const getRandomFormat = () => {
     const formats = ["Video", "Carousel", "Talking Head", "Meme", "Duet"];
     return formats[Math.floor(Math.random() * formats.length)];
@@ -312,6 +390,93 @@ const StrategyChat = () => {
     } catch (error) {
       console.error('Error getting waiting message:', error);
       return "Thinking...";
+    }
+  };
+
+  // Handle starting the session
+  const handleStartSession = async () => {
+    setErrorMessage(null);
+    setSessionStarted(true);
+    
+    // Prepare initial context message with user data
+    const contextMessage = `I am starting a new strategy session. Here's my profile info:
+- Creator type: ${onboardingData?.creator_mission || 'Not specified'}
+- Style: ${onboardingData?.creator_style || 'Not specified'}
+- Content format: ${onboardingData?.content_format_preference || 'Not specified'}
+- Posting frequency: ${onboardingData?.posting_frequency_goal || 'Not specified'}
+- Niche topic: ${onboardingData?.niche_topic || 'Not specified'}
+- Experience level: ${strategyData?.experience_level || 'Beginner'}
+
+Help me develop a content strategy for my ${onboardingData?.niche_topic || 'content'}.`;
+
+    // Add user context message to state
+    const userContextMessage: ChatMessage = {
+      id: `start-${Date.now()}`,
+      role: "user",
+      message: contextMessage
+    };
+    
+    setMessages(prev => [...prev, userContextMessage]);
+    setIsLoading(true);
+    
+    // Add temporary waiting message
+    const waitingMessage = await getWaitingMessage();
+    const tempAssistantId = `temp-assistant-${Date.now()}`;
+    setMessages(prev => [...prev, { id: tempAssistantId, role: "assistant", message: waitingMessage }]);
+    
+    try {
+      // Call the edge function with context data
+      const { data, error } = await supabase.functions.invoke("generate-strategy-chat", {
+        body: {
+          userId: user?.id,
+          userMessage: contextMessage,
+          threadId: null, // Create a new thread
+          onboardingData: onboardingData,
+          strategyData: strategyData
+        }
+      });
+      
+      if (error) {
+        throw new Error(`Edge function error: ${error.message}`);
+      }
+      
+      if (!data.success) {
+        throw new Error(data.error || "An error occurred while starting your session.");
+      }
+      
+      // Get the thread ID from the response and store it
+      if (data.threadId) {
+        setThreadId(data.threadId);
+        localStorage.setItem('strategyThreadId', data.threadId);
+      }
+      
+      // Get assistant's response and update the message
+      const assistantMessage: Omit<ChatMessage, 'id' | 'created_at'> = {
+        role: "assistant",
+        message: data.message || "I'm ready to help you develop your content strategy. What specific aspects would you like to focus on?"
+      };
+      
+      // Replace the waiting message with the actual response
+      setMessages(prev => prev.map(msg => 
+        msg.id === tempAssistantId ? { ...assistantMessage, id: `assistant-${Date.now()}` } : msg
+      ));
+    } catch (error: any) {
+      console.error('Error starting session:', error);
+      
+      // Set error message for display
+      setErrorMessage(error.message || "There was a problem starting your strategy session. Please try again.");
+      
+      // Show toast with error
+      toast({
+        title: "Error",
+        description: error.message || "There was a problem starting your strategy session. Please try again.",
+        variant: "destructive"
+      });
+      
+      // Remove the waiting message on error
+      setMessages(prev => prev.filter(msg => msg.id !== tempAssistantId));
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -437,6 +602,21 @@ const StrategyChat = () => {
     navigate('/dashboard');
   };
   
+  // Handle starting a new session
+  const handleNewSession = () => {
+    // Clear existing thread ID from localStorage
+    localStorage.removeItem('strategyThreadId');
+    
+    // Clear state
+    setThreadId(null);
+    setMessages([]);
+    setSessionStarted(false);
+    setHasExistingChat(false);
+    
+    // Prepare welcome message
+    prepareWelcomeMessage();
+  };
+  
   if (!user) {
     // Redirect to auth if not logged in
     return <div className="p-6">Please log in to access this feature.</div>;
@@ -463,6 +643,18 @@ const StrategyChat = () => {
             </h1>
             <p className="text-sm md:text-base text-muted-foreground">Let's build your personalized content strategy</p>
           </div>
+          
+          {/* New Session Button (only shown if there's an existing chat) */}
+          {hasExistingChat && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="ml-auto"
+              onClick={handleNewSession}
+            >
+              New Session
+            </Button>
+          )}
         </div>
       </div>
       
@@ -477,6 +669,20 @@ const StrategyChat = () => {
               isLoading={isLoading && message.id.includes('temp-assistant')}
             />
           ))}
+          
+          {/* Start Session button (only shown before session starts) */}
+          {!sessionStarted && messages.length > 0 && (
+            <div className="flex justify-center mt-6">
+              <Button
+                onClick={handleStartSession}
+                disabled={isLoading}
+                className="bg-gradient-to-br from-[#1FBF57] to-[#1CB955] hover:opacity-90 transition-all shadow-md px-6 py-3 text-lg"
+              >
+                <Play className="mr-2 h-5 w-5" />
+                Start Session
+              </Button>
+            </div>
+          )}
           
           {/* Error message display */}
           {errorMessage && (
@@ -501,37 +707,39 @@ const StrategyChat = () => {
         </div>
       </div>
       
-      {/* Input area */}
-      <div className="border-t border-border/20 p-3 md:p-6 bg-gradient-to-t from-background/95 to-background/80 backdrop-blur-sm">
-        <div className="max-w-3xl mx-auto">
-          <div className="relative glass-panel rounded-lg shadow-lg">
-            <Textarea
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              placeholder="Type your message..."
-              className="resize-none min-h-[60px] md:min-h-[80px] premium-input border-0 focus-visible:ring-1 focus-visible:ring-[#0540F2]/50 bg-transparent rounded-tl-lg rounded-tr-lg"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              disabled={isLoading}
-            />
-            <div className="absolute bottom-3 right-3">
-              <Button 
-                onClick={handleSendMessage}
-                disabled={isLoading || !inputMessage.trim()}
-                className="bg-gradient-to-br from-[#1FBF57] to-[#1CB955] hover:opacity-90 transition-all shadow-md"
-                size={isMobile ? "sm" : "default"}
-              >
-                <Send className={`h-4 w-4 ${isMobile ? 'mr-0' : 'mr-2'}`} />
-                {!isMobile && "Send"}
-              </Button>
+      {/* Input area - only shown after session has started */}
+      {sessionStarted && (
+        <div className="border-t border-border/20 p-3 md:p-6 bg-gradient-to-t from-background/95 to-background/80 backdrop-blur-sm">
+          <div className="max-w-3xl mx-auto">
+            <div className="relative glass-panel rounded-lg shadow-lg">
+              <Textarea
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                placeholder="Type your message..."
+                className="resize-none min-h-[60px] md:min-h-[80px] premium-input border-0 focus-visible:ring-1 focus-visible:ring-[#0540F2]/50 bg-transparent rounded-tl-lg rounded-tr-lg"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={isLoading}
+              />
+              <div className="absolute bottom-3 right-3">
+                <Button 
+                  onClick={handleSendMessage}
+                  disabled={isLoading || !inputMessage.trim()}
+                  className="bg-gradient-to-br from-[#1FBF57] to-[#1CB955] hover:opacity-90 transition-all shadow-md"
+                  size={isMobile ? "sm" : "default"}
+                >
+                  <Send className={`h-4 w-4 ${isMobile ? 'mr-0' : 'mr-2'}`} />
+                  {!isMobile && "Send"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
       
       {/* Confetti effect on completion */}
       {showConfetti && <ConfettiExplosion />}
