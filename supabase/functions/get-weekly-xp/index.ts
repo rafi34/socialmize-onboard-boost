@@ -30,8 +30,8 @@ serve(async (req) => {
 
     console.log(`Fetching weekly XP for user ${userId} from ${startDate}`);
 
-    // Calculate total XP since the start date
-    const xpResponse = await fetch(`${supabaseUrl}/rest/v1/xp_events?user_id=eq.${userId}&created_at=gte.${startDate}`, {
+    // Calculate total XP since the start date using xp_progress table instead of xp_events
+    const xpResponse = await fetch(`${supabaseUrl}/rest/v1/xp_progress?user_id=eq.${userId}&created_at=gte.${startDate}`, {
       headers: {
         Authorization: `Bearer ${supabaseServiceKey}`,
         apikey: supabaseServiceKey,
@@ -46,7 +46,7 @@ serve(async (req) => {
     const xpEvents = await xpResponse.json();
     console.log(`Found ${xpEvents.length} XP events for user ${userId}`);
     
-    const totalXp = xpEvents.reduce((sum: number, event: any) => sum + (event.amount || 0), 0);
+    const totalXp = xpEvents.reduce((sum: number, event: any) => sum + (event.xp_earned || 0), 0);
 
     // Get the user's streak from progress_tracking
     const progressResponse = await fetch(`${supabaseUrl}/rest/v1/progress_tracking?user_id=eq.${userId}&order=created_at.desc&limit=1`, {
