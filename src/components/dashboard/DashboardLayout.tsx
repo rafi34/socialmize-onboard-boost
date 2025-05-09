@@ -1,3 +1,4 @@
+
 import { EnhancedWeeklyCalendarGrid } from "./EnhancedWeeklyCalendarGrid";
 import { CreatorSummaryHeader } from "./CreatorSummaryHeader";
 import { TodaysMissionCard } from "./TodaysMissionCard";
@@ -7,9 +8,10 @@ import { ScriptPreviewsSection } from "./ScriptPreviewsSection";
 import { StrategyOverviewSection } from "./StrategyOverviewSection";
 import { ContentMissionsSection } from "./ContentMissionsSection";
 import { WeeklyConsistencyCard } from "./WeeklyConsistencyCard";
+import { ReminderConfetti } from "./ReminderConfetti";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 import { StrategyData, ProgressData, ReminderData, GeneratedScript } from "@/types/dashboard";
 import { AdminLogDialog } from "../admin/AdminLogDialog";
 import { logStrategyAction } from "@/utils/adminLog";
@@ -21,8 +23,18 @@ export const DashboardLayout = () => {
   const [reminder, setReminder] = useState<ReminderData | null>(null);
   const [activeTab, setActiveTab] = useState("today");
   const [scripts, setScripts] = useState<GeneratedScript[] | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [level, setLevel] = useState(1);
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
+  
+  function getLevelUnlockText(level: number) {
+    if (level === 2) return "AI Content Ideas 💡, Save + Script Flow ✍️";
+    if (level === 3) return "Scripts Section 🧠, Content Calendar 🗓️";
+    if (level === 4) return "Recording Reminders ⏰, Habit Tracker 📊";
+    if (level === 5) return "Community Lounge 🗣️, Leaderboard 🏆";
+    return "";
+  }
   
   useEffect(() => {
     if (user) {
@@ -30,6 +42,17 @@ export const DashboardLayout = () => {
       checkAdminStatus();
     }
   }, [user]);
+  
+  useEffect(() => {
+    if (progress?.current_level) {
+      const lastSeen = parseInt(localStorage.getItem("socialmize_last_seen_level") || "1");
+      if (progress.current_level > lastSeen) {
+        setShowCelebration(true);
+        setLevel(progress.current_level);
+        localStorage.setItem("socialmize_last_seen_level", progress.current_level.toString());
+      }
+    }
+  }, [progress?.current_level]);
   
   const checkAdminStatus = async () => {
     try {
@@ -167,6 +190,17 @@ export const DashboardLayout = () => {
   return (
     <div className="container mx-auto py-10 px-4 max-w-7xl">
       <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
+      
+      {showCelebration && (
+        <div className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 px-6 rounded-xl shadow-xl flex items-center justify-between mb-4 animate-in fade-in slide-in-from-top-4">
+          <div>
+            <p className="text-xl font-bold">🎉 You reached Level {level}!</p>
+            <p className="text-sm mt-1">Unlocked: {getLevelUnlockText(level)}</p>
+          </div>
+          <button onClick={() => setShowCelebration(false)} className="bg-white text-black rounded px-3 py-1 text-xs">Dismiss</button>
+        </div>
+      )}
+      {showCelebration && <ReminderConfetti active={showCelebration} />}
       
       <div className="flex flex-col md:flex-row gap-6 mt-8">
         <div className="w-full md:w-2/3 space-y-6">
