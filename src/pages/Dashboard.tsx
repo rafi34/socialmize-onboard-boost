@@ -3,7 +3,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart2, Calendar, Sparkles, AlertTriangle, RefreshCw } from "lucide-react";
 import { CreatorSummaryHeader, StrategyPlanSection } from "@/components/dashboard";
@@ -16,8 +16,15 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/integrations/supabase/client";
+
+console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
+console.log('VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY);
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [hasOnboardingAnswers, setHasOnboardingAnswers] = useState<boolean | null>(null);
   const { user } = useAuth();
   const [queryClient] = useState(() => new QueryClient());
   const [showContent, setShowContent] = useState(false);
@@ -43,6 +50,53 @@ export default function Dashboard() {
     hasAttemptedRetry
   } = useDashboardData();
 
+  useEffect(() => {
+    const checkOnboardingAnswers = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('onboarding_answers')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (error) {
+        console.error('Error checking onboarding answers:', error);
+        setHasOnboardingAnswers(false);
+        setOnboardingChecked(true);
+        return;
+      }
+      if (!data) {
+        setHasOnboardingAnswers(false);
+        setOnboardingChecked(true);
+        navigate('/onboarding');
+        return;
+      }
+      setHasOnboardingAnswers(true);
+      setOnboardingChecked(true);
+    };
+    if (user && user.id) {
+      checkOnboardingAnswers();
+    }
+  }, [user, navigate]);
+
+  // Debug logging
+  console.log('Dashboard debug:', {
+    user,
+    strategy,
+    progress,
+    reminder,
+    scripts,
+    loading,
+    profileComplete,
+    isGeneratingStrategy,
+    waitingMessage,
+    planConfirmed,
+    generationStatus,
+    generationError,
+    retryCount,
+    errorShown,
+    hasAttemptedRetry
+  });
+
   // Display error toast on generation error, but only once
   useEffect(() => {
     if (generationStatus === 'error' && generationError && !hasAttemptedRetry && retryCount >= 3 && !errorShown) {
@@ -67,6 +121,8 @@ export default function Dashboard() {
     }
   }, [showContent]);
 
+  if (!onboardingChecked) return null;
+  if (hasOnboardingAnswers === false) return null;
   if (profileComplete === false) return <Navigate to="/" replace />;
 
   // Display a more informative generation state with better error handling

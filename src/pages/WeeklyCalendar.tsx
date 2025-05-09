@@ -18,7 +18,7 @@ export default function WeeklyCalendar() {
   const [contentByDay, setContentByDay] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
-    if (user) {
+    if (user && user.id) {
       fetchStrategyData();
       fetchReminders();
     }

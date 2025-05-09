@@ -17,7 +17,7 @@ const TopicSuggestions = () => {
   const [creatorStyle, setCreatorStyle] = useState<string>("educational");
 
   useEffect(() => {
-    if (user) {
+    if (user && user.id) {
       fetchTopics();
       fetchUsedTopics();
       fetchCreatorStyle();

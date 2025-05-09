@@ -29,7 +29,7 @@ const InboxCenterPage = () => {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['inbox-items', user?.id, refreshTrigger, activeFilter],
     queryFn: async () => {
-      if (!user) throw new Error("User not authenticated");
+      if (!user || !user.id) throw new Error("User not authenticated");
       
       let query = supabase
         .from('inbox_items')

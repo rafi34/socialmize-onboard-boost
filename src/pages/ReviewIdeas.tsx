@@ -39,7 +39,7 @@ const ReviewIdeas = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
+    if (user && user.id) {
       loadContentIdeas();
       loadProgressData();
     }

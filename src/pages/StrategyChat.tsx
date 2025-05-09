@@ -100,14 +100,14 @@ const StrategyChat = () => {
 
   // Fetch user's onboarding data
   const fetchOnboardingData = async () => {
-    if (!user) return;
+    if (!user || !user.id) return;
     
     try {
       const { data, error } = await supabase
         .from('onboarding_answers')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
         
       if (error) {
         console.error('Error fetching onboarding data:', error);

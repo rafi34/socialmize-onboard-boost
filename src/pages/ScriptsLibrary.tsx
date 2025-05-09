@@ -23,7 +23,7 @@ const ScriptsLibrary = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
+    if (user && user.id) {
       fetchScripts();
       fetchFavorites();
     }

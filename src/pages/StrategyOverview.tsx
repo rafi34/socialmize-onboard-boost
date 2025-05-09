@@ -7,12 +7,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { StrategyData } from "@/types/dashboard";
 import { Button } from "@/components/ui/button";
 import { Calendar, Bell, FileText, BarChart2, Zap, TrendingUp, Activity } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminLogDialog } from "@/components/admin/AdminLogDialog";
 
 const StrategyOverview = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [strategy, setStrategy] = useState<StrategyData | null>(null);
   const [usedTopicsCount, setUsedTopicsCount] = useState(0);
@@ -22,10 +23,28 @@ const StrategyOverview = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user) {
+    const checkOnboardingAnswers = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from('onboarding_answers')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (error) {
+        console.error('Error checking onboarding answers:', error);
+        return;
+      }
+      if (!data) {
+        navigate('/onboarding');
+        return;
+      }
+      // Only fetch strategy data if onboarding answers exist
       fetchStrategyData();
       fetchTopicsData();
       checkAdminStatus();
+    };
+    if (user && user.id) {
+      checkOnboardingAnswers();
     }
   }, [user]);
 
