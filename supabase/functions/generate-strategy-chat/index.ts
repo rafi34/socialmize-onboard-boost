@@ -1,4 +1,3 @@
-
 // supabase/functions/generate-strategy-chat/index.ts
 import { serve } from "https://deno.land/std@0.195.0/http/server.ts";
 import OpenAI from "https://esm.sh/openai@4.28.0";
@@ -249,7 +248,8 @@ ${Object.entries(contextData)
           user_id: userId,
           thread_id: currentThreadId,
           role: "user",
-          message: userMessage
+          content: userMessage,
+          message: userMessage // Add the message field explicitly
         });
         
         // Save the assistant message to Supabase
@@ -257,7 +257,8 @@ ${Object.entries(contextData)
           user_id: userId,
           thread_id: currentThreadId,
           role: "assistant",
-          message: messageContent
+          content: messageContent,
+          message: messageContent // Add the message field explicitly
         });
         
         return new Response(
