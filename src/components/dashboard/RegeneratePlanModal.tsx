@@ -61,6 +61,17 @@ export const RegeneratePlanModal = ({
         description: "This might take 15-30 seconds. Please wait while we craft your personalized content plan.",
       });
 
+      // First, deactivate all existing strategies for this user
+      const { error: deactivateError } = await supabase
+        .from("strategy_profiles")
+        .update({ is_active: false })
+        .eq("user_id", userId);
+        
+      if (deactivateError) {
+        console.error("Error deactivating existing strategies:", deactivateError);
+        // Continue anyway - we'll create a new active one
+      }
+
       const { data: onboardingAnswers, error: onboardingError } = await supabase
         .from("onboarding_answers")
         .select("*")
@@ -101,6 +112,7 @@ export const RegeneratePlanModal = ({
 
       if (error) throw error;
 
+      // Invalidate all strategy-related queries
       queryClient.invalidateQueries({ queryKey: ['strategy_profiles'] });
       queryClient.invalidateQueries({ queryKey: ['strategyPlan', userId] });
       queryClient.invalidateQueries({ queryKey: ['planConfirmation', userId] });
@@ -110,7 +122,7 @@ export const RegeneratePlanModal = ({
         description: "Your content strategy has been updated successfully."
       });
 
-      if (onSuccess) setTimeout(onSuccess, 2000); // Increased timeout to ensure data is refreshed
+      if (onSuccess) setTimeout(onSuccess, 3000); // Increased timeout to ensure data is refreshed
     } catch (err: any) {
       console.error("❌ Strategy generation error:", err);
       toast({

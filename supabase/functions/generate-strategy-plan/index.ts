@@ -1,4 +1,3 @@
-
 // supabase/functions/generate-strategy-plan/index.ts
 import { serve } from "https://deno.land/std@0.195.0/http/server.ts";
 import OpenAI from "https://esm.sh/openai@4.28.0";
@@ -142,6 +141,23 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     console.log("🟢 Supabase client initialized");
     
+    // First, deactivate all existing strategies for this user
+    try {
+      console.log("🟢 Deactivating existing strategy profiles");
+      const { error: deactivateError } = await supabase
+        .from("strategy_profiles")
+        .update({ is_active: false })
+        .eq("user_id", userId);
+        
+      if (deactivateError) {
+        console.error("❌ Error deactivating existing strategies:", deactivateError);
+        // Continue anyway - we'll create a new active one
+      }
+    } catch (deactivateErr) {
+      console.error("❌ Exception during deactivation:", deactivateErr);
+      // Continue with strategy generation
+    }
+    
     try {
       // Build a comprehensive prompt based on the onboarding data
       const userProfilePrompt = `
@@ -195,12 +211,14 @@ Based on this profile, create a personalized 4-week content strategy plan follow
         // Extract key elements for the database
         const weeklySummary = extractWeeklySummary(parsedStrategy);
         const topicIdeas = extractTopicIdeas(parsedStrategy);
+        const contentTypes = extractContentTypes(parsedStrategy);
         
-        // Save to the database using upsert pattern
-        console.log("🟢 Saving to database");
-        const { data: upsertData, error: upsertError } = await upsertStrategyProfile(supabase, {
-          userId,
-          data: {
+        // Create a new strategy profile (with is_active=true but no confirmed_at)
+        console.log("🟢 Creating new active strategy profile");
+        const { data: insertData, error: insertError } = await supabase
+          .from("strategy_profiles")
+          .insert({
+            user_id: userId,
             summary: parsedStrategy.summary || null,
             niche_topic: onboardingData.niche_topic || null,
             experience_level: onboardingData.experience_level || "beginner",
@@ -208,17 +226,21 @@ Based on this profile, create a personalized 4-week content strategy plan follow
             posting_frequency: onboardingData.posting_frequency_goal || null,
             topic_ideas: topicIdeas,
             weekly_calendar: weeklySummary,
-            content_types: extractContentTypes(parsedStrategy),
-            full_plan_text: strategyContent // Store complete JSON response
-          }
-        });
+            content_types: contentTypes,
+            full_plan_text: strategyContent,
+            strategy_type: onboardingData.strategy_type || "starter",
+            is_active: true, // Mark as active
+            confirmed_at: null // User must confirm explicitly
+          })
+          .select()
+          .single();
         
-        if (upsertError) {
-          console.error("❌ Error saving strategy plan:", upsertError);
-          throw upsertError;
+        if (insertError) {
+          console.error("❌ Error creating strategy profile:", insertError);
+          throw insertError;
         }
         
-        console.log("🟢 Strategy plan generated and saved successfully, ID:", upsertData ? upsertData.id : "unknown");
+        console.log("🟢 New strategy profile created, ID:", insertData ? insertData.id : "unknown");
         
         return new Response(
           JSON.stringify({ 
@@ -231,24 +253,30 @@ Based on this profile, create a personalized 4-week content strategy plan follow
         console.error("❌ Error parsing strategy plan:", parseError.message);
         console.error("❌ Raw content:", strategyContent);
         
-        // Save the raw response as fallback
+        // Save the raw response as fallback with is_active=true and no confirmed_at
         console.log("🟢 Saving raw response as fallback");
-        const { data: upsertData, error: upsertError } = await upsertStrategyProfile(supabase, {
-          userId,
-          data: {
+        const { data: insertData, error: insertError } = await supabase
+          .from("strategy_profiles")
+          .insert({
+            user_id: userId,
             full_plan_text: strategyContent,
             niche_topic: onboardingData.niche_topic || null,
             creator_style: onboardingData.creator_style || null,
             posting_frequency: onboardingData.posting_frequency_goal || null,
-          }
-        });
+            experience_level: onboardingData.experience_level || "beginner",
+            strategy_type: onboardingData.strategy_type || "starter",
+            is_active: true,
+            confirmed_at: null
+          })
+          .select()
+          .single();
         
-        if (upsertError) {
-          console.error("❌ Error saving raw strategy plan:", upsertError);
-          throw upsertError;
+        if (insertError) {
+          console.error("❌ Error saving raw strategy plan:", insertError);
+          throw insertError;
         }
         
-        console.log("🟢 Raw strategy plan saved successfully, ID:", upsertData ? upsertData.id : "unknown");
+        console.log("🟢 Raw strategy plan saved, ID:", insertData ? insertData.id : "unknown");
         
         return new Response(
           JSON.stringify({ 
@@ -377,45 +405,6 @@ function extractContentTypes(parsedStrategy) {
   }
 }
 
-// Helper function to upsert a strategy profile
-async function upsertStrategyProfile(supabase, { userId, data }) {
-  console.log("🟢 Upserting strategy profile for user:", userId);
-  
-  // First check if a profile exists
-  const { data: existingProfile, error: checkError } = await supabase
-    .from('strategy_profiles')
-    .select('id')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (checkError) {
-    console.error("❌ Error checking for existing profile:", checkError);
-    throw checkError;
-  }
-
-  if (existingProfile) {
-    // Update existing profile
-    console.log("🟢 Updating existing strategy profile:", existingProfile.id);
-    return supabase
-      .from('strategy_profiles')
-      .update(data)
-      .eq('id', existingProfile.id)
-      .select();
-  } else {
-    // Create new profile
-    console.log("🟢 Creating new strategy profile");
-    return supabase
-      .from('strategy_profiles')
-      .insert({
-        ...data,
-        user_id: userId
-      })
-      .select();
-  }
-}
-
 // Function to create a mock strategy response for development/fallback
 function createMockStrategyResponse(userId, onboardingData, corsHeaders) {
   console.log("🟢 Using mock strategy plan data");
@@ -507,16 +496,26 @@ function createMockStrategyResponse(userId, onboardingData, corsHeaders) {
   console.log("🟢 Creating Supabase client for mock data");
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
   
+  // First, deactivate all existing strategies for this user
+  supabase
+    .from("strategy_profiles")
+    .update({ is_active: false })
+    .eq("user_id", userId)
+    .then(({ error }) => {
+      if (error) console.error("❌ Error deactivating existing strategies during mock:", error);
+    });
+  
   // Extract data using the same helper functions as real data
   const weeklySummary = extractWeeklySummary(mockStrategy);
   const topicIdeas = extractTopicIdeas(mockStrategy);
   const contentTypes = extractContentTypes(mockStrategy);
   
-  // Save mock data to the database with more fields
+  // Save mock data to the database with more fields and is_active=true but no confirmed_at
   console.log("🟢 Saving mock data to database");
-  upsertStrategyProfile(supabase, {
-    userId,
-    data: {
+  supabase
+    .from("strategy_profiles")
+    .insert({
+      user_id: userId,
       summary: mockStrategy.summary,
       niche_topic: onboardingData?.niche_topic || "Content Creation",
       experience_level: onboardingData?.experience_level || "beginner",
@@ -525,9 +524,14 @@ function createMockStrategyResponse(userId, onboardingData, corsHeaders) {
       topic_ideas: topicIdeas,
       weekly_calendar: weeklySummary,
       content_types: contentTypes,
-      full_plan_text: mockStrategyJson // Store as clean JSON
-    }
-  }).catch(error => console.error("❌ Error saving mock strategy:", error));
+      full_plan_text: mockStrategyJson, // Store as clean JSON
+      strategy_type: onboardingData?.strategy_type || "starter",
+      is_active: true,
+      confirmed_at: null // User must confirm explicitly
+    })
+    .then(({ error }) => {
+      if (error) console.error("❌ Error saving mock strategy:", error);
+    });
   
   // Return success response
   console.log("🟢 Returning mock data success response");

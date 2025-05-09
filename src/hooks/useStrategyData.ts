@@ -31,6 +31,7 @@ export function useStrategyData() {
     try {
       console.log("Fetching strategy data for user", user.id);
       
+      // Only fetch active strategies
       const { data, error: fetchError } = await supabase
         .from("strategy_profiles")
         .select("*")
@@ -44,11 +45,14 @@ export function useStrategyData() {
       
       if (data) {
         console.log("Strategy data retrieved:", data);
+        console.log("Strategy confirmed_at:", data.confirmed_at);
+        console.log("Strategy is_active:", data.is_active);
         
         // Process the strategy data
         const hasWeeklyCalendar = !!(data.weekly_calendar && 
           typeof data.weekly_calendar === 'object');
         
+        // IMPORTANT: Use confirmed_at to determine if strategy is confirmed
         const isConfirmed = !!data.confirmed_at;
         
         // Parse the full plan text to extract JSON data if possible
@@ -75,7 +79,7 @@ export function useStrategyData() {
         // Reset retry counter on success
         setRetryCount(0);
       } else {
-        console.log("No strategy data found");
+        console.log("No active strategy data found");
         setStrategy(null);
       }
     } catch (err: any) {
@@ -121,6 +125,17 @@ export function useStrategyData() {
       const strategyType = onboardingData.experience_level === "expert" ? "advanced" :
                           onboardingData.experience_level === "intermediate" ? "intermediate" : "starter";
       
+      // First, deactivate all existing strategies for this user
+      const { error: deactivateError } = await supabase
+        .from("strategy_profiles")
+        .update({ is_active: false })
+        .eq("user_id", user.id);
+        
+      if (deactivateError) {
+        console.error("Error deactivating existing strategies:", deactivateError);
+        // Continue anyway - we'll create a new active one
+      }
+      
       // Call the Supabase Edge Function to regenerate strategy
       const { data, error } = await supabase.functions.invoke("generate-strategy-plan", {
         body: {
@@ -145,7 +160,7 @@ export function useStrategyData() {
           title: "Strategy Regenerated",
           description: "Your content strategy has been updated successfully.",
         });
-      }, 2000);
+      }, 2500); // Increased timeout
       
       return true;
     } catch (err: any) {
@@ -178,6 +193,7 @@ export function useStrategyData() {
       
       const now = new Date().toISOString();
       
+      // Update only the active strategy
       const { error } = await supabase
         .from("strategy_profiles")
         .update({ 
@@ -187,7 +203,8 @@ export function useStrategyData() {
           strategy_type: strategy.strategy_type || "starter"
         })
         .eq("user_id", user.id)
-        .eq("id", strategy.id);
+        .eq("id", strategy.id)
+        .eq("is_active", true); // Only update if it's active
         
       if (error) throw error;
       

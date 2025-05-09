@@ -141,6 +141,9 @@ export default function Dashboard() {
     );
   }
 
+  // Check if strategy is confirmed based on confirmed_at (not the weekly_calendar)
+  const isStrategyConfirmed = !!(strategy?.confirmed_at);
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
       <main className="flex-grow container py-6 px-4 sm:px-6">
@@ -179,7 +182,7 @@ export default function Dashboard() {
               
               <StrategyPlanSection />
 
-              {planConfirmed ? (
+              {isStrategyConfirmed ? (
                 <>
                   <Tabs 
                     value={activeTab} 
