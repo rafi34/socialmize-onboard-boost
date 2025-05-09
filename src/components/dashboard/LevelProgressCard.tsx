@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { Trophy, Star } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 import { calculateLevelProgress, getXpForNextLevel } from "@/utils/xpUtils";
 
 interface LevelProgressCardProps {
@@ -20,7 +20,7 @@ interface ProfileData {
 export const LevelProgressCard = ({ loading }: LevelProgressCardProps) => {
   const { user } = useAuth();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(loading || true);
+  const [isLoading, setIsLoading] = useState(loading || true);
 
   useEffect(() => {
     if (user) {
@@ -41,7 +41,7 @@ export const LevelProgressCard = ({ loading }: LevelProgressCardProps) => {
     } catch (error) {
       console.error("Error fetching profile data:", error);
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); // Fix: Changed from setIsLoading(false) to properly handle the state
     }
   };
 

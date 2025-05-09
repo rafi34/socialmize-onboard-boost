@@ -2,7 +2,7 @@
 import { StrategyData, GeneratedScript } from "@/types/dashboard";
 import { ContentMissionsSection } from "./ContentMissionsSection";
 import { ScriptPreviewsSection } from "./ScriptPreviewsSection";
-import { WeeklyXPCard } from "./WeeklyXPCard";
+import { LeaderboardSection } from "./LeaderboardSection";
 
 interface DashboardContentProps {
   strategy: StrategyData | null;
@@ -13,16 +13,15 @@ interface DashboardContentProps {
 
 export const DashboardContent = ({ strategy, scripts, loading, refetchScripts }: DashboardContentProps) => {
   return (
-    <div className="grid gap-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2">
-          <ContentMissionsSection />
-        </div>
-        <div>
-          <WeeklyXPCard />
-        </div>
+    <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+      <div className="lg:col-span-2 space-y-6">
+        <ContentMissionsSection />
+        <ScriptPreviewsSection scripts={scripts} loading={loading} />
       </div>
-      <ScriptPreviewsSection scripts={scripts} loading={loading} />
+      
+      <div className="space-y-6">
+        <LeaderboardSection />
+      </div>
     </div>
   );
 };
