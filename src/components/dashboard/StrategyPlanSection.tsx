@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useStrategyData } from "@/hooks/useStrategyData";
 import { StrategyOverviewCard } from "./StrategyOverviewCard";
 import { FullStrategyModal } from "./FullStrategyModal";
@@ -24,6 +24,13 @@ export const StrategyPlanSection = () => {
   } = useStrategyData();
   const { user } = useAuth(); // Get the authenticated user
 
+  // Add effect to refresh strategy data when component mounts
+  useEffect(() => {
+    if (user?.id) {
+      fetchStrategyData();
+    }
+  }, [user?.id, fetchStrategyData]);
+
   const handleOpenFullPlan = () => {
     setIsFullPlanOpen(true);
   };
@@ -34,7 +41,10 @@ export const StrategyPlanSection = () => {
 
   const handleRegenerateSuccess = () => {
     setIsRegeneratePlanOpen(false);
-    fetchStrategyData();
+    // Add a small delay before fetching to ensure the database has updated
+    setTimeout(() => {
+      fetchStrategyData();
+    }, 1000);
   };
   
   const handleConfirmStrategy = async () => {
@@ -76,7 +86,7 @@ export const StrategyPlanSection = () => {
             <AlertTitle>Strategy Confirmed</AlertTitle>
             <AlertDescription className="text-gray-600">
               {strategy.confirmed_at && 
-                `You confirmed this ${strategy.strategy_type || ''} strategy plan ${formatDistanceToNow(new Date(strategy.confirmed_at))} ago.`}
+                `You confirmed this ${strategy.strategy_type || 'starter'} strategy plan ${formatDistanceToNow(new Date(strategy.confirmed_at))} ago.`}
             </AlertDescription>
           </Alert>
         )}
@@ -87,7 +97,7 @@ export const StrategyPlanSection = () => {
           onViewFullPlan={handleOpenFullPlan}
           isConfirmed={isConfirmed}
           onConfirmClick={handleConfirmStrategy}
-          strategyType={strategy?.strategy_type}
+          strategyType={strategy?.strategy_type || "starter"}
         />
       </div>
       
@@ -114,6 +124,7 @@ export const StrategyPlanSection = () => {
         onClose={() => setIsRegeneratePlanOpen(false)}
         userId={user?.id || ""} // Use the user ID from Auth context instead of localStorage
         onSuccess={handleRegenerateSuccess}
+        onGenerationStart={() => setIsRegeneratePlanOpen(false)} // Close modal when generation starts
       />
     </div>
   );

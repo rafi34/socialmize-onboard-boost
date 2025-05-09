@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabaseClient";
 import { toast } from "@/components/ui/use-toast";
 import {
   AlertDialog,
@@ -40,10 +40,19 @@ export const RegeneratePlanModal = ({
   const regenerateStrategy = async () => {
     setIsLoading(true);
     setErrorMessage(null);
+    
+    // Validate userId is present
+    if (!userId) {
+      setErrorMessage("User ID is required. Please make sure you're logged in.");
+      setIsLoading(false);
+      return;
+    }
 
     try {
+      // Signal that generation has started (to close modal, etc)
       if (onGenerationStart) {
         onGenerationStart();
+      } else {
         onClose();
       }
 
@@ -58,8 +67,13 @@ export const RegeneratePlanModal = ({
         .eq("user_id", userId)
         .maybeSingle();
 
-      if (onboardingError || !onboardingAnswers) {
-        console.error("Missing onboarding answers", onboardingError);
+      if (onboardingError) {
+        console.error("Error fetching onboarding answers:", onboardingError);
+        throw new Error("Failed to retrieve onboarding data: " + onboardingError.message);
+      }
+
+      if (!onboardingAnswers) {
+        console.error("Missing onboarding answers for user:", userId);
         throw new Error("Onboarding data is missing. Please complete the onboarding flow.");
       }
 
@@ -72,10 +86,10 @@ export const RegeneratePlanModal = ({
           onboardingData: {
             creator_mission: onboardingAnswers.creator_mission,
             creator_style: onboardingAnswers.creator_style,
-            content_formats: onboardingAnswers.content_format_preference, // Fixed: using correct property name
+            content_formats: onboardingAnswers.content_format_preference, 
             posting_frequency_goal: onboardingAnswers.posting_frequency_goal,
             niche_topic: onboardingAnswers.niche_topic,
-            experience_level: onboardingAnswers.content_format_preference === "tutorials_howto" ? "intermediate" : "beginner" // Fixed: providing a default value
+            experience_level: onboardingAnswers.experience_level || "beginner"
           }
         }
       });
@@ -100,7 +114,6 @@ export const RegeneratePlanModal = ({
         variant: "destructive",
       });
       setErrorMessage(err.message);
-      onClose();
     } finally {
       setIsLoading(false);
     }

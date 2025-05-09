@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { StrategyData } from "@/types/dashboard";
@@ -50,6 +51,7 @@ export function useStrategyData() {
         const isConfirmed = !!data.confirmed_at;
           
         setStrategy({
+          id: data.id, // Make sure to include the ID
           experience_level: data.experience_level || "",
           content_types: data.content_types as string[] || [],
           weekly_calendar: data.weekly_calendar as Record<string, string[]> || {},
