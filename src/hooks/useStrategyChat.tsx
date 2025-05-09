@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -248,7 +247,7 @@ I'm your AI Strategist, and I'll help build your personalized content plan. Clic
         const formattedMessages: ChatMessage[] = data.map(msg => ({
           id: msg.id,
           role: normalizeRole(msg.role),
-          message: msg.content || msg.message, // Handle both field names
+          message: msg.content || msg.message || "", // Handle both field names
           created_at: msg.created_at
         }));
         
@@ -616,6 +615,7 @@ Help me develop a content strategy for my ${onboardingData?.niche_topic || 'cont
     completionModalOpen,
     contentIdeas,
     errorMessage,
+    setErrorMessage,
     sessionStarted,
     hasExistingChat,
     handleStartSession,

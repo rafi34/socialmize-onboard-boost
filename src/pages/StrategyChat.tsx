@@ -1,6 +1,5 @@
 
-import { useRef } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useRef } from "react";
 import { ChatBubble } from "@/components/strategy-chat/ChatBubble";
 import { ConfettiExplosion } from "@/components/strategy-chat/ConfettiExplosion";
 import { CompletionModal } from "@/components/strategy-chat/CompletionModal";
@@ -20,6 +19,7 @@ const StrategyChat = () => {
     completionModalOpen,
     contentIdeas,
     errorMessage,
+    setErrorMessage,
     sessionStarted,
     hasExistingChat,
     handleStartSession,
