@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Trophy, Star } from "lucide-react";
@@ -6,10 +5,11 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { calculateLevelProgress, getXpForNextLevel } from "@/utils/xpUtils";
+import ReminderConfetti from "./ReminderConfetti";
 
 interface LevelProgressCardProps {
   loading?: boolean;
-  progress?: any; // Allow progress to be passed optionally
+  progress?: any;
 }
 
 interface ProfileData {
@@ -21,13 +21,13 @@ interface ProfileData {
 export const LevelProgressCard = ({ loading: initialLoading, progress: progressProp }: LevelProgressCardProps) => {
   const { user } = useAuth();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
-  const [isLoading, setIsLoading] = useState(initialLoading || true);
+  const [isLoading, setIsLoading] = useState<boolean>(initialLoading || true);
+  const [showCelebration, setShowCelebration] = useState<boolean>(false);
 
   useEffect(() => {
     if (user && !progressProp) {
       fetchProfileData();
     } else if (progressProp) {
-      // If progress is directly passed as prop, use it
       setProfileData({
         level: progressProp.current_level || 1,
         xp: progressProp.current_xp || 0,
@@ -37,6 +37,16 @@ export const LevelProgressCard = ({ loading: initialLoading, progress: progressP
     }
   }, [user, progressProp]);
 
+  useEffect(() => {
+    if (profileData?.level) {
+      const lastSeen = parseInt(localStorage.getItem("socialmize_last_seen_level") || "1");
+      if (profileData.level > lastSeen) {
+        setShowCelebration(true);
+        localStorage.setItem("socialmize_last_seen_level", profileData.level.toString());
+      }
+    }
+  }, [profileData?.level]);
+
   const fetchProfileData = async () => {
     try {
       const { data, error } = await supabase
@@ -44,7 +54,7 @@ export const LevelProgressCard = ({ loading: initialLoading, progress: progressP
         .select('level, xp, strategist_persona')
         .eq('id', user?.id)
         .single();
-        
+
       if (error) throw error;
       setProfileData(data);
     } catch (error) {
@@ -71,7 +81,6 @@ export const LevelProgressCard = ({ loading: initialLoading, progress: progressP
     return null;
   }
 
-  // Calculate progress to next level
   const currentLevel = profileData.level || 1;
   const currentXP = profileData.xp || 0;
   const nextLevelXP = getXpForNextLevel(currentLevel);
@@ -88,11 +97,27 @@ export const LevelProgressCard = ({ loading: initialLoading, progress: progressP
       default: return "Unlock Special Templates";
     }
   };
-  
+
   const nextLevelReward = getNextLevelReward(currentLevel);
 
   return (
     <Card className="mb-6">
+      {showCelebration && (
+        <div className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 px-6 rounded-xl shadow-xl flex items-center justify-between mb-4 animate-in fade-in slide-in-from-top-4">
+          <div>
+            <p className="text-xl font-bold">🎉 You reached Level {currentLevel}!</p>
+            <p className="text-sm mt-1">Unlocked: {getNextLevelReward(currentLevel)}</p>
+          </div>
+          <button
+            onClick={() => setShowCelebration(false)}
+            className="bg-white text-black rounded px-3 py-1 text-xs"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+      {showCelebration && <ReminderConfetti />}
+
       <CardHeader className="pb-2">
         <CardTitle className="text-lg flex items-center">
           <Star className="h-5 w-5 mr-2 text-yellow-500" />
@@ -117,7 +142,7 @@ export const LevelProgressCard = ({ loading: initialLoading, progress: progressP
           </div>
           <Progress value={xpPercentage} className="h-2" />
         </div>
-        
+
         <p className="text-sm text-center mt-3">
           Post content regularly to earn more XP!
         </p>
