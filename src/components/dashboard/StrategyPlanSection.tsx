@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 import { CalendarDays, AlertTriangle, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext"; // Add this import
 
 export const StrategyPlanSection = () => {
   const [isFullPlanOpen, setIsFullPlanOpen] = useState(false);
@@ -21,6 +22,7 @@ export const StrategyPlanSection = () => {
     fetchStrategyData,
     confirmStrategyPlan 
   } = useStrategyData();
+  const { user } = useAuth(); // Get the authenticated user
 
   const handleOpenFullPlan = () => {
     setIsFullPlanOpen(true);
@@ -110,7 +112,7 @@ export const StrategyPlanSection = () => {
       <RegeneratePlanModal
         isOpen={isRegeneratePlanOpen}
         onClose={() => setIsRegeneratePlanOpen(false)}
-        userId={localStorage.getItem("userId") || ""}
+        userId={user?.id || ""} // Use the user ID from Auth context instead of localStorage
         onSuccess={handleRegenerateSuccess}
       />
     </div>
