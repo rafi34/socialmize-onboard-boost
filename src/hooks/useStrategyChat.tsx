@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -394,7 +393,7 @@ I'm your AI Strategist, and I'll help build your personalized content plan. Clic
 - Niche topic: ${onboardingData?.niche_topic || 'Not specified'}
 - Experience level: ${strategyData?.experience_level || 'Beginner'}
 
-Help me develop a content strategy for my ${onboardingData?.niche_topic || 'content'}.`;
+Let's start building my content strategy.`;
 
     // Add user context message to state
     const userContextMessage: ChatMessage = {
@@ -447,6 +446,12 @@ Help me develop a content strategy for my ${onboardingData?.niche_topic || 'cont
       setMessages(prev => prev.map(msg => 
         msg.id === tempAssistantId ? { ...assistantMessage, id: `assistant-${Date.now()}` } : msg
       ));
+      
+      // Save the user and assistant messages to Supabase now that we have a thread ID
+      if (data.threadId) {
+        await saveMessage(userContextMessage, data.threadId);
+        await saveMessage(assistantMessage, data.threadId);
+      }
     } catch (error: any) {
       console.error('Error starting session:', error);
       
@@ -477,8 +482,11 @@ Help me develop a content strategy for my ${onboardingData?.niche_topic || 'cont
       message: inputMessage
     };
     
+    // Create a unique ID for the user message
+    const userMessageId = `user-${Date.now()}`;
+    
     // Optimistically add user message to state
-    setMessages(prev => [...prev, { ...userMessage, id: `temp-${Date.now()}` }]);
+    setMessages(prev => [...prev, { ...userMessage, id: userMessageId }]);
     setInputMessage("");
     setIsLoading(true);
     
@@ -490,6 +498,13 @@ Help me develop a content strategy for my ${onboardingData?.niche_topic || 'cont
     try {
       // Get or create a thread ID
       const currentThreadId = threadId || "";
+      
+      if (!currentThreadId) {
+        throw new Error("No active thread. Please start a new session.");
+      }
+      
+      // Save the user message to Supabase
+      await saveMessage(userMessage, currentThreadId);
       
       // Call the edge function with onboarding and strategy data
       const { data, error } = await supabase.functions.invoke("generate-strategy-chat", {
@@ -510,22 +525,22 @@ Help me develop a content strategy for my ${onboardingData?.niche_topic || 'cont
         throw new Error(data.error || "An error occurred while processing your message.");
       }
       
-      // Get the thread ID from the response and store it
-      if (data.threadId) {
-        setThreadId(data.threadId);
-        localStorage.setItem('strategyThreadId', data.threadId);
-      }
-      
       // Get assistant's response and update the message
       const assistantMessage: Omit<ChatMessage, 'id' | 'created_at'> = {
         role: "assistant",
         message: data.message || "I'm having trouble responding right now. Let's continue."
       };
       
+      // Create a permanent ID for the assistant message
+      const assistantMessageId = `assistant-${Date.now()}`;
+      
       // Replace the waiting message with the actual response
       setMessages(prev => prev.map(msg => 
-        msg.id === tempAssistantId ? { ...assistantMessage, id: `assistant-${Date.now()}` } : msg
+        msg.id === tempAssistantId ? { ...assistantMessage, id: assistantMessageId } : msg
       ));
+      
+      // Save the assistant message to Supabase
+      await saveMessage(assistantMessage, currentThreadId);
       
       // Check for completion
       if (data.completed) {
@@ -579,6 +594,68 @@ Help me develop a content strategy for my ${onboardingData?.niche_topic || 'cont
     }
   };
   
+  // Handle ending the session
+  const handleEndSession = async () => {
+    if (!user || !threadId) return;
+    
+    setIsLoading(true);
+    
+    try {
+      // Add a system message indicating the session has ended
+      const endMessage: Omit<ChatMessage, 'id' | 'created_at'> = {
+        role: "system",
+        message: "Session ended. You can start a new session to continue the conversation."
+      };
+      
+      // Add the end message to the UI
+      const endMessageId = `system-${Date.now()}`;
+      setMessages(prev => [...prev, { ...endMessage, id: endMessageId }]);
+      
+      // Save the end message to Supabase
+      await saveMessage(endMessage, threadId);
+      
+      // Mark the session as completed in Supabase by adding a special tag
+      const { error } = await supabase.functions.invoke("generate-strategy-chat", {
+        body: {
+          userId: user.id,
+          userMessage: "[END_SESSION]",
+          threadId: threadId,
+          isEndingSession: true
+        }
+      });
+      
+      if (error) {
+        console.error("Error ending session:", error);
+        toast({
+          title: "Warning",
+          description: "Session ended locally but there was an issue syncing with the server.",
+          variant: "destructive"
+        });
+      }
+      
+      // Clear the threadId from localStorage but keep it in state for the current view
+      localStorage.removeItem('strategyThreadId');
+      setSessionStarted(false);
+      
+      toast({
+        title: "Session Ended",
+        description: "Your strategy session has been saved and ended.",
+        variant: "default"
+      });
+      
+    } catch (error: any) {
+      console.error('Error ending session:', error);
+      
+      toast({
+        title: "Error",
+        description: "There was a problem ending your session. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   // Handle viewing content ideas
   const handleViewContentIdeas = () => {
     // Navigate to the content ideas review page
@@ -621,6 +698,7 @@ Help me develop a content strategy for my ${onboardingData?.niche_topic || 'cont
     hasExistingChat,
     handleStartSession,
     handleSendMessage,
+    handleEndSession,
     handleViewContentIdeas,
     handleBackToDashboard,
     handleNewSession,

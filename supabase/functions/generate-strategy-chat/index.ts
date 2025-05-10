@@ -1,3 +1,4 @@
+
 // supabase/functions/generate-strategy-chat/index.ts
 import { serve } from "https://deno.land/std@0.195.0/http/server.ts";
 import OpenAI from "https://esm.sh/openai@4.28.0";
@@ -31,15 +32,22 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const { userId, userMessage, threadId, onboardingData, strategyData } = await req.json();
+    const { 
+      userId, 
+      userMessage, 
+      threadId, 
+      onboardingData, 
+      strategyData, 
+      isEndingSession 
+    } = await req.json();
 
-    if (!userId || !userMessage) {
+    if (!userId) {
       return new Response(
-        JSON.stringify({ success: false, error: "User ID and message are required" }),
+        JSON.stringify({ success: false, error: "User ID is required" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
-
+    
     console.log("Processing strategy chat for user:", userId);
     console.log("Assistant ID:", assistantId);
     
@@ -57,22 +65,58 @@ serve(async (req) => {
     // Initialize the Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    try {
-      // Fetch the user's strategy profile data
-      const { data: strategyProfileData, error: strategyError } = await supabase
-        .from('strategy_profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    // Handle special case for ending a session
+    if (isEndingSession && threadId) {
+      console.log("Ending session for thread:", threadId);
+      
+      try {
+        // Mark the thread as completed in a way that's queryable later
+        const { data: threadData, error: threadError } = await supabase
+          .from('thread_metadata')
+          .upsert({
+            thread_id: threadId,
+            user_id: userId,
+            status: 'completed',
+            completed_at: new Date().toISOString()
+          }, {
+            onConflict: 'thread_id',
+            ignoreDuplicates: false
+          });
+          
+        if (threadError) {
+          console.error("Error updating thread metadata:", threadError);
+        }
         
-      if (strategyError) {
-        console.error("Error fetching strategy profile:", strategyError);
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            threadId: threadId,
+            message: "Session ended successfully",
+            completed: true
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (error) {
+        console.error("Error ending session:", error);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "Failed to end session"
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
       }
-      
-      console.log("Strategy profile data retrieved:", strategyProfileData ? "yes" : "no");
-      
+    }
+    
+    // Proceed with normal message handling
+    if (!userMessage) {
+      return new Response(
+        JSON.stringify({ success: false, error: "User message is required" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+    
+    try {
       // Create or retrieve a thread
       let currentThreadId = threadId;
       
@@ -83,10 +127,24 @@ serve(async (req) => {
           currentThreadId = thread.id;
           console.log("New thread created:", currentThreadId);
           
+          // Record thread metadata in Supabase for easier querying
+          const { error: metadataError } = await supabase
+            .from('thread_metadata')
+            .insert({
+              thread_id: currentThreadId,
+              user_id: userId,
+              status: 'active',
+              created_at: new Date().toISOString()
+            });
+            
+          if (metadataError) {
+            console.error("Error saving thread metadata:", metadataError);
+          }
+          
           // If this is a new thread, add context info about the user's profile
           const contextData = {
             ...onboardingData,
-            ...(strategyProfileData || {})
+            ...(strategyData || {})
           };
           
           // Create a context message with combined data
@@ -225,7 +283,11 @@ ${Object.entries(contextData)
               const ideaObjects = contentIdeas.map(idea => ({
                 user_id: userId,
                 idea: idea,
-                selected: false
+                selected: false,
+                format_type: getRandomFormat(),
+                difficulty: getRandomDifficulty(),
+                xp_reward: getRandomXpReward(),
+                generated_at: new Date().toISOString()
               }));
               
               const { error: saveError } = await supabase
@@ -238,28 +300,29 @@ ${Object.entries(contextData)
                 console.log("Successfully saved content ideas to database");
               }
             }
+            
+            // If the session is completed, update thread metadata
+            if (isCompleted) {
+              const { error: updateError } = await supabase
+                .from('thread_metadata')
+                .upsert({
+                  thread_id: currentThreadId,
+                  user_id: userId,
+                  status: 'completed',
+                  completed_at: new Date().toISOString()
+                }, {
+                  onConflict: 'thread_id',
+                  ignoreDuplicates: false
+                });
+                
+              if (updateError) {
+                console.error("Error updating thread metadata:", updateError);
+              }
+            }
           } catch (error) {
             console.error("Error processing content ideas:", error);
           }
         }
-        
-        // Save the user message to Supabase
-        await supabase.from('ai_messages').insert({
-          user_id: userId,
-          thread_id: currentThreadId,
-          role: "user",
-          content: userMessage,
-          message: userMessage // Add the message field explicitly
-        });
-        
-        // Save the assistant message to Supabase
-        await supabase.from('ai_messages').insert({
-          user_id: userId,
-          thread_id: currentThreadId,
-          role: "assistant",
-          content: messageContent,
-          message: messageContent // Add the message field explicitly
-        });
         
         return new Response(
           JSON.stringify({ 
@@ -309,3 +372,18 @@ ${Object.entries(contextData)
     );
   }
 });
+
+// Helper functions for assigning random attributes to content ideas
+function getRandomFormat() {
+  const formats = ["Video", "Carousel", "Talking Head", "Meme", "Duet"];
+  return formats[Math.floor(Math.random() * formats.length)];
+}
+
+function getRandomDifficulty() {
+  const difficulties = ["Easy", "Medium", "Hard"];
+  return difficulties[Math.floor(Math.random() * difficulties.length)];
+}
+
+function getRandomXpReward() {
+  return [25, 50, 75, 100][Math.floor(Math.random() * 4)];
+}

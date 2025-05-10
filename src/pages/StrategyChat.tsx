@@ -27,6 +27,7 @@ const StrategyChat = () => {
     handleViewContentIdeas,
     handleBackToDashboard,
     handleNewSession,
+    handleEndSession,
     setCompletionModalOpen,
     user
   } = useStrategyChat();
@@ -48,8 +49,10 @@ const StrategyChat = () => {
       {/* Header */}
       <StrategyChatHeader
         hasExistingChat={hasExistingChat}
+        sessionStarted={sessionStarted}
         onBackToDashboard={handleBackToDashboard}
         onNewSession={handleNewSession}
+        onEndSession={handleEndSession}
       />
       
       {/* Chat area */}
