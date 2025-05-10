@@ -1,5 +1,6 @@
 
-import React, { useRef } from "react";
+import { useRef } from "react";
+import { Button } from "@/components/ui/button";
 import { ChatBubble } from "@/components/strategy-chat/ChatBubble";
 import { ConfettiExplosion } from "@/components/strategy-chat/ConfettiExplosion";
 import { CompletionModal } from "@/components/strategy-chat/CompletionModal";
@@ -19,11 +20,9 @@ const StrategyChat = () => {
     completionModalOpen,
     contentIdeas,
     errorMessage,
-    setErrorMessage,
     sessionStarted,
     hasExistingChat,
     handleStartSession,
-    handleEndSession,
     handleSendMessage,
     handleViewContentIdeas,
     handleBackToDashboard,
@@ -49,10 +48,8 @@ const StrategyChat = () => {
       {/* Header */}
       <StrategyChatHeader
         hasExistingChat={hasExistingChat}
-        sessionStarted={sessionStarted}
         onBackToDashboard={handleBackToDashboard}
         onNewSession={handleNewSession}
-        onEndSession={handleEndSession}
       />
       
       {/* Chat area */}
@@ -67,10 +64,9 @@ const StrategyChat = () => {
             />
           ))}
           
-          {/* Start/End Session button */}
+          {/* Start Session button */}
           <StartSessionButton
             onStartSession={handleStartSession}
-            onEndSession={handleEndSession}
             isLoading={isLoading}
             sessionStarted={sessionStarted}
             hasMessages={messages.length > 0}
@@ -86,7 +82,7 @@ const StrategyChat = () => {
         </div>
       </div>
       
-      {/* Input area - only shown after session has started and not ended */}
+      {/* Input area - only shown after session has started */}
       <StrategyChatInput
         inputMessage={inputMessage}
         setInputMessage={setInputMessage}

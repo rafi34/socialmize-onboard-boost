@@ -1,10 +1,10 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { Json } from "@/integrations/supabase/types";
-import { parseFullStrategyJson } from "@/utils/parseFullStrategyJson";
 
 interface ChatMessage {
   id: string;
@@ -40,7 +40,6 @@ interface StrategyProfileData {
   updated_at?: string;
   first_five_scripts?: Json;
   strategy_type?: string;
-  confirmed_at?: string;
 }
 
 interface UserProfileData {
@@ -48,89 +47,6 @@ interface UserProfileData {
   email?: string;
   level?: number;
 }
-
-// Helper function to format strategy data for better readability
-const formatStrategyData = (strategyData: StrategyProfileData | null): string => {
-  if (!strategyData) return "Strategy information not available";
-  
-  // Create a readable format for the strategy data
-  let formattedText = '';
-  
-  // Basic strategy information
-  formattedText += `- Strategy Type: ${strategyData.strategy_type ? strategyData.strategy_type.charAt(0).toUpperCase() + strategyData.strategy_type.slice(1) : "Starter"}\n`;
-  formattedText += `- Status: ${strategyData.confirmed_at ? "Confirmed" : "Not yet confirmed"}\n`;
-  
-  // Add content types if available
-  if (strategyData.content_types && Array.isArray(strategyData.content_types)) {
-    formattedText += `- Content Types: ${(strategyData.content_types as string[]).join(', ')}\n`;
-  }
-  
-  // Add other strategy details
-  if (strategyData.posting_frequency) {
-    formattedText += `- Posting Frequency: ${strategyData.posting_frequency}\n`;
-  }
-  if (strategyData.niche_topic) {
-    formattedText += `- Niche: ${strategyData.niche_topic}\n`;
-  }
-  if (strategyData.experience_level) {
-    formattedText += `- Experience Level: ${strategyData.experience_level.charAt(0).toUpperCase() + strategyData.experience_level.slice(1)}\n`;
-  }
-  if (strategyData.creator_style) {
-    formattedText += `- Creator Style: ${strategyData.creator_style.replace(/_/g, ' ').charAt(0).toUpperCase() + strategyData.creator_style.replace(/_/g, ' ').slice(1)}\n`;
-  }
-  
-  // Add summary if available
-  if (strategyData.summary) {
-    formattedText += `\n### Strategy Summary\n${strategyData.summary}\n`;
-  }
-  
-  // Parse the full plan text if available
-  if (strategyData.full_plan_text) {
-    try {
-      const parsedPlan = parseFullStrategyJson(strategyData.full_plan_text);
-      if (parsedPlan) {
-        // Extract key information from the parsed plan
-        if (parsedPlan.summary) {
-          formattedText += `\n### Plan Summary\n${parsedPlan.summary}\n`;
-        }
-        
-        if (parsedPlan.weeks && Array.isArray(parsedPlan.weeks)) {
-          formattedText += `\n### Weekly Content Plan\n`;
-          
-          parsedPlan.weeks.forEach((week, index) => {
-            formattedText += `\nWeek ${index + 1}:\n`;
-            
-            // Add content frequency
-            if (week.weekly_table && Array.isArray(week.weekly_table)) {
-              week.weekly_table.forEach(item => {
-                const contentType = item.label || item.content_type || "Content";
-                formattedText += `- ${contentType}: ${item.frequency_per_week || 'N/A'} times per week\n`;
-              });
-            }
-            
-            // Add example post ideas
-            if (week.example_post_ideas) {
-              formattedText += `\nExample Ideas:\n`;
-              Object.entries(week.example_post_ideas).forEach(([type, ideas]) => {
-                if (Array.isArray(ideas)) {
-                  ideas.slice(0, 3).forEach(idea => {
-                    formattedText += `- ${idea}\n`;
-                  });
-                }
-              });
-            }
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Error parsing full plan text:", error);
-      // Add a basic version of the full plan text if parsing fails
-      formattedText += `\n### Strategy Plan\n${strategyData.full_plan_text.substring(0, 300)}...\n`;
-    }
-  }
-  
-  return formattedText;
-};
 
 export const useStrategyChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -207,71 +123,21 @@ export const useStrategyChat = () => {
     // Format the name with capitalized first letter
     const formattedName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
     
-    // Create personalized welcome message with strategy information
+    // Create personalized welcome message
     const strategyType = strategyData?.strategy_type || "starter";
-    
-    // Create sections for the welcome message
-    let welcomeMessage = `## Welcome to Your Content Strategy Session, ${formattedName}! 👋
+    const welcomeMessage = `
+Hi ${formattedName}! 👋 Welcome to your strategy session!
 
-I'm your AI Strategy Assistant, here to help you implement and refine your content strategy.`;
+Based on your profile, I see that:
+${onboardingData.niche_topic ? `- You create content about ${onboardingData.niche_topic}` : ''}
+${onboardingData.creator_style ? `- Your creator style is ${onboardingData.creator_style?.replace('_', ' ')}` : ''}
+${onboardingData.posting_frequency_goal ? `- You aim to post ${onboardingData.posting_frequency_goal?.replace('_', ' ')}` : ''}
+${onboardingData.content_format_preference ? `- You prefer creating ${onboardingData.content_format_preference?.replace('_', ' ')} content` : ''}
 
-    // Add personalized profile section
-    welcomeMessage += `\n\n### Your Creator Profile\n`;
-    
-    if (onboardingData.niche_topic) {
-      welcomeMessage += `- **Content Niche:** ${onboardingData.niche_topic}\n`;
-    }
-    
-    if (onboardingData.creator_style) {
-      const style = onboardingData.creator_style.replace(/_/g, ' ');
-      welcomeMessage += `- **Creator Style:** ${style.charAt(0).toUpperCase() + style.slice(1)}\n`;
-    }
-    
-    if (onboardingData.posting_frequency_goal) {
-      const frequency = onboardingData.posting_frequency_goal.replace(/_/g, ' ');
-      welcomeMessage += `- **Posting Goal:** ${frequency.charAt(0).toUpperCase() + frequency.slice(1)}\n`;
-    }
-    
-    if (onboardingData.content_format_preference) {
-      const format = onboardingData.content_format_preference.replace(/_/g, ' ');
-      welcomeMessage += `- **Content Format:** ${format.charAt(0).toUpperCase() + format.slice(1)}\n`;
-    }
+You're currently on our ${strategyType.charAt(0).toUpperCase() + strategyType.slice(1)} strategy plan.
 
-    // Add strategy details if available
-    if (strategyData) {
-      welcomeMessage += `\n\n### Your Content Strategy\n`;
-      
-      welcomeMessage += `- **Plan Type:** ${strategyType.charAt(0).toUpperCase() + strategyType.slice(1)}\n`;
-      
-      if (strategyData.confirmed_at) {
-        welcomeMessage += `- **Status:** ✅ Confirmed and ready to implement\n`;
-      } else {
-        welcomeMessage += `- **Status:** Awaiting confirmation\n`;
-      }
-      
-      if (strategyData.content_types && Array.isArray(strategyData.content_types)) {
-        welcomeMessage += `- **Content Mix:** ${(strategyData.content_types as string[]).join(', ')}\n`;
-      }
-      
-      if (strategyData.posting_frequency) {
-        welcomeMessage += `- **Recommended Frequency:** ${strategyData.posting_frequency}\n`;
-      }
-      
-      if (strategyData.summary) {
-        welcomeMessage += `\n### Strategy Summary\n${strategyData.summary}\n`;
-      }
-      
-      // Add a condensed version of the full plan if it exists
-      if (strategyData.full_plan_text) {
-        // Only include the first few sentences of the plan as a teaser
-        const planPreview = strategyData.full_plan_text.split('.').slice(0, 3).join('.') + '.';
-        welcomeMessage += `\n### Plan Highlights\n${planPreview}\n\n*Click "Start Chat" below to discuss your strategy in detail!*`;
-      }
-    }
-
-    if (!strategyData) {
-      welcomeMessage += `\n\nLet's develop your content strategy together! Click "Start Chat" to begin our conversation.`;
-    }
+I'm your AI Strategist, and I'll help build your personalized content plan. Click the Start Session button when you're ready to begin our conversation!
+`;
 
     const initialMessage: ChatMessage = {
       id: "welcome",
@@ -382,7 +248,7 @@ I'm your AI Strategy Assistant, here to help you implement and refine your conte
         const formattedMessages: ChatMessage[] = data.map(msg => ({
           id: msg.id,
           role: normalizeRole(msg.role),
-          message: msg.content || "", // Only use content field since message field doesn't exist
+          message: msg.content || msg.message, // Handle both field names
           created_at: msg.created_at
         }));
         
@@ -519,61 +385,16 @@ I'm your AI Strategy Assistant, here to help you implement and refine your conte
     setErrorMessage(null);
     setSessionStarted(true);
     
-    // Format strategy data
-    const formattedStrategy = formatStrategyData(strategyData);
-    
-    // Gather all relevant context data including strategy data
-    const contextData = {
-      onboarding: onboardingData,
-      strategy: strategyData,
-      user: {
-        id: user?.id,
-        email: userProfile?.email,
-        level: userProfile?.level || 1
-      }
-    };
-    
-    // Format creator details for better readability
-    const formatCreatorDetail = (key: string, value: string | undefined) => {
-      if (!value) return null;
-      
-      // Convert snake_case to readable format
-      const formattedKey = key.replace(/_/g, ' ')
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-      
-      // Convert snake_case values to readable format
-      const formattedValue = value.replace(/_/g, ' ')
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-      
-      return `- **${formattedKey}:** ${formattedValue}`;
-    };
-    
-    // Build creator profile section
-    const creatorProfileItems = [
-      formatCreatorDetail('creator_mission', onboardingData?.creator_mission),
-      formatCreatorDetail('creator_style', onboardingData?.creator_style),
-      formatCreatorDetail('content_format_preference', onboardingData?.content_format_preference),
-      formatCreatorDetail('posting_frequency_goal', onboardingData?.posting_frequency_goal),
-      formatCreatorDetail('niche_topic', onboardingData?.niche_topic),
-      formatCreatorDetail('experience_level', strategyData?.experience_level)
-    ].filter(item => item !== null);
-    
-    const creatorProfile = creatorProfileItems.length > 0
-      ? `## Creator Profile\n${creatorProfileItems.join('\n')}\n\n`
-      : '';
-    
-    // Generate the context message - REMOVING the specific instructions that were showing up
-    const contextMessage = `
-${creatorProfile}
-## Content Strategy
-${formattedStrategy}
+    // Prepare initial context message with user data
+    const contextMessage = `I am starting a new strategy session. Here's my profile info:
+- Creator type: ${onboardingData?.creator_mission || 'Not specified'}
+- Style: ${onboardingData?.creator_style || 'Not specified'}
+- Content format: ${onboardingData?.content_format_preference || 'Not specified'}
+- Posting frequency: ${onboardingData?.posting_frequency_goal || 'Not specified'}
+- Niche topic: ${onboardingData?.niche_topic || 'Not specified'}
+- Experience level: ${strategyData?.experience_level || 'Beginner'}
 
-I would like you to welcome the user and provide a brief overview of their content strategy.
-`;
+Help me develop a content strategy for my ${onboardingData?.niche_topic || 'content'}.`;
 
     // Add user context message to state
     const userContextMessage: ChatMessage = {
@@ -585,22 +406,20 @@ I would like you to welcome the user and provide a brief overview of their conte
     setMessages(prev => [...prev, userContextMessage]);
     setIsLoading(true);
     
-    // Add temporary placeholder for assistant's response with waiting message
+    // Add temporary waiting message
     const waitingMessage = await getWaitingMessage();
     const tempAssistantId = `temp-assistant-${Date.now()}`;
     setMessages(prev => [...prev, { id: tempAssistantId, role: "assistant", message: waitingMessage }]);
     
     try {
-      // Call the edge function with comprehensive context data
+      // Call the edge function with context data
       const { data, error } = await supabase.functions.invoke("generate-strategy-chat", {
         body: {
           userId: user?.id,
           userMessage: contextMessage,
           threadId: null, // Create a new thread
           onboardingData: onboardingData,
-          strategyData: strategyData,
-          userProfile: userProfile,
-          isSessionStart: true // Flag to indicate this is a session start
+          strategyData: strategyData
         }
       });
       
@@ -643,50 +462,6 @@ I would like you to welcome the user and provide a brief overview of their conte
       
       // Remove the waiting message on error
       setMessages(prev => prev.filter(msg => msg.id !== tempAssistantId));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle ending the session
-  const handleEndSession = async () => {
-    if (!sessionStarted) return;
-    
-    setIsLoading(true);
-    
-    try {
-      // Add a system message indicating the session has ended
-      const systemMessage: ChatMessage = {
-        id: `system-${Date.now()}`,
-        role: 'system',
-        message: "Chat session ended by user. You can start a new session or continue this conversation later."
-      };
-      
-      // Add the system message to the UI
-      setMessages(prev => [...prev, systemMessage]);
-      
-      // Save the system message to Supabase if we have a thread ID
-      if (threadId && user) {
-        await saveMessage({
-          role: 'system',
-          message: systemMessage.message
-        }, threadId);
-      }
-      
-      // Mark session as ended but keep messages visible
-      setSessionStarted(false);
-      
-      toast({
-        title: "Session Ended",
-        description: "Your strategy session has been saved. You can return to it anytime.",
-      });
-    } catch (error) {
-      console.error("Error ending session:", error);
-      toast({
-        title: "Error",
-        description: "There was a problem ending your session.",
-        variant: "destructive"
-      });
     } finally {
       setIsLoading(false);
     }
@@ -841,11 +616,9 @@ I would like you to welcome the user and provide a brief overview of their conte
     completionModalOpen,
     contentIdeas,
     errorMessage,
-    setErrorMessage,
     sessionStarted,
     hasExistingChat,
     handleStartSession,
-    handleEndSession,
     handleSendMessage,
     handleViewContentIdeas,
     handleBackToDashboard,

@@ -9,11 +9,11 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const openaiApiKey = Deno.env.get("OPENAI_API_KEY") || "";
 const assistantId = Deno.env.get("ASSISTANT_ID") || "";
 
-// Initialize OpenAI client with correct v2 header
+// Initialize OpenAI client with v2 header
 const openai = new OpenAI({
   apiKey: openaiApiKey,
   defaultHeaders: {
-    "OpenAI-Beta": "assistants=v2" // Ensure correct v2 header
+    "OpenAI-Beta": "assistants=v2" // Set v2 header for Assistants API
   }
 });
 
@@ -22,61 +22,6 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-// Helper function to parse JSON strategy data
-function parseStrategyJson(text) {
-  if (!text) return null;
-  
-  try {
-    // Clean the text to handle potential formatting issues
-    let cleaned = text.trim()
-      .replace(/^```json\s*/g, '')  // Remove opening ```json
-      .replace(/^```\s*/g, '')      // Remove opening ``` without json
-      .replace(/```$/g, '');        // Remove closing ```
-    
-    // Try to find JSON object boundaries if there's other text
-    const firstBrace = cleaned.indexOf('{');
-    const lastBrace = cleaned.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1) {
-      cleaned = cleaned.substring(firstBrace, lastBrace + 1);
-    }
-    
-    // Fix common JSON string issues
-    cleaned = cleaned
-      .replace(/\\"/g, '"') // Fix escaped quotes inside already escaped content
-      .replace(/\\n/g, ' ') // Replace \n with spaces for better readability
-      .replace(/\r\n/g, ' ') // Replace Windows line breaks
-      .replace(/\n/g, ' '); // Replace Unix line breaks
-      
-    return JSON.parse(cleaned);
-  } catch (error) {
-    console.error("Error parsing strategy JSON:", error);
-    return null;
-  }
-}
-
-// Helper function to format strategy data
-function formatStrategyData(strategyData) {
-  if (!strategyData) return {};
-  
-  // Parse full plan text if it exists
-  const parsedPlan = strategyData.full_plan_text ? 
-    parseStrategyJson(strategyData.full_plan_text) : null;
-  
-  // Extract key information
-  return {
-    type: strategyData.strategy_type || "starter",
-    is_confirmed: !!strategyData.confirmed_at,
-    content_types: strategyData.content_types || [],
-    posting_frequency: strategyData.posting_frequency || "Not specified",
-    niche: strategyData.niche_topic || "Not specified",
-    experience_level: strategyData.experience_level || "beginner",
-    creator_style: strategyData.creator_style || "Not specified",
-    summary: strategyData.summary || (parsedPlan?.summary || ""),
-    plan_details: parsedPlan || {},
-    has_full_plan: !!strategyData.full_plan_text
-  };
-}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -128,9 +73,6 @@ serve(async (req) => {
       
       console.log("Strategy profile data retrieved:", strategyProfileData ? "yes" : "no");
       
-      // Format strategy data for better context
-      const formattedStrategy = formatStrategyData(strategyProfileData || strategyData);
-      
       // Create or retrieve a thread
       let currentThreadId = threadId;
       
@@ -141,74 +83,34 @@ serve(async (req) => {
           currentThreadId = thread.id;
           console.log("New thread created:", currentThreadId);
           
-          // Format onboarding data for better readability
-          const formattedOnboarding = {};
+          // If this is a new thread, add context info about the user's profile
+          const contextData = {
+            ...onboardingData,
+            ...(strategyProfileData || {})
+          };
           
-          // Convert snake_case keys and values to readable format
-          if (onboardingData) {
-            Object.entries(onboardingData).forEach(([key, value]) => {
-              if (typeof value === 'string' && !key.includes('id') && key !== 'created_at' && key !== 'updated_at') {
-                // Format the key
-                const formattedKey = key.replace(/_/g, ' ')
-                  .split(' ')
-                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                  .join(' ');
-                
-                // Format the value
-                const formattedValue = typeof value === 'string' ? 
-                  value.replace(/_/g, ' ')
-                    .split(' ')
-                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                    .join(' ') : 
-                  value;
-                  
-                formattedOnboarding[formattedKey] = formattedValue;
-              }
-            });
-          }
-          
-          // Create a detailed but well-formatted context message
+          // Create a context message with combined data
           const contextMessage = `
-# Content Strategy Assistant Context
-
-## User Profile
-${Object.entries(formattedOnboarding)
-  .map(([key, value]) => `- ${key}: ${value}`)
+User Profile Information:
+${Object.entries(contextData)
+  .filter(([key, value]) => value !== null && value !== undefined && !key.includes('id') && key !== 'created_at' && key !== 'updated_at')
+  .map(([key, value]) => {
+    // Format JSON values to be more readable
+    const formattedValue = typeof value === 'object' 
+      ? JSON.stringify(value, null, 2) 
+      : value;
+    return `- ${key.replace(/_/g, ' ')}: ${formattedValue}`;
+  })
   .join('\n')}
-
-## Strategy Information
-- Strategy Type: ${formattedStrategy.type?.charAt(0).toUpperCase() + formattedStrategy.type?.slice(1) || 'Starter'}
-- Status: ${formattedStrategy.is_confirmed ? 'Confirmed' : 'Not yet confirmed'}
-- Content Types: ${Array.isArray(formattedStrategy.content_types) ? formattedStrategy.content_types.join(', ') : 'Not specified'}
-- Posting Frequency: ${formattedStrategy.posting_frequency || 'Not specified'}
-- Niche: ${formattedStrategy.niche || 'Not specified'}
-- Experience Level: ${formattedStrategy.experience_level?.charAt(0).toUpperCase() + formattedStrategy.experience_level?.slice(1) || 'Beginner'}
-- Creator Style: ${formattedStrategy.creator_style || 'Not specified'}
-
-${formattedStrategy.summary ? `## Strategy Summary\n${formattedStrategy.summary}` : ''}
-
-## Assistant Instructions
-You are a friendly Content Strategy Assistant helping creators implement their content strategy plans.
-When responding:
-- Use a conversational, helpful tone
-- Organize your responses with clear headings and bullet points using markdown
-- Provide specific, actionable advice related to their content niche and creator style
-- Never show raw JSON data in your responses
-- Format your advice to be easily scannable and digestible
-- If providing content ideas, format them as a bulleted list at the end of your message
-- Address the user directly and be encouraging
-- Start with a brief welcome and summary of their strategy
-
-Remember that the user wants practical guidance on implementing their strategy, not technical explanations about the strategy itself.
 `;
 
           // Add initial context message to the thread
           await openai.beta.threads.messages.create(currentThreadId, {
             role: "user",
-            content: contextMessage,
+            content: `Here's my profile information for context:\n${contextMessage}\n\nI'm ready to start building my content strategy.`,
           });
           
-          console.log("Added comprehensive context message to new thread");
+          console.log("Added context message to new thread");
         } else {
           console.log("Using existing thread:", currentThreadId);
         }
@@ -221,24 +123,9 @@ Remember that the user wants practical guidance on implementing their strategy, 
         
         console.log("Added user message to thread");
         
-        // Add instructions to respond in a conversational format
-        const instructionsMessage = `
-Remember to respond in a conversational, helpful tone. 
-Format your response with clear markdown structure for readability.
-Provide specific, actionable advice tailored to the user's content niche and creator style.
-Never include raw JSON in your responses.
-`;
-
-        // Add formatting instructions
-        await openai.beta.threads.messages.create(currentThreadId, {
-          role: "user", 
-          content: instructionsMessage
-        });
-        
         // Run the assistant
         const run = await openai.beta.threads.runs.create(currentThreadId, {
           assistant_id: assistantId,
-          instructions: "Respond in a conversational tone. Always format your responses with clear markdown structure for readability. Provide specific, actionable advice tailored to the user's content niche and creator style. Never include raw JSON or technical code in your responses."
         });
         
         console.log("Run created:", run.id);
@@ -288,12 +175,6 @@ Never include raw JSON in your responses.
         
         if (latestMessage.content && latestMessage.content.length > 0 && latestMessage.content[0].type === "text") {
           messageContent = latestMessage.content[0].text.value;
-          
-          // Make a final check for raw JSON in the response and clean if needed
-          if (messageContent.includes('```json')) {
-            messageContent = messageContent.replace(/```json[\s\S]*?```/g, 
-              '*(Strategy information available but shown in a more readable format)*');
-          }
         } else {
           console.warn("Unexpected message format:", JSON.stringify(latestMessage.content));
           messageContent = "I'm having trouble generating a response right now. Please try again.";
@@ -301,9 +182,9 @@ Never include raw JSON in your responses.
         
         // Check for completion markers in the message
         const isCompleted = messageContent.includes("[content_ideas_ready]") || 
-                          messageContent.includes("[CONTENT_IDEAS]") ||
-                          messageContent.includes("[STRATEGY_COMPLETE]") ||
-                          messageContent.includes("[COMPLETED]");
+                            messageContent.includes("[CONTENT_IDEAS]") ||
+                            messageContent.includes("[STRATEGY_COMPLETE]") ||
+                            messageContent.includes("[COMPLETED]");
 
         // Extract content ideas if present
         let contentIdeas = [];
