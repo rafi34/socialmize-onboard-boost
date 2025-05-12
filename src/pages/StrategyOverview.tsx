@@ -220,7 +220,26 @@ const StrategyOverview = () => {
                   <CardTitle className="text-lg">Quick Actions</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  {strategy && strategy.summary && strategy.full_plan_text && (
+                    <div className="p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md mb-3">
+                      <h3 className="font-medium text-green-800 dark:text-green-400 flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4" />
+                        Strategy Confirmed
+                      </h3>
+                      <p className="text-sm text-green-700 dark:text-green-500">
+                        Your starter strategy is ready. Create a detailed 30-day content plan now!
+                      </p>
+                      <Button className="mt-2 bg-green-600 hover:bg-green-700 text-white w-full" asChild>
+                        <Link to="/content-planner">
+                          Create 30-Day Content Plan
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-3">
+                    <Button variant="default" className="text-sm bg-socialmize-purple hover:bg-socialmize-purple/90" asChild>
+                      <Link to="/content-planner">30-Day Content Planner</Link>
+                    </Button>
                     <Button variant="outline" className="text-sm" asChild>
                       <Link to="/review-ideas">Review Content Ideas</Link>
                     </Button>

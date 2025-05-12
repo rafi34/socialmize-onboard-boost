@@ -130,14 +130,25 @@ export default function Dashboard() {
       console.log("Strategy confirmed, refreshing data");
       fetchUserData();
       
-      // Show success toast
+      // Show success toast with button to create content plan
       toast({
         title: "Strategy Confirmed",
-        description: "Your content strategy has been confirmed and XP has been awarded!",
+        description: (
+          <div className="flex flex-col gap-3">
+            <p>Your content strategy has been confirmed and XP has been awarded!</p>
+            <button 
+              onClick={() => navigate('/content-planner')} 
+              className="px-4 py-2 bg-socialmize-purple hover:bg-socialmize-purple/90 text-white rounded-md text-sm font-medium"
+            >
+              Create 30-Day Content Plan
+            </button>
+          </div>
+        ),
         variant: "default",
+        duration: 10000, // Keep it visible longer (10 seconds)
       });
     }
-  }, [strategy?.confirmed_at, fetchUserData]);
+  }, [strategy?.confirmed_at, fetchUserData, navigate]);
 
   // Function to manually refresh dashboard data
   const refreshDashboard = () => {

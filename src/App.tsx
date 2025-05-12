@@ -26,6 +26,7 @@ import ScriptsLibrary from "./pages/ScriptsLibrary";
 import InboxCenterPage from "./pages/InboxCenterPage";
 import BadgesPage from "./pages/BadgesPage";
 import AdminDashboard from "./pages/AdminDashboard";
+import ContentPlanner from "./pages/ContentPlanner";
 
 const queryClient = new QueryClient();
 
@@ -146,6 +147,18 @@ const App = () => (
                 <ProtectedRoute>
                   <PremiumAppLayout>
                     <Reminders />
+                  </PremiumAppLayout>
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Content Planner - only for authenticated and onboarded users */}
+            <Route 
+              path="/content-planner" 
+              element={
+                <ProtectedRoute>
+                  <PremiumAppLayout>
+                    <ContentPlanner />
                   </PremiumAppLayout>
                 </ProtectedRoute>
               } 

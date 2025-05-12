@@ -6,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { trackUserAction } from "@/utils/xpUtils";
 import { parseFullStrategyJson, getStrategySummary } from "@/utils/parseFullStrategyJson";
+import { ToastAction } from "@/components/ui/toast";
 
 export function useStrategyData() {
   const [strategy, setStrategy] = useState<StrategyData | null>(null);
@@ -100,18 +101,28 @@ export function useStrategyData() {
     }
   }, [user, fetchStrategyData]);
 
+  // State for tracking strategy generation progress
+  const [isGeneratingStrategy, setIsGeneratingStrategy] = useState(false);
+  const [generationStatus, setGenerationStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  
   // Function to regenerate strategy
   const regenerateStrategy = async (): Promise<boolean> => {
     if (!user) return false;
     
     try {
       setLoading(true);
+      setError(null);
+      setIsGeneratingStrategy(true);
+      setGenerationStatus('pending');
+      setGenerationError(null);
       
       toast({
         title: "Regenerating your strategy...",
         description: "This might take a moment. You'll be notified when it's ready.",
       });
       
+      // Retrieve the onboarding data
       const { data: onboardingData, error: onboardingError } = await supabase
         .from("onboarding_answers")
         .select("*")
@@ -125,46 +136,142 @@ export function useStrategyData() {
       const strategyType = onboardingData.experience_level === "expert" ? "advanced" :
                           onboardingData.experience_level === "intermediate" ? "intermediate" : "starter";
       
-      // First, deactivate all existing strategies for this user
-      const { error: deactivateError } = await supabase
-        .from("strategy_profiles")
-        .update({ is_active: false })
-        .eq("user_id", user.id);
-        
-      if (deactivateError) {
-        console.error("Error deactivating existing strategies:", deactivateError);
-        // Continue anyway - we'll create a new active one
-      }
+      // Generate a unique job ID for tracking
+      const jobId = `strategy-${user.id}-${Date.now()}`;
       
-      // Call the Supabase Edge Function to regenerate strategy
+      // Call the improved Supabase Edge Function that uses Assistants API
       const { data, error } = await supabase.functions.invoke("generate-strategy-plan", {
         body: {
           userId: user.id,
-          onboardingData: {
-            ...onboardingData,
-            strategy_type: strategyType
-          }
+          jobId,
+          strategyType,
+          isRegen: true,
+          onboardingData
         }
       });
       
       if (error) throw error;
       
-      // Reset retry counter
-      setRetryCount(0);
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to start strategy regeneration");
+      }
       
-      // Wait a bit longer before fetching the updated strategy data to ensure it's saved
-      setTimeout(async () => {
-        await fetchStrategyData();
-        
-        toast({
-          title: "Strategy Regenerated",
-          description: "Your content strategy has been updated successfully.",
-        });
-      }, 2500); // Increased timeout
+      // Poll for strategy completion
+      const pollForCompletion = async () => {
+        try {
+          // Check if the job metadata table exists
+          const { error: checkError } = await supabase
+            .from('strategy_generation_jobs')
+            .select('count')
+            .limit(1);
+          
+          // If the table doesn't exist, use the old timeout method
+          if (checkError) {
+            console.log("Strategy generation jobs table may not exist, using timeout method instead");
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            await fetchStrategyData();
+            setGenerationStatus('success');
+            setIsGeneratingStrategy(false);
+            
+            toast({
+              title: "Strategy Regenerated",
+              description: "Your content strategy has been updated successfully.",
+            });
+            
+            return;
+          }
+          
+          // Start polling with exponential backoff
+          let attempt = 0;
+          const maxAttempts = 15;
+          
+          const checkStatus = async (): Promise<boolean> => {
+            const { data: jobData, error: jobError } = await supabase
+              .from('strategy_generation_jobs')
+              .select('status')
+              .eq('job_id', jobId)
+              .maybeSingle();
+              
+            if (jobError) {
+              console.error("Error checking job status:", jobError);
+              return false;
+            }
+            
+            if (!jobData) {
+              console.log("No job data found, falling back to checking for strategy directly");
+              
+              // Try to check if the strategy was created directly
+              const { data: strategyData } = await supabase
+                .from('strategy_profiles')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('job_id', jobId)
+                .maybeSingle();
+                
+              if (strategyData) {
+                return true; // Strategy exists
+              }
+              
+              return false;
+            }
+            
+            console.log(`Strategy generation status: ${jobData.status}`);
+            
+            if (jobData.status === 'completed') {
+              return true;
+            } else if (['failed', 'cancelled', 'expired'].includes(jobData.status)) {
+              throw new Error(`Strategy generation ${jobData.status}`);
+            }
+            
+            return false;
+          };
+          
+          while (attempt < maxAttempts) {
+            const isComplete = await checkStatus();
+            if (isComplete) {
+              await fetchStrategyData();
+              setGenerationStatus('success');
+              setIsGeneratingStrategy(false);
+              
+              toast({
+                title: "Strategy Regenerated",
+                description: "Your content strategy has been updated successfully.",
+              });
+              
+              return;
+            }
+            
+            // Wait with exponential backoff (1s, 2s, 4s, 8s, etc. up to 10s max)
+            const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            attempt++;
+          }
+          
+          throw new Error("Strategy generation timed out. Please try again later.");
+        } catch (err: any) {
+          console.error("Error during strategy generation polling:", err);
+          setGenerationStatus('error');
+          setGenerationError(err.message || "Strategy generation failed");
+          setIsGeneratingStrategy(false);
+          
+          toast({
+            title: "Regeneration Failed",
+            description: err.message || "An unexpected error occurred. Please try again.",
+            variant: "destructive",
+          });
+        }
+      };
       
+      // Start polling in the background without awaiting
+      pollForCompletion();
+      
+      // Return true to indicate the process has started
       return true;
     } catch (err: any) {
       console.error("Error regenerating strategy:", err);
+      setGenerationStatus('error');
+      setGenerationError(err.message || "An unexpected error occurred");
+      setIsGeneratingStrategy(false);
       
       toast({
         title: "Regeneration Failed",
@@ -174,6 +281,8 @@ export function useStrategyData() {
       
       return false;
     } finally {
+      // Just mark loading as false, but keep isGeneratingStrategy true
+      // until the polling completes
       setLoading(false);
     }
   };
@@ -217,10 +326,21 @@ export function useStrategyData() {
       // Refresh strategy data
       await fetchStrategyData();
       
+      // Show success toast
       toast({
         title: "Strategy Confirmed",
         description: `Your ${strategy.strategy_type === "starter" ? "Starter" : ""} content strategy has been confirmed! +100 XP`,
       });
+      
+      // Navigate to content planner for 30-day detailed strategy
+      setTimeout(() => {
+        toast({
+          title: "Ready for the next step?",
+          description: "Create a detailed 30-day plan with custom content ideas.",
+        });
+        
+        // Show a button to navigate to content planner in UI instead of toast action
+      }, 1500);
       
       return true;
     } catch (err: any) {
@@ -242,11 +362,13 @@ export function useStrategyData() {
     strategy,
     loading,
     error,
+    isGeneratingStrategy,
+    generationStatus,
+    generationError,
     fetchStrategyData,
     regenerateStrategy,
-    lastFetchTime,
     resetRetries,
-    retryCount,
-    confirmStrategyPlan
+    confirmStrategyPlan,
+    planConfirmed: strategy ? !!strategy.confirmed_at : false
   };
 }
