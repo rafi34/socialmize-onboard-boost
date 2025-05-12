@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -105,9 +104,19 @@ const ContentPlanner = () => {
         .select('config_value')
         .eq('config_key', 'CONTENT_PLAN_ASSISTANT_ID')
         .maybeSingle();
+      
+      if (!configData?.config_value) {
+        console.warn("No assistant ID found in app_config. ChatBot functionality may be limited.");
+      }
+      
       setAssistantId(configData?.config_value || null);
     } catch (err) {
-      setStatusMessage({ type: 'error', title: 'Load Failed', message: 'Could not load user data.' });
+      console.error("Error loading user data:", err);
+      setStatusMessage({
+        type: 'error',
+        title: 'Load Failed',
+        message: 'Could not load user data.'
+      });
     } finally {
       setLoading(false);
       setDataLoaded(true);
@@ -117,6 +126,20 @@ const ContentPlanner = () => {
   useEffect(() => {
     if (user && !dataLoaded) loadUserData();
   }, [user, dataLoaded]);
+
+  // Fallback response generator when API fails
+  const generateFallbackResponse = (userMessage: string): string => {
+    // Simple fallback responses
+    const responses = [
+      "I'm currently having trouble connecting to my knowledge base. Here are some general content planning tips: focus on consistency, engage with your audience, and repurpose successful content across platforms.",
+      "Sorry, I'm experiencing connectivity issues. In the meantime, consider planning content that addresses your audience's pain points and questions.",
+      "While I'm reconnecting, remember that a good content plan should include a mix of educational, inspirational, and promotional content.",
+      "Temporary connection issues. For content planning, try the 80/20 rule: 80% valuable content that helps your audience, 20% promotional content.",
+      "I'm working on restoring my connection. Remember to align your content with your overall business goals and audience needs."
+    ];
+    
+    return responses[Math.floor(Math.random() * responses.length)];
+  };
 
   const handleSendMessage = async () => {
     if (!inputValue.trim() || !user || sending) return;
@@ -132,29 +155,140 @@ const ContentPlanner = () => {
     setSending(true);
 
     try {
-      if (!threadId && assistantId) {
-        const { data } = await supabase.functions.invoke('create-assistant-thread', {
-          body: { userId: user.id, purpose: 'content_planning', assistantId }
-        });
-        if (!data?.threadId) throw new Error('Failed to create thread');
-        setThreadId(data.threadId);
+      // Check if we have an assistant ID configured
+      if (!assistantId) {
+        throw new Error('No assistant ID configured');
       }
-      const { data: sendData } = await supabase.functions.invoke('send-assistant-message', {
-        body: { threadId, userId: user.id, message: userMessage.content }
+
+      // Create a thread if needed
+      if (!threadId) {
+        console.log('Creating new thread...');
+        const { data, error: threadError } = await supabase.functions.invoke('create-assistant-thread', {
+          body: { 
+            userId: user.id, 
+            purpose: 'content_planning', 
+            assistantId 
+          }
+        });
+        
+        if (threadError || !data?.threadId) {
+          console.error('Failed to create thread:', threadError || 'No thread ID returned');
+          throw new Error('Failed to create thread');
+        }
+        
+        setThreadId(data.threadId);
+        console.log('Thread created:', data.threadId);
+      }
+
+      // Send message to the assistant
+      console.log('Sending message to thread:', threadId);
+      const { data: sendData, error: sendError } = await supabase.functions.invoke('send-assistant-message', {
+        body: { 
+          threadId: threadId, 
+          userId: user.id, 
+          message: userMessage.content 
+        }
       });
 
-      if (sendData?.assistantMessage) {
+      if (sendError) {
+        console.error('Error sending message:', sendError);
+        throw new Error('Failed to send message');
+      }
+
+      // Check if we got a proper response
+      if (sendData?.messageId && sendData?.runId) {
+        // Message sent successfully, now we need to wait for a response
         setMessages(prev => [...prev, {
+          id: 'loading',
+          role: 'assistant',
+          content: 'Thinking...',
+          timestamp: new Date().toISOString()
+        }]);
+
+        // Poll for the assistant's response
+        let attempts = 0;
+        const maxAttempts = 30; // Maximum number of polling attempts
+        const pollInterval = 2000; // 2 seconds between polls
+
+        const pollForResponse = async () => {
+          if (attempts >= maxAttempts) {
+            throw new Error('Timed out waiting for assistant response');
+          }
+
+          attempts++;
+          
+          try {
+            const { data: messagesData, error: messagesError } = await supabase.functions.invoke('get-assistant-messages', {
+              body: { threadId }
+            });
+
+            if (messagesError) {
+              console.error('Error fetching messages:', messagesError);
+              throw messagesError;
+            }
+
+            if (messagesData?.messages && messagesData.messages.length > 0) {
+              // Find the most recent assistant message that's newer than our user message
+              const assistantMessages = messagesData.messages
+                .filter(m => m.role === 'assistant' && new Date(m.created_at) > new Date(userMessage.timestamp))
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+              
+              if (assistantMessages.length > 0) {
+                const latestMessage = assistantMessages[0];
+                setMessages(prev => prev.filter(m => m.id !== 'loading').concat({
+                  id: latestMessage.id,
+                  role: 'assistant',
+                  content: latestMessage.content[0].text.value,
+                  timestamp: latestMessage.created_at
+                }));
+                return true; // Success
+              }
+            }
+            
+            // If we're here, we need to keep polling
+            await new Promise(resolve => setTimeout(resolve, pollInterval));
+            return await pollForResponse();
+          } catch (err) {
+            console.error('Error polling for messages:', err);
+            throw err;
+          }
+        };
+
+        try {
+          await pollForResponse();
+        } catch (err) {
+          throw new Error('Failed to get assistant response');
+        }
+      } else if (sendData?.assistantMessage) {
+        // Direct response received (for backward compatibility)
+        setMessages(prev => prev.filter(m => m.id !== 'loading').concat({
           id: sendData.assistantMessage.id,
           role: 'assistant',
           content: sendData.assistantMessage.content,
           timestamp: sendData.assistantMessage.created_at
-        }]);
+        }));
       } else {
-        throw new Error('Assistant did not respond');
+        throw new Error('No valid response from assistant');
       }
     } catch (err) {
-      toast({ title: 'Error', description: 'Failed to reach assistant. Using fallback.', variant: 'destructive' });
+      console.error('Assistant error:', err);
+      
+      // Remove any loading message
+      setMessages(prev => prev.filter(m => m.id !== 'loading'));
+      
+      // Add fallback response
+      setMessages(prev => [...prev, {
+        id: `fallback-${Date.now()}`,
+        role: 'assistant',
+        content: generateFallbackResponse(userMessage.content),
+        timestamp: new Date().toISOString()
+      }]);
+      
+      toast({
+        title: 'Connection Issue',
+        description: 'Failed to reach assistant. Using fallback mode.',
+        variant: 'destructive'
+      });
     } finally {
       setSending(false);
     }

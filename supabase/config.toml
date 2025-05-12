@@ -1,5 +1,5 @@
 
-project_id = "socialmize"
+project_id = "psauygzfbxvefnetudem"
 
 [api]
 enabled = true
@@ -9,77 +9,20 @@ schemas = ["public", "storage", "graphql_public"]
 [db]
 port = 54322
 
-[studio]
+[storage]
 enabled = true
-port = 54323
-
-[inbucket]
-enabled = true
-port = 54324
 
 [auth]
 enabled = true
 site_url = "http://localhost:3000"
 
-[storage]
+[inbucket]
 enabled = true
 
-[realtime]
-enabled = true
-
-[functions.add-calendar-event]
-verify_jwt = true
-
-[functions.award-reminder-xp]
-verify_jwt = true
-
-[functions.award-xp]
-verify_jwt = true
-
-[functions.confirm-strategy-plan]
-verify_jwt = true
-
-[functions.generate-content]
-verify_jwt = true
-
-[functions.generate-strategy-plan]
-verify_jwt = true
-
-[functions.generate-inbox-nudges]
-verify_jwt = true
-
+[functions]
 [functions.create-assistant-thread]
 verify_jwt = true
-
 [functions.send-assistant-message]
 verify_jwt = true
-
 [functions.get-assistant-messages]
-verify_jwt = true
-
-[functions.generate-reminders]
-verify_jwt = true
-
-[functions.generate-strategy-chat]
-verify_jwt = true
-
-[functions.generate-strategy]
-verify_jwt = true
-
-[functions.generate-waiting-message]
-verify_jwt = true
-
-[functions.get-content-idea-details]
-verify_jwt = true
-
-[functions.get-weekly-xp]
-verify_jwt = true
-
-[functions.refresh-topics]
-verify_jwt = true
-
-[functions.sync-creator-settings]
-verify_jwt = true
-
-[functions.generate-strategy-suggestion]
 verify_jwt = true
