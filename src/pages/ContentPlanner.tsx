@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -69,7 +70,7 @@ const ContentPlanner = () => {
   const markIdeaComplete = async (ideaId: string) => {
     if (!contentPlan) return;
     const updatedIdeas = contentPlan.contentIdeas.map(idea =>
-      idea.id === ideaId ? { ...idea, status: 'completed' } : idea
+      idea.id === ideaId ? { ...idea, status: 'completed' as const } : idea
     );
     setContentPlan({ ...contentPlan, contentIdeas: updatedIdeas });
     await supabase
