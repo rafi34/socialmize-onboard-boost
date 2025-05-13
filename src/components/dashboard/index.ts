@@ -24,3 +24,4 @@ export { DashboardContent } from './DashboardContent';
 export { DashboardPlanner } from './DashboardPlanner';
 export { DashboardAnalytics } from './DashboardAnalytics';
 export { StrategyGenerationState } from './StrategyGenerationState';
+export { Duet } from './content-generators/Duet';
