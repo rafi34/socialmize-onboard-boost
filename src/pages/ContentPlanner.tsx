@@ -52,7 +52,10 @@ const ContentPlanner = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [sending, setSending] = useState(false);
-  const [threadId, setThreadId] = useState<string | null>(null);
+  const [threadId, setThreadId] = useState<string | null>(() => {
+    const savedThreadId = localStorage.getItem('content_planner_thread_id');
+    return savedThreadId || null;
+  });
   const [assistantId, setAssistantId] = useState<string | null>(null);
   const [contentPlan, setContentPlan] = useState<ContentPlan | null>(null);
   const [starterStrategy, setStarterStrategy] = useState<StrategyData | null>(null);
@@ -142,133 +145,90 @@ const ContentPlanner = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim() || !user || sending) return;
-
+    if (!inputValue.trim() || !user) return;
+    
+    setInputValue('');
+    setSending(true);
+    
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
       content: inputValue,
       timestamp: new Date().toISOString()
     };
+    
     setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
-    setSending(true);
-
+    
     try {
-      // Check if we have an assistant ID configured
-      if (!assistantId) {
-        throw new Error('No assistant ID configured');
+      // Check if backend is available
+      if (!backendAvailable) {
+        console.log('Using mock data');
+        // Add simulated response for mock mode
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: 'This is a simulated response. In a real environment, I would provide insights about your content strategy.',
+            timestamp: new Date().toISOString()
+          }]);
+          setSending(false);
+        }, 1000);
+        return;
       }
 
-      // Create a thread if needed
-      if (!threadId) {
-        console.log('Creating new thread...');
-        const { data, error: threadError } = await supabase.functions.invoke('create-assistant-thread', {
-          body: { 
-            userId: user.id, 
-            purpose: 'content_planning', 
-            assistantId 
-          }
-        });
-        
-        if (threadError || !data?.threadId) {
-          console.error('Failed to create thread:', threadError || 'No thread ID returned');
-          throw new Error('Failed to create thread');
-        }
-        
-        setThreadId(data.threadId);
-        console.log('Thread created:', data.threadId);
-      }
-
-      // Send message to the assistant
-      console.log('Sending message to thread:', threadId);
-      const { data: sendData, error: sendError } = await supabase.functions.invoke('send-assistant-message', {
+      // Add a loading message while we wait for the response
+      setMessages(prev => [...prev, {
+        id: 'loading',
+        role: 'assistant' as const,
+        content: 'Thinking...',
+        timestamp: new Date().toISOString()
+      }]);
+      
+      // Get the current thread ID if available
+      let currentThreadId = threadId;
+      
+      console.log('Using thread ID:', currentThreadId || 'New thread will be created');
+      console.log('Sending message:', userMessage.content);
+      
+      // Single call to generate-content-plan that handles everything: thread creation, message sending, and response
+      const { data, error } = await supabase.functions.invoke('generate-content-plan', {
         body: { 
-          threadId: threadId, 
-          userId: user.id, 
-          message: userMessage.content 
+          userId: user.id,
+          threadId: currentThreadId,
+          userMessage: userMessage.content
         }
       });
-
-      if (sendError) {
-        console.error('Error sending message:', sendError);
-        throw new Error('Failed to send message');
+      
+      if (error) {
+        console.error('Error with content plan generation:', error);
+        throw new Error('Failed to generate content plan');
       }
-
-      // Check if we got a proper response
-      if (sendData?.messageId && sendData?.runId) {
-        // Message sent successfully, now we need to wait for a response
-        setMessages(prev => [...prev, {
-          id: 'loading',
-          role: 'assistant',
-          content: 'Thinking...',
-          timestamp: new Date().toISOString()
-        }]);
-
-        // Poll for the assistant's response
-        let attempts = 0;
-        const maxAttempts = 30; // Maximum number of polling attempts
-        const pollInterval = 2000; // 2 seconds between polls
-
-        const pollForResponse = async () => {
-          if (attempts >= maxAttempts) {
-            throw new Error('Timed out waiting for assistant response');
-          }
-
-          attempts++;
-          
-          try {
-            const { data: messagesData, error: messagesError } = await supabase.functions.invoke('get-assistant-messages', {
-              body: { threadId }
-            });
-
-            if (messagesError) {
-              console.error('Error fetching messages:', messagesError);
-              throw messagesError;
-            }
-
-            if (messagesData?.messages && messagesData.messages.length > 0) {
-              // Find the most recent assistant message that's newer than our user message
-              const assistantMessages = messagesData.messages
-                .filter(m => m.role === 'assistant' && new Date(m.created_at) > new Date(userMessage.timestamp))
-                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-              
-              if (assistantMessages.length > 0) {
-                const latestMessage = assistantMessages[0];
-                setMessages(prev => prev.filter(m => m.id !== 'loading').concat({
-                  id: latestMessage.id,
-                  role: 'assistant',
-                  content: latestMessage.content[0].text.value,
-                  timestamp: latestMessage.created_at
-                }));
-                return true; // Success
-              }
-            }
-            
-            // If we're here, we need to keep polling
-            await new Promise(resolve => setTimeout(resolve, pollInterval));
-            return await pollForResponse();
-          } catch (err) {
-            console.error('Error polling for messages:', err);
-            throw err;
-          }
-        };
-
-        try {
-          await pollForResponse();
-        } catch (err) {
-          throw new Error('Failed to get assistant response');
-        }
-      } else if (sendData?.assistantMessage) {
-        // Direct response received (for backward compatibility)
+      
+      if (!data?.success) {
+        console.error('API returned error:', data?.error);
+        throw new Error(data?.error || 'Unknown error');
+      }
+      
+      // Save the thread ID if it's new
+      if (data.threadId && data.threadId !== currentThreadId) {
+        console.log('Setting thread ID:', data.threadId);
+        setThreadId(data.threadId);
+        localStorage.setItem('content_planner_thread_id', data.threadId);
+      }
+      
+      // Check if we received a valid response with a message
+      if (data.message) {
+        console.log('Received assistant response:', data.message);
+        
+        // Replace the loading message with the actual response
         setMessages(prev => prev.filter(m => m.id !== 'loading').concat({
-          id: sendData.assistantMessage.id,
-          role: 'assistant',
-          content: sendData.assistantMessage.content,
-          timestamp: sendData.assistantMessage.created_at
+          id: data.message.id,
+          role: 'assistant' as const,
+          content: data.message.content,
+          timestamp: data.message.created_at
         }));
       } else {
-        throw new Error('No valid response from assistant');
+        throw new Error('No response message received');
       }
     } catch (err) {
       console.error('Assistant error:', err);

@@ -99,31 +99,24 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get thread information to obtain the associated assistant ID
-    const { data: threadData, error: threadError } = await supabase
-      .from("assistant_threads")
-      .select("*")
-      .eq("thread_id", threadId)
-      .maybeSingle();
+    // Get the assistant ID directly from app_config
+    console.log("⚠️ Bypassing thread lookup, getting assistant ID directly from app_config");
+    const { data: configRow, error: configError } = await supabase
+      .from("app_config")
+      .select("config_value")
+      .eq("config_key", "CONTENT_PLAN_ASSISTANT_ID")
+      .single();
 
-    if (threadError || !threadData) {
-      console.error("❌ Error retrieving thread information:", threadError || "Thread not found");
+    if (configError || !configRow?.config_value) {
+      console.error("❌ Failed to get assistant ID from app_config:", configError || "No config value");
       return new Response(
-        JSON.stringify({ success: false, error: "Thread not found or database error" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        JSON.stringify({ success: false, error: "Failed to fetch assistant_id from DB" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
 
-    // Get the assistant ID from the thread data
-    const assistantId = threadData.assistant_id;
-    
-    if (!assistantId) {
-      console.error("❌ No assistant ID associated with this thread");
-      return new Response(
-        JSON.stringify({ success: false, error: "No assistant ID associated with this thread" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
-    }
+    const assistantId = configRow.config_value;
+    console.log("✅ Using assistant ID from app_config:", assistantId);
 
     // Get onboarding data to provide context for the assistant
     const { data: onboardingData, error: onboardingError } = await supabase
