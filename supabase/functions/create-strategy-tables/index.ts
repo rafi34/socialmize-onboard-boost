@@ -1,16 +1,11 @@
 
 import { serve } from "https://deno.land/std@0.195.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { corsHeaders, setupStrategyFunctions } from "../utils.ts";
 
 // Get environment variables
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-
-// CORS headers for browser requests
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -24,6 +19,9 @@ serve(async (req) => {
 
     // Initialize the Supabase client with service key for full admin privileges
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Set up the helper functions for strategy data
+    await setupStrategyFunctions(supabase);
     
     // Create necessary tables
     if (createDeepProfile) {

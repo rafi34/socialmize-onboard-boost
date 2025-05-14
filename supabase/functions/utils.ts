@@ -1,90 +1,82 @@
 
-// Helper function to extract mission map from AI response
-export function extractMissionMap(aiResponse: string) {
-  try {
-    // Look for JSON-like structure with mission map data
-    const missionMapMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/);
-    
-    if (missionMapMatch && missionMapMatch[1]) {
-      try {
-        return JSON.parse(missionMapMatch[1]);
-      } catch (e) {
-        console.error("Error parsing mission map JSON:", e);
-      }
-    }
-    
-    // Alternative pattern matching for mission phases
-    const phasesMatch = aiResponse.match(/\*\*Phase 1.*?Phase 3.*?\*\*/s);
-    if (phasesMatch) {
-      // Extract structured data from text
-      const phaseTexts = phasesMatch[0];
-      
-      // Simple phase extraction
-      const phase1 = phaseTexts.match(/\*\*Phase 1[^\n]*\*\*\s*([\s\S]*?)(?=\*\*Phase 2)/);
-      const phase2 = phaseTexts.match(/\*\*Phase 2[^\n]*\*\*\s*([\s\S]*?)(?=\*\*Phase 3)/);
-      const phase3 = phaseTexts.match(/\*\*Phase 3[^\n]*\*\*\s*([\s\S]*?)(?=\*\*|$)/);
-      
-      return {
-        phase1: phase1 ? phase1[1].trim() : "",
-        phase2: phase2 ? phase2[1].trim() : "",
-        phase3: phase3 ? phase3[1].trim() : "",
-        rawText: phaseTexts
-      };
-    }
-    
-    return null;
-  } catch (error) {
-    console.error("Error extracting mission map:", error);
-    return null;
-  }
-}
+// Helper functions for Supabase Edge Functions
 
-// Helper function to extract content ideas from AI response
-export function extractContentIdeas(aiResponse: string): string[] {
+// CORS headers for browser requests
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Create database functions if they don't exist
+export async function setupStrategyFunctions(supabase) {
   try {
-    // Try to find a section marked as content ideas
-    let contentSection = aiResponse;
-    
-    // Look for standard markers
-    const contentMarkers = [
-      /\[CONTENT IDEAS\]([\s\S]*?)(?:\[|$)/i,
-      /\[CONTENT_IDEAS_READY\]([\s\S]*?)(?:\[|$)/i,
-      /Content Ideas:([\s\S]*?)(?:(?:##|\[|$))/i,
-      /Content Ideas \([\d]+-[\d]+\):([\s\S]*?)(?:(?:##|\[|$))/i,
-      /Here are some content ideas for you:([\s\S]*?)(?:(?:##|\[|$))/i,
-      /content ideas based on your strategy:([\s\S]*?)(?:(?:##|\[|$))/i
-    ];
-    
-    for (const marker of contentMarkers) {
-      const match = aiResponse.match(marker);
-      if (match && match[1]) {
-        contentSection = match[1];
-        break;
-      }
-    }
-    
-    // Extract numbered or bulleted list items
-    const ideas: string[] = [];
-    const listItemRegex = /(?:^|\n)(?:\d+\.\s+|\*\s+|•\s+|-)(.+?)(?=(?:\n\d+\.\s+|\n\*\s+|\n•\s+|\n-|\n\n|$))/g;
-    
-    let match;
-    while ((match = listItemRegex.exec(contentSection)) !== null) {
-      if (match[1] && match[1].trim()) {
-        ideas.push(match[1].trim());
-      }
-    }
-    
-    // If no list items found, try splitting by newlines
-    if (ideas.length === 0) {
-      return contentSection
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line.length > 10 && !line.startsWith('#') && !line.startsWith('['));
-    }
-    
-    return ideas;
-  } catch (error) {
-    console.error("Error extracting content ideas:", error);
-    return [];
+    // Create strategy_deep_profile helper functions
+    await supabase.rpc('execute_system_sql', {
+      sql_string: `
+        -- Function to get strategy deep profile
+        CREATE OR REPLACE FUNCTION public.get_strategy_deep_profile(user_id_param UUID)
+        RETURNS TABLE (id UUID, user_id UUID, data JSONB, created_at TIMESTAMPTZ)
+        LANGUAGE plpgsql
+        SECURITY DEFINER
+        AS $$
+        BEGIN
+          RETURN QUERY
+          SELECT * FROM public.strategy_deep_profile
+          WHERE user_id = user_id_param
+          ORDER BY created_at DESC
+          LIMIT 1;
+        END;
+        $$;
+
+        -- Function to save strategy deep profile
+        CREATE OR REPLACE FUNCTION public.save_strategy_deep_profile(user_id_param UUID, data_param JSONB)
+        RETURNS VOID
+        LANGUAGE plpgsql
+        SECURITY DEFINER
+        AS $$
+        BEGIN
+          INSERT INTO public.strategy_deep_profile (user_id, data)
+          VALUES (user_id_param, data_param);
+        END;
+        $$;
+      `
+    });
+
+    // Create mission_map_plans helper functions
+    await supabase.rpc('execute_system_sql', {
+      sql_string: `
+        -- Function to get mission map plan
+        CREATE OR REPLACE FUNCTION public.get_mission_map_plan(user_id_param UUID)
+        RETURNS TABLE (id UUID, user_id UUID, data JSONB, created_at TIMESTAMPTZ)
+        LANGUAGE plpgsql
+        SECURITY DEFINER
+        AS $$
+        BEGIN
+          RETURN QUERY
+          SELECT * FROM public.mission_map_plans
+          WHERE user_id = user_id_param
+          ORDER BY created_at DESC
+          LIMIT 1;
+        END;
+        $$;
+
+        -- Function to save mission map plan
+        CREATE OR REPLACE FUNCTION public.save_mission_map_plan(user_id_param UUID, data_param JSONB)
+        RETURNS VOID
+        LANGUAGE plpgsql
+        SECURITY DEFINER
+        AS $$
+        BEGIN
+          INSERT INTO public.mission_map_plans (user_id, data)
+          VALUES (user_id_param, data_param);
+        END;
+        $$;
+      `
+    });
+
+    return true;
+  } catch (err) {
+    console.error("Error setting up strategy functions:", err);
+    return false;
   }
 }

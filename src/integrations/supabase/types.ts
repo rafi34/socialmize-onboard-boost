@@ -963,6 +963,14 @@ export type Database = {
         Args: { user_id_param: string; script_id_param: string }
         Returns: Json
       }
+      create_mission_map_plans_table: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      create_strategy_deep_profile_table: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       delete_favorite_script: {
         Args: { user_id_param: string; script_id_param: string }
         Returns: Json

@@ -34,7 +34,7 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
     
     try {
       // Fetch thread ID
-      const { data: threadData } = await supabase
+      const { data: threadData, error: threadError } = await supabase
         .from('assistant_threads')
         .select('thread_id')
         .eq('user_id', user.id)
@@ -43,62 +43,47 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
         .limit(1)
         .maybeSingle();
       
+      if (threadError) throw threadError;
+      
       if (threadData?.thread_id) {
         setThreadId(threadData.thread_id);
       }
       
-      // Check if strategy_deep_profile table exists
-      const { error: tableCheckError } = await supabase
-        .from('strategy_deep_profile')
-        .select('count')
-        .limit(1)
-        .then(() => ({ error: null }))
-        .catch(error => ({ error }));
-        
-      // Fetch deep profile data if table exists
-      if (!tableCheckError) {
-        const { data: profileData } = await supabase
-          .from('strategy_deep_profile')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
+      // Check if strategy_deep_profile exists using RPC instead of directly querying the table
+      try {
+        // Try to fetch deep profile data 
+        const { data: profileData, error: profileError } = await supabase
+          .rpc('get_strategy_deep_profile', { user_id_param: user.id })
           .maybeSingle();
         
-        if (profileData) {
+        if (!profileError && profileData) {
           setDeepProfile(profileData.data || {});
         }
+      } catch (err) {
+        console.log("Strategy deep profile table might not exist yet:", err);
       }
       
-      // Check if mission_map_plans table exists
-      const { error: missionTableCheckError } = await supabase
-        .from('mission_map_plans')
-        .select('count')
-        .limit(1)
-        .then(() => ({ error: null }))
-        .catch(error => ({ error }));
-      
-      // Fetch mission map if table exists
-      if (!missionTableCheckError) {
-        const { data: missionData } = await supabase
-          .from('mission_map_plans')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
+      // Try to fetch mission map data
+      try {
+        const { data: missionData, error: missionError } = await supabase
+          .rpc('get_mission_map_plan', { user_id_param: user.id })
           .maybeSingle();
         
-        if (missionData) {
+        if (!missionError && missionData) {
           setMissionMap(missionData.data || {});
         }
+      } catch (err) {
+        console.log("Mission map plans table might not exist yet:", err);
       }
       
       // Fetch content ideas
-      const { data: ideasData } = await supabase
+      const { data: ideasData, error: ideasError } = await supabase
         .from('content_ideas')
         .select('*')
         .eq('user_id', user.id)
         .order('generated_at', { ascending: false });
+      
+      if (ideasError) throw ideasError;
       
       if (ideasData) {
         setContentIdeas(ideasData);
@@ -115,30 +100,16 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     
     try {
-      // Check if table exists first
-      const { error: tableCheckError } = await supabase
-        .from('strategy_deep_profile')
-        .select('count')
-        .limit(1)
-        .then(() => ({ error: null }))
-        .catch(error => ({ error }));
+      // First, invoke the function to create the table if it doesn't exist
+      await supabase.functions.invoke('create-strategy-tables', {
+        body: { createDeepProfile: true }
+      });
       
-      if (tableCheckError) {
-        console.log("Creating strategy_deep_profile table via function");
-        // Handle case where table doesn't exist
-        await supabase.functions.invoke('create-strategy-tables', {
-          body: { 
-            createDeepProfile: true 
-          }
-        });
-      }
-      
-      const { error } = await supabase
-        .from('strategy_deep_profile')
-        .insert({
-          user_id: user.id,
-          data
-        });
+      // Then insert data using RPC
+      const { error } = await supabase.rpc('save_strategy_deep_profile', {
+        user_id_param: user.id,
+        data_param: data
+      });
         
       if (error) throw error;
       
@@ -153,30 +124,16 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     
     try {
-      // Check if table exists first
-      const { error: tableCheckError } = await supabase
-        .from('mission_map_plans')
-        .select('count')
-        .limit(1)
-        .then(() => ({ error: null }))
-        .catch(error => ({ error }));
+      // First, invoke the function to create the table if it doesn't exist
+      await supabase.functions.invoke('create-strategy-tables', {
+        body: { createMissionMap: true }
+      });
       
-      if (tableCheckError) {
-        console.log("Creating mission_map_plans table via function");
-        // Handle case where table doesn't exist
-        await supabase.functions.invoke('create-strategy-tables', {
-          body: { 
-            createMissionMap: true 
-          }
-        });
-      }
-      
-      const { error } = await supabase
-        .from('mission_map_plans')
-        .insert({
-          user_id: user.id,
-          data
-        });
+      // Then insert data using RPC
+      const { error } = await supabase.rpc('save_mission_map_plan', {
+        user_id_param: user.id,
+        data_param: data
+      });
         
       if (error) throw error;
       
