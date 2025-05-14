@@ -1,108 +1,163 @@
 
-// Supabase Edge Function to create strategy tables
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.22.0";
-import { corsHeaders } from "../utils.ts";
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
-serve(async (req) => {
+interface RequestBody {
+  createDeepProfile?: boolean;
+  createMissionMap?: boolean;
+  checkDeepProfile?: boolean;
+  checkMissionMap?: boolean;
+  saveProfile?: boolean;
+  saveMissionMap?: boolean;
+  userId?: string;
+  profileData?: Record<string, any>;
+  missionMapData?: Record<string, any>;
+}
+
+serve(async (req: Request) => {
   // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders, status: 204 });
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
   }
-
+  
   try {
-    // Create a Supabase client with the service role key
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-    const { createDeepProfile, createMissionMap } = await req.json();
-
-    console.log("Creating tables:", { createDeepProfile, createMissionMap });
-
-    let result = { 
-      success: true,
-      deepProfile: false,
-      missionMap: false,
-      error: null
-    };
-
-    if (createDeepProfile) {
-      try {
-        // Create strategy_deep_profile table if it doesn't exist
-        await supabase.rpc('execute_system_sql', {
-          sql_string: `
-            CREATE TABLE IF NOT EXISTS public.strategy_deep_profile (
-              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-              user_id UUID NOT NULL REFERENCES auth.users(id),
-              data JSONB NOT NULL,
-              created_at TIMESTAMPTZ DEFAULT now()
-            );
-
-            ALTER TABLE public.strategy_deep_profile ENABLE ROW LEVEL SECURITY;
-
-            DROP POLICY IF EXISTS "Users can view their own profile" ON public.strategy_deep_profile;
-            CREATE POLICY "Users can view their own profile"
-              ON public.strategy_deep_profile
-              FOR SELECT
-              USING (auth.uid() = user_id);
-
-            DROP POLICY IF EXISTS "Users can insert their own profile" ON public.strategy_deep_profile;
-            CREATE POLICY "Users can insert their own profile"
-              ON public.strategy_deep_profile
-              FOR INSERT
-              WITH CHECK (auth.uid() = user_id);
-          `
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+    
+    const requestData: RequestBody = await req.json();
+    let result = { success: false, message: "" };
+    
+    // Check for deep profile data
+    if (requestData.checkDeepProfile && requestData.userId) {
+      const { data, error } = await supabase
+        .from('strategy_deep_profile')
+        .select('*')
+        .eq('user_id', requestData.userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+      if (!error && data) {
+        return new Response(JSON.stringify({ 
+          success: true, 
+          profile: data 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
-        result.deepProfile = true;
-      } catch (err) {
-        console.error("Error creating strategy_deep_profile table:", err);
       }
     }
-
-    if (createMissionMap) {
-      try {
-        // Create mission_map_plans table if it doesn't exist
-        await supabase.rpc('execute_system_sql', {
-          sql_string: `
-            CREATE TABLE IF NOT EXISTS public.mission_map_plans (
-              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-              user_id UUID NOT NULL REFERENCES auth.users(id),
-              data JSONB NOT NULL,
-              created_at TIMESTAMPTZ DEFAULT now()
-            );
-
-            ALTER TABLE public.mission_map_plans ENABLE ROW LEVEL SECURITY;
-
-            DROP POLICY IF EXISTS "Users can view their own mission maps" ON public.mission_map_plans;
-            CREATE POLICY "Users can view their own mission maps"
-              ON public.mission_map_plans
-              FOR SELECT
-              USING (auth.uid() = user_id);
-
-            DROP POLICY IF EXISTS "Users can insert their own mission maps" ON public.mission_map_plans;
-            CREATE POLICY "Users can insert their own mission maps"
-              ON public.mission_map_plans
-              FOR INSERT
-              WITH CHECK (auth.uid() = user_id);
-          `
+    
+    // Check for mission map data
+    if (requestData.checkMissionMap && requestData.userId) {
+      const { data, error } = await supabase
+        .from('mission_map_plans')
+        .select('*')
+        .eq('user_id', requestData.userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+      if (!error && data) {
+        return new Response(JSON.stringify({ 
+          success: true, 
+          missionMap: data 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
-        result.missionMap = true;
-      } catch (err) {
-        console.error("Error creating mission_map_plans table:", err);
       }
     }
-
+    
+    // Create strategy_deep_profile table if it doesn't exist
+    if (requestData.createDeepProfile) {
+      const { error } = await supabase.rpc('create_strategy_deep_profile_table');
+      
+      if (error) {
+        console.error("Error creating strategy_deep_profile table:", error);
+        result.message = "Failed to create strategy_deep_profile table: " + error.message;
+      } else {
+        result.success = true;
+        result.message = "Created strategy_deep_profile table successfully";
+      }
+    }
+    
+    // Create mission_map_plans table if it doesn't exist
+    if (requestData.createMissionMap) {
+      const { error } = await supabase.rpc('create_mission_map_plans_table');
+      
+      if (error) {
+        console.error("Error creating mission_map_plans table:", error);
+        result.message = "Failed to create mission_map_plans table: " + error.message;
+      } else {
+        result.success = true;
+        result.message = "Created mission_map_plans table successfully";
+      }
+    }
+    
+    // Save deep profile data
+    if (requestData.saveProfile && requestData.userId && requestData.profileData) {
+      const { error } = await supabase
+        .from('strategy_deep_profile')
+        .insert({
+          user_id: requestData.userId,
+          data: requestData.profileData
+        });
+      
+      if (error) {
+        console.error("Error saving deep profile:", error);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: "Failed to save profile: " + error.message 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } else {
+        result.success = true;
+        result.message = "Saved deep profile successfully";
+      }
+    }
+    
+    // Save mission map data
+    if (requestData.saveMissionMap && requestData.userId && requestData.missionMapData) {
+      const { error } = await supabase
+        .from('mission_map_plans')
+        .insert({
+          user_id: requestData.userId,
+          data: requestData.missionMapData
+        });
+      
+      if (error) {
+        console.error("Error saving mission map:", error);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: "Failed to save mission map: " + error.message 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } else {
+        result.success = true;
+        result.message = "Saved mission map successfully";
+      }
+    }
+    
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
     });
-  } catch (error) {
-    console.error("Error in create-strategy-tables function:", error);
-    return new Response(JSON.stringify({ success: false, error: error.message }), {
+  } catch (err) {
+    console.error("Error in create-strategy-tables function:", err);
+    
+    return new Response(JSON.stringify({
+      success: false,
+      error: err.message
+    }), {
+      status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
     });
   }
 });

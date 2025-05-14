@@ -50,38 +50,30 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
         setThreadId(threadData.thread_id);
       }
       
-      // Check if strategy_deep_profile table exists and fetch data
+      // Check if strategy_deep_profile exists via edge function
       try {
-        const { data: profileData, error: profileError } = await supabase
-          .from('strategy_deep_profile')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const { data: deepProfileResponse, error: functionError } = await supabase.functions.invoke('create-strategy-tables', {
+          body: { checkDeepProfile: true, userId: user.id }
+        });
         
-        if (!profileError && profileData) {
-          setDeepProfile(profileData.data || {});
+        if (!functionError && deepProfileResponse?.profile) {
+          setDeepProfile(deepProfileResponse.profile.data || {});
         }
       } catch (err) {
-        console.log("Strategy deep profile might not exist yet:", err);
+        console.log("Could not fetch deep profile data:", err);
       }
       
-      // Try to fetch mission map data
+      // Check if mission map exists via edge function
       try {
-        const { data: missionData, error: missionError } = await supabase
-          .from('mission_map_plans')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const { data: missionMapResponse, error: functionError } = await supabase.functions.invoke('create-strategy-tables', {
+          body: { checkMissionMap: true, userId: user.id }
+        });
         
-        if (!missionError && missionData) {
-          setMissionMap(missionData.data || {});
+        if (!functionError && missionMapResponse?.missionMap) {
+          setMissionMap(missionMapResponse.missionMap.data || {});
         }
       } catch (err) {
-        console.log("Mission map plans might not exist yet:", err);
+        console.log("Could not fetch mission map data:", err);
       }
       
       // Fetch content ideas
@@ -108,18 +100,18 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     
     try {
-      // First, invoke the function to create the table if it doesn't exist
-      await supabase.functions.invoke('create-strategy-tables', {
-        body: { createDeepProfile: true }
-      });
-      
-      // Then insert data directly
-      const { error } = await supabase.from('strategy_deep_profile').insert({
-        user_id: user.id,
-        data: data
+      // Use edge function to save the deep profile
+      const { data: result, error } = await supabase.functions.invoke('create-strategy-tables', {
+        body: { 
+          createDeepProfile: true, 
+          saveProfile: true,
+          userId: user.id,
+          profileData: data
+        }
       });
         
       if (error) throw error;
+      if (result?.error) throw new Error(result.error);
       
       setDeepProfile(data);
       toast({
@@ -141,18 +133,18 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     
     try {
-      // First, invoke the function to create the table if it doesn't exist
-      await supabase.functions.invoke('create-strategy-tables', {
-        body: { createMissionMap: true }
-      });
-      
-      // Then insert data directly
-      const { error } = await supabase.from('mission_map_plans').insert({
-        user_id: user.id,
-        data: data
+      // Use edge function to save the mission map
+      const { data: result, error } = await supabase.functions.invoke('create-strategy-tables', {
+        body: { 
+          createMissionMap: true, 
+          saveMissionMap: true,
+          userId: user.id,
+          missionMapData: data
+        }
       });
         
       if (error) throw error;
+      if (result?.error) throw new Error(result.error);
       
       setMissionMap(data);
       toast({
