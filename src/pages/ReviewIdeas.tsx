@@ -56,6 +56,16 @@ const ReviewIdeas = () => {
     }
   };
 
+  // Add the normalizeDifficulty function to ensure correct typing
+  const normalizeDifficulty = (difficulty: string): "easy" | "medium" | "hard" => {
+    const lowerCaseDifficulty = difficulty.toLowerCase();
+    if (lowerCaseDifficulty === "easy" || lowerCaseDifficulty === "medium" || lowerCaseDifficulty === "hard") {
+      return lowerCaseDifficulty as "easy" | "medium" | "hard";
+    }
+    // Default to medium if the difficulty is not one of the expected values
+    return "medium";
+  };
+
   const loadProgressData = async () => {
     try {
       const { data, error } = await supabase
