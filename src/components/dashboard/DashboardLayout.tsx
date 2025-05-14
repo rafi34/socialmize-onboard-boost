@@ -5,7 +5,6 @@ import { ReminderCard } from "./ReminderCard";
 import { LevelProgressCard } from "./LevelProgressCard";
 import { ScriptPreviewsSection } from "./ScriptPreviewsSection";
 import { StrategyOverviewSection } from "./StrategyOverviewSection";
-import { ContentMissionsSection } from "./ContentMissionsSection";
 import { WeeklyConsistencyCard } from "./WeeklyConsistencyCard";
 import { ReminderConfetti } from "./ReminderConfetti";
 import { useEffect, useState } from "react";
@@ -212,12 +211,6 @@ export const DashboardLayout = () => {
                 Today's Focus
               </button>
               <button 
-                className={`px-4 py-2 font-medium ${activeTab === 'missions' ? 'text-socialmize-purple border-b-2 border-socialmize-purple' : 'text-muted-foreground'}`}
-                onClick={() => setActiveTab('missions')}
-              >
-                Content Missions
-              </button>
-              <button 
                 className={`px-4 py-2 font-medium ${activeTab === 'strategy' ? 'text-socialmize-purple border-b-2 border-socialmize-purple' : 'text-muted-foreground'}`}
                 onClick={() => setActiveTab('strategy')}
               >
@@ -235,10 +228,6 @@ export const DashboardLayout = () => {
                 <EnhancedWeeklyCalendarGrid strategy={strategy} loading={loading} />
                 <ScriptPreviewsSection scripts={scripts} loading={loading} />
               </div>
-            )}
-            
-            {activeTab === 'missions' && (
-              <ContentMissionsSection />
             )}
             
             {activeTab === 'strategy' && (
