@@ -51,6 +51,7 @@ export const StrategyPlanSection = () => {
     const success = await confirmStrategyPlan();
     if (success) {
       fetchStrategyData();
+      console.log("Strategy confirmed successfully");
     }
   };
 
@@ -58,6 +59,13 @@ export const StrategyPlanSection = () => {
   const hasWeeklyCalendar = !!(strategy?.weekly_calendar && 
     Object.keys(strategy.weekly_calendar).length > 0);
   const isConfirmed = !!strategy?.confirmed_at;
+  
+  console.log("Strategy plan status:", {
+    hasStrategy: !!strategy,
+    hasWeeklyCalendar,
+    isConfirmed,
+    confirmedAt: strategy?.confirmed_at
+  });
 
   return (
     <div className="mb-6 flex flex-col md:flex-row items-start gap-4">

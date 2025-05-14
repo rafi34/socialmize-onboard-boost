@@ -1,3 +1,4 @@
+
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -152,6 +153,9 @@ export default function Dashboard() {
     );
   }
 
+  // Check if strategy is confirmed by looking at the strategy object directly
+  const isStrategyConfirmed = !!(strategy && strategy.confirmed_at);
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
       <main className="flex-grow container py-6 px-4 sm:px-6">
@@ -190,7 +194,7 @@ export default function Dashboard() {
               
               <StrategyPlanSection />
 
-              {planConfirmed ? (
+              {isStrategyConfirmed ? (
                 <>
                   <Tabs 
                     value={activeTab} 
