@@ -1,92 +1,60 @@
 
-project_id = "socialmize"
+project_id = "psauygzfbxvefnetudem"
 
 [api]
-enabled = true
 port = 54321
-schemas = ["public", "storage", "graphql_public"]
+schemas = ["public", "storage"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[api.cors]
+enabled = true
+origin = "*"
 
 [db]
 port = 54322
 
 [studio]
-enabled = true
 port = 54323
 
 [inbucket]
-enabled = true
 port = 54324
-
-[auth]
-enabled = true
-site_url = "http://localhost:3000"
+smtp_port = 54325
+pop3_port = 54326
 
 [storage]
+file_size_limit = "50MiB"
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://localhost:3000"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_expiry = 43200
+
+[auth.email]
+enable_confirmations = false
+double_confirm_changes = false
+
+[auth.external.google]
 enabled = true
+client_id = ""
+secret = ""
+url = "https://www.googleapis.com/oauth2/v2/userinfo"
+redirect_uri = ""
 
-[realtime]
-enabled = true
+[functions]
+serve_port = 54321
+port = 9454
 
-[[functions]]
-name = "add-calendar-event"
+[functions.create-strategy-tables]
 verify_jwt = true
 
-[[functions]]
-name = "award-reminder-xp"
+[functions.generate-strategy-chat]
 verify_jwt = true
 
-[[functions]]
-name = "award-xp"
+[functions.utils]
 verify_jwt = true
 
-[[functions]]
-name = "confirm-strategy-plan"
-verify_jwt = true
-
-[[functions]]
-name = "generate-content"
-verify_jwt = true
-
-[[functions]]
-name = "generate-inbox-nudges"
-verify_jwt = true
-
-[[functions]]
-name = "generate-reminders"
-verify_jwt = true
-
-[[functions]]
-name = "generate-strategy-chat"
-verify_jwt = true
-
-[[functions]]
-name = "generate-strategy-plan"
-verify_jwt = true
-
-[[functions]]
-name = "generate-strategy"
-verify_jwt = true
-
-[[functions]]
-name = "generate-waiting-message"
-verify_jwt = true
-
-[[functions]]
-name = "get-content-idea-details"
-verify_jwt = true
-
-[[functions]]
-name = "get-weekly-xp"
-verify_jwt = true
-
-[[functions]]
-name = "refresh-topics"
-verify_jwt = true
-
-[[functions]]
-name = "sync-creator-settings"
-verify_jwt = true
-
-[[functions]]
-name = "generate-strategy-suggestion"
+[functions.generate-waiting-message]
 verify_jwt = true

@@ -47,30 +47,50 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
         setThreadId(threadData.thread_id);
       }
       
-      // Fetch deep profile data
-      const { data: profileData } = await supabase
+      // Check if strategy_deep_profile table exists
+      const { error: tableCheckError } = await supabase
         .from('strategy_deep_profile')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+        .select('count')
         .limit(1)
-        .maybeSingle();
-      
-      if (profileData) {
-        setDeepProfile(profileData.data || {});
+        .then(() => ({ error: null }))
+        .catch(error => ({ error }));
+        
+      // Fetch deep profile data if table exists
+      if (!tableCheckError) {
+        const { data: profileData } = await supabase
+          .from('strategy_deep_profile')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (profileData) {
+          setDeepProfile(profileData.data || {});
+        }
       }
       
-      // Fetch mission map
-      const { data: missionData } = await supabase
+      // Check if mission_map_plans table exists
+      const { error: missionTableCheckError } = await supabase
         .from('mission_map_plans')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+        .select('count')
         .limit(1)
-        .maybeSingle();
+        .then(() => ({ error: null }))
+        .catch(error => ({ error }));
       
-      if (missionData) {
-        setMissionMap(missionData.data || {});
+      // Fetch mission map if table exists
+      if (!missionTableCheckError) {
+        const { data: missionData } = await supabase
+          .from('mission_map_plans')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (missionData) {
+          setMissionMap(missionData.data || {});
+        }
       }
       
       // Fetch content ideas
@@ -95,6 +115,24 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     
     try {
+      // Check if table exists first
+      const { error: tableCheckError } = await supabase
+        .from('strategy_deep_profile')
+        .select('count')
+        .limit(1)
+        .then(() => ({ error: null }))
+        .catch(error => ({ error }));
+      
+      if (tableCheckError) {
+        console.log("Creating strategy_deep_profile table via function");
+        // Handle case where table doesn't exist
+        await supabase.functions.invoke('create-strategy-tables', {
+          body: { 
+            createDeepProfile: true 
+          }
+        });
+      }
+      
       const { error } = await supabase
         .from('strategy_deep_profile')
         .insert({
@@ -115,6 +153,24 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     
     try {
+      // Check if table exists first
+      const { error: tableCheckError } = await supabase
+        .from('mission_map_plans')
+        .select('count')
+        .limit(1)
+        .then(() => ({ error: null }))
+        .catch(error => ({ error }));
+      
+      if (tableCheckError) {
+        console.log("Creating mission_map_plans table via function");
+        // Handle case where table doesn't exist
+        await supabase.functions.invoke('create-strategy-tables', {
+          body: { 
+            createMissionMap: true 
+          }
+        });
+      }
+      
       const { error } = await supabase
         .from('mission_map_plans')
         .insert({

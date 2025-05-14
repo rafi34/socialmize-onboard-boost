@@ -19,68 +19,44 @@ serve(async (req) => {
   }
 
   try {
-    // Initialize the Supabase client
+    // Parse request body
+    const { createDeepProfile, createMissionMap } = await req.json();
+
+    // Initialize the Supabase client with service key for full admin privileges
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    console.log("Creating tables for strategy chat feature...");
-
-    // Create assistant_threads table if it doesn't exist
-    const { error: threadsError } = await supabase.rpc('execute_if_not_exists', {
-      sql_statement: `
-        CREATE TABLE IF NOT EXISTS assistant_threads (
-          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-          user_id UUID NOT NULL REFERENCES auth.users(id),
-          thread_id TEXT NOT NULL,
-          assistant_id TEXT,
-          purpose TEXT NOT NULL DEFAULT 'strategy',
-          created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-          updated_at TIMESTAMPTZ
+    // Create necessary tables
+    if (createDeepProfile) {
+      const { error: deepProfileError } = await supabase.rpc('create_strategy_deep_profile_table');
+      
+      if (deepProfileError) {
+        console.error("Error creating strategy_deep_profile table:", deepProfileError);
+        return new Response(
+          JSON.stringify({ success: false, error: deepProfileError.message }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
         );
-      `
-    });
-    
-    if (threadsError) {
-      throw new Error(`Error creating assistant_threads table: ${threadsError.message}`);
+      }
     }
     
-    // Create strategy_deep_profile table if it doesn't exist
-    const { error: profileError } = await supabase.rpc('execute_if_not_exists', {
-      sql_statement: `
-        CREATE TABLE IF NOT EXISTS strategy_deep_profile (
-          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-          user_id UUID NOT NULL REFERENCES auth.users(id),
-          data JSONB NOT NULL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    if (createMissionMap) {
+      const { error: missionMapError } = await supabase.rpc('create_mission_map_plans_table');
+      
+      if (missionMapError) {
+        console.error("Error creating mission_map_plans table:", missionMapError);
+        return new Response(
+          JSON.stringify({ success: false, error: missionMapError.message }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
         );
-      `
-    });
-    
-    if (profileError) {
-      throw new Error(`Error creating strategy_deep_profile table: ${profileError.message}`);
-    }
-    
-    // Create mission_map_plans table if it doesn't exist
-    const { error: missionError } = await supabase.rpc('execute_if_not_exists', {
-      sql_statement: `
-        CREATE TABLE IF NOT EXISTS mission_map_plans (
-          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-          user_id UUID NOT NULL REFERENCES auth.users(id),
-          data JSONB NOT NULL,
-          created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        );
-      `
-    });
-    
-    if (missionError) {
-      throw new Error(`Error creating mission_map_plans table: ${missionError.message}`);
+      }
     }
     
     return new Response(
-      JSON.stringify({ success: true, message: "Strategy chat tables created successfully" }),
+      JSON.stringify({ success: true }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+    
   } catch (error) {
-    console.error("Error in create-strategy-tables function:", error);
+    console.error("Error in create-strategy-tables:", error);
     
     return new Response(
       JSON.stringify({ success: false, error: error.message || "An unexpected error occurred" }),

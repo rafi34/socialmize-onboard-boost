@@ -81,7 +81,7 @@ export function AIAssistant({ onComplete, onProgress }: AIAssistantProps) {
         const formattedMessages = data.map(msg => ({
           id: msg.id,
           role: msg.role as 'user' | 'assistant',
-          message: msg.content || msg.message
+          message: msg.content || "" // Use content field instead of message
         }));
         
         setMessages(formattedMessages);
