@@ -1,257 +1,222 @@
-
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+} from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "./AuthContext";
 
-// Types for onboarding state
-interface OnboardingState {
+export interface OnboardingContextType {
+  // Add missing properties
+  onboardingAnswers: {
+    creator_mission?: string;
+    creator_style?: string;
+    content_format_preference?: string;
+    posting_frequency_goal?: string;
+    shooting_preference?: string;
+    existing_content?: string;
+    niche_topic?: string;
+    [key: string]: string | undefined;
+  };
+  setOnboardingAnswers: (answers: any) => void;
   currentStep: number;
-  totalSteps: number;
-  answers: Record<string, any>;
-  completed: boolean;
-  skipped: boolean;
-}
-
-// Context type definition
-interface OnboardingContextType {
-  onboardingState: OnboardingState;
-  updateAnswer: (questionId: string, answer: any) => void;
-  goToNextStep: () => void;
-  goToPreviousStep: () => void;
+  nextStep: () => void;
+  previousStep: () => void;
+  setCurrentStep: (step: number) => void;
+  isStepComplete: (step: number) => boolean;
+  userProgress: {
+    level: number;
+    xp: number;
+  };
+  resetOnboarding: () => void;
   completeOnboarding: () => Promise<void>;
-  skipOnboarding: () => Promise<void>;
-  isLoading: boolean;
 }
 
-// Default context state
-const defaultOnboardingState: OnboardingState = {
-  currentStep: 1,
-  totalSteps: 10, // Update this based on your actual number of steps
-  answers: {},
-  completed: false,
-  skipped: false,
+const OnboardingContext = createContext<OnboardingContextType | undefined>(
+  undefined
+);
+
+export const useOnboarding = () => {
+  const context = useContext(OnboardingContext);
+  if (!context) {
+    throw new Error(
+      "useOnboarding must be used within a OnboardingContextProvider"
+    );
+  }
+  return context;
 };
 
-// Create context
-const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
+interface OnboardingContextProviderProps {
+  children: React.ReactNode;
+}
 
-// Provider component
-export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [onboardingState, setOnboardingState] = useState<OnboardingState>(defaultOnboardingState);
-  const [isLoading, setIsLoading] = useState(false);
+export const OnboardingContextProvider: React.FC<
+  OnboardingContextProviderProps
+> = ({ children }) => {
+  const [onboardingAnswers, setOnboardingAnswers] = useState<any>({});
+  const [currentStep, setCurrentStep] = useState(1);
+  const [userProgress, setUserProgress] = useState({ level: 1, xp: 0 });
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Load existing onboarding state when component mounts
+  const totalSteps = 5;
+
   useEffect(() => {
-    if (user) {
-      loadOnboardingState();
-    }
+    fetchOnboardingData();
+    fetchUserProfile();
   }, [user]);
 
-  // Function to load onboarding state from backend
-  const loadOnboardingState = async () => {
-    if (!user) return;
-
+  const fetchUserProfile = async () => {
     try {
-      setIsLoading(true);
-      
-      // Check if user has already completed onboarding
-      const { data: profileData, error: profileError } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
-        .select("onboarding_complete")
-        .eq("id", user.id)
+        .select("level, xp")
+        .eq("id", user?.id)
         .single();
 
-      if (profileError) throw profileError;
-
-      // If onboarding is complete, set state accordingly
-      if (profileData?.onboarding_complete) {
-        setOnboardingState({
-          ...defaultOnboardingState,
-          completed: true,
-        });
+      if (error) {
+        console.error("Error fetching user profile:", error);
         return;
       }
 
-      // Load saved answers if any
-      const { data: answersData, error: answersError } = await supabase
+      if (data) {
+        setUserProgress({ level: data.level, xp: data.xp });
+      }
+    } catch (err) {
+      console.error("Error in fetchUserProfile:", err);
+    }
+  };
+
+  // Update the fetch function to handle the case where last_completed_step might not exist
+  const fetchOnboardingData = async () => {
+    try {
+      const { data, error } = await supabase
         .from("onboarding_answers")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", user?.id)
         .maybeSingle();
 
-      if (answersError) throw answersError;
-
-      if (answersData) {
-        // Filter out the metadata fields like user_id and created_at
-        const { user_id, created_at, id, ...savedAnswers } = answersData;
-        
-        // We might need to convert some answers back to their original form
-        // e.g. converting string arrays back from PostgreSQL format
-        
-        setOnboardingState({
-          ...onboardingState,
-          answers: savedAnswers,
-          currentStep: answersData.last_completed_step ? answersData.last_completed_step + 1 : 1
-        });
+      if (error) {
+        console.error("Error fetching onboarding data:", error);
+        return;
       }
-    } catch (error) {
-      console.error("Error loading onboarding state:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load your onboarding progress.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  // Update a specific answer
-  const updateAnswer = (questionId: string, answer: any) => {
-    setOnboardingState(prevState => ({
-      ...prevState,
-      answers: {
-        ...prevState.answers,
-        [questionId]: answer
+      if (data) {
+        setOnboardingAnswers(data);
+        // Use optional chaining to safely access last_completed_step
+        const lastStep = (data as any).last_completed_step;
+        if (lastStep !== undefined) {
+          setCurrentStep(lastStep + 1);
+        }
       }
-    }));
-  };
-
-  // Move to the next step
-  const goToNextStep = () => {
-    if (onboardingState.currentStep < onboardingState.totalSteps) {
-      setOnboardingState(prevState => ({
-        ...prevState,
-        currentStep: prevState.currentStep + 1
-      }));
+    } catch (err) {
+      console.error("Error in fetchOnboardingData:", err);
     }
   };
 
-  // Move to the previous step
-  const goToPreviousStep = () => {
-    if (onboardingState.currentStep > 1) {
-      setOnboardingState(prevState => ({
-        ...prevState,
-        currentStep: prevState.currentStep - 1
-      }));
+  const nextStep = () => {
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
     }
   };
 
-  // Complete onboarding process
+  const previousStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const isStepComplete = useCallback(
+    (step: number) => {
+      if (!onboardingAnswers) return false;
+
+      switch (step) {
+        case 1:
+          return !!onboardingAnswers.creator_mission;
+        case 2:
+          return !!onboardingAnswers.creator_style;
+        case 3:
+          return !!onboardingAnswers.content_format_preference;
+        case 4:
+          return !!onboardingAnswers.posting_frequency_goal;
+        case 5:
+          return !!onboardingAnswers.niche_topic;
+        default:
+          return false;
+      }
+    },
+    [onboardingAnswers]
+  );
+
+  const resetOnboarding = () => {
+    setCurrentStep(1);
+    setOnboardingAnswers({});
+  };
+
   const completeOnboarding = async () => {
     if (!user) return;
-    
-    setIsLoading(true);
+
     try {
-      // Save final answers
-      const { error: saveError } = await supabase
+      // Ensure all required fields are present before submission
+      if (
+        !onboardingAnswers.creator_mission ||
+        !onboardingAnswers.creator_style ||
+        !onboardingAnswers.content_format_preference ||
+        !onboardingAnswers.posting_frequency_goal ||
+        !onboardingAnswers.niche_topic
+      ) {
+        console.warn("Not all onboarding fields are filled.");
+        return;
+      }
+
+      const { data, error } = await supabase
         .from("onboarding_answers")
-        .upsert({
-          user_id: user.id,
-          ...onboardingState.answers,
-          last_completed_step: onboardingState.totalSteps
-        });
+        .upsert(
+          [
+            {
+              user_id: user.id,
+              creator_mission: onboardingAnswers.creator_mission,
+              creator_style: onboardingAnswers.creator_style,
+              content_format_preference:
+                onboardingAnswers.content_format_preference,
+              posting_frequency_goal: onboardingAnswers.posting_frequency_goal,
+              shooting_preference: onboardingAnswers.shooting_preference,
+              existing_content: onboardingAnswers.existing_content,
+              niche_topic: onboardingAnswers.niche_topic,
+              last_completed_step: currentStep,
+            },
+          ],
+          { onConflict: "user_id" }
+        )
+        .select()
 
-      if (saveError) throw saveError;
+      if (error) {
+        console.error("Error saving onboarding answers:", error);
+        return;
+      }
 
-      // Mark onboarding as complete
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ 
-          onboarding_complete: true,
-          profile_progress: 100 // Set to 100% when onboarding is complete
-        })
-        .eq("id", user.id);
-
-      if (updateError) throw updateError;
-      
-      // Generate initial content strategy
-      await supabase.functions.invoke('generate-initial-strategy', {
-        body: { userId: user.id }
-      });
-
-      // Update local state
-      setOnboardingState(prevState => ({
-        ...prevState,
-        completed: true
-      }));
-
-      toast({
-        title: "Onboarding Complete!",
-        description: "Your personalized dashboard is ready.",
-      });
-
-      // Redirect to dashboard
+      console.log("Onboarding completed and data saved:", data);
       navigate("/dashboard");
-
-    } catch (error) {
-      console.error("Error completing onboarding:", error);
-      toast({
-        title: "Error",
-        description: "Failed to complete onboarding. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      console.error("Error in completeOnboarding:", err);
     }
   };
 
-  // Skip onboarding process
-  const skipOnboarding = async () => {
-    if (!user) return;
-    
-    setIsLoading(true);
-    try {
-      // Mark onboarding as skipped but complete
-      const { error } = await supabase
-        .from("profiles")
-        .update({ 
-          onboarding_complete: true,
-          profile_progress: 50 // Set to 50% when onboarding is skipped
-        })
-        .eq("id", user.id);
-
-      if (error) throw error;
-      
-      // Update local state
-      setOnboardingState(prevState => ({
-        ...prevState,
-        completed: true,
-        skipped: true
-      }));
-
-      toast({
-        title: "Welcome to your dashboard!",
-        description: "You can complete your profile anytime in settings.",
-      });
-
-      // Redirect to dashboard
-      navigate("/dashboard");
-
-    } catch (error) {
-      console.error("Error skipping onboarding:", error);
-      toast({
-        title: "Error",
-        description: "Failed to skip onboarding. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // Make sure the context provider properly includes all the required values
   const contextValue: OnboardingContextType = {
-    onboardingState,
-    updateAnswer,
-    goToNextStep,
-    goToPreviousStep,
+    onboardingAnswers,
+    setOnboardingAnswers,
+    currentStep,
+    nextStep,
+    previousStep,
+    setCurrentStep,
+    isStepComplete,
+    userProgress,
+    resetOnboarding,
     completeOnboarding,
-    skipOnboarding,
-    isLoading
   };
 
   return (
@@ -259,13 +224,4 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       {children}
     </OnboardingContext.Provider>
   );
-};
-
-// Hook for using the onboarding context
-export const useOnboarding = () => {
-  const context = useContext(OnboardingContext);
-  if (context === undefined) {
-    throw new Error("useOnboarding must be used within an OnboardingProvider");
-  }
-  return context;
 };

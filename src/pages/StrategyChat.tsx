@@ -8,6 +8,7 @@ import { StrategyChatHeader } from "@/components/strategy-chat/StrategyChatHeade
 import { StrategyChatInput } from "@/components/strategy-chat/StrategyChatInput";
 import { StrategyChatError } from "@/components/strategy-chat/StrategyChatError";
 import { StartSessionButton } from "@/components/strategy-chat/StartSessionButton";
+import { toast } from "@/hooks/use-toast";
 
 const StrategyChat = () => {
   const {
