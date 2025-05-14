@@ -1,7 +1,7 @@
 
 // supabase/functions/generate-strategy/index.ts
 import { serve } from "https://deno.land/std@0.195.0/http/server.ts";
-import OpenAI from "https://esm.sh/openai@4.28.0";
+import OpenAI from "https://esm.sh/openai@4.30.0"; // Updated to latest version
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
 // Get environment variables
@@ -179,6 +179,12 @@ serve(async (req) => {
         errorMessage = openaiError.error.message;
       } else if (typeof openaiError.message === 'string') {
         errorMessage = openaiError.message;
+      }
+      
+      // Check specifically for API version issues
+      if (errorMessage.includes("assistants=v2") || errorMessage.includes("OpenAI-Beta")) {
+        errorMessage = "OpenAI Assistants API version error. Please contact support with this error: OpenAI-Beta: assistants=v2 header required.";
+        console.error("API VERSION ERROR:", errorMessage);
       }
       
       return new Response(

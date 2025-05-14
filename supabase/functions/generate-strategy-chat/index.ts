@@ -1,20 +1,18 @@
 
 // supabase/functions/generate-strategy-chat/index.ts
 import { serve } from "https://deno.land/std@0.195.0/http/server.ts";
-import OpenAI from "https://esm.sh/openai@4.28.0";
+import OpenAI from "https://esm.sh/openai@4.30.0"; // Updated to latest version
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
 
 // Get environment variables
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const openaiApiKey = Deno.env.get("OPENAI_API_KEY") || "";
-const assistantId = Deno.env.get("ASSISTANT_ID") || "";
 
 // Initialize OpenAI client with v2 header
 const openai = new OpenAI({
-  apiKey: openaiApiKey,
+  apiKey: Deno.env.get("OPENAI_API_KEY"),
   defaultHeaders: {
-    "OpenAI-Beta": "assistants=v2" // Set v2 header for Assistants API
+    "OpenAI-Beta": "assistants=v2" // Ensure v2 header is set for Assistants API
   }
 });
 
@@ -32,14 +30,7 @@ serve(async (req) => {
 
   try {
     // Parse request body
-    const { 
-      userId, 
-      userMessage, 
-      threadId, 
-      onboardingData, 
-      strategyData, 
-      isEndingSession 
-    } = await req.json();
+    const { userId, userMessage, threadId, onboardingData, strategyData, isEndingSession } = await req.json();
 
     if (!userId) {
       return new Response(
@@ -47,18 +38,23 @@ serve(async (req) => {
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
-    
+
     console.log("Processing strategy chat for user:", userId);
-    console.log("Assistant ID:", assistantId);
+    
+    // Get the assistant ID - specifically using ASSISTANT_ID for strategy chat
+    const assistantIdRaw = Deno.env.get("CONTENT_PLAN_ASSISTANT_ID") || Deno.env.get("ASSISTANT_ID");
+    const assistantId = assistantIdRaw ? assistantIdRaw.trim() : null;
+    
+    console.log("Using Assistant ID:", assistantId);
     
     if (!assistantId) {
       console.error("Missing ASSISTANT_ID environment variable");
       return new Response(
         JSON.stringify({
           success: false,
-          error: "ASSISTANT_ID not configured",
+          error: "Assistant ID not configured",
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
 
@@ -344,6 +340,12 @@ ${Object.entries(contextData)
           errorMessage = openaiError.error.message;
         } else if (typeof openaiError.message === 'string') {
           errorMessage = openaiError.message;
+        }
+        
+        // Check specifically for API version issues
+        if (errorMessage.includes("assistants=v2") || errorMessage.includes("OpenAI-Beta")) {
+          errorMessage = "OpenAI Assistants API version error. Please contact support with this error: OpenAI-Beta: assistants=v2 header required.";
+          console.error("API VERSION ERROR:", errorMessage);
         }
         
         return new Response(
