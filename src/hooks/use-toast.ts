@@ -34,10 +34,12 @@ type ToastCreatorProps = Partial<
     duration?: number;
   };
 
+// Create toast store
 export const useToast = create<State>(() => ({
   toasts: [],
 }));
 
+// Create toast function
 export function toast(props: ToastCreatorProps) {
   const { toasts } = useToast.getState();
   const { duration = DEFAULT_TOAST_DURATION, ...data } = props;
