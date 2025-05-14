@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface StrategyContextType {
   threadId: string | null;
@@ -49,31 +50,38 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
         setThreadId(threadData.thread_id);
       }
       
-      // Check if strategy_deep_profile exists using RPC instead of directly querying the table
+      // Check if strategy_deep_profile table exists and fetch data
       try {
-        // Try to fetch deep profile data 
         const { data: profileData, error: profileError } = await supabase
-          .rpc('get_strategy_deep_profile', { user_id_param: user.id })
+          .from('strategy_deep_profile')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle();
         
         if (!profileError && profileData) {
           setDeepProfile(profileData.data || {});
         }
       } catch (err) {
-        console.log("Strategy deep profile table might not exist yet:", err);
+        console.log("Strategy deep profile might not exist yet:", err);
       }
       
       // Try to fetch mission map data
       try {
         const { data: missionData, error: missionError } = await supabase
-          .rpc('get_mission_map_plan', { user_id_param: user.id })
+          .from('mission_map_plans')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
           .maybeSingle();
         
         if (!missionError && missionData) {
           setMissionMap(missionData.data || {});
         }
       } catch (err) {
-        console.log("Mission map plans table might not exist yet:", err);
+        console.log("Mission map plans might not exist yet:", err);
       }
       
       // Fetch content ideas
@@ -105,17 +113,26 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
         body: { createDeepProfile: true }
       });
       
-      // Then insert data using RPC
-      const { error } = await supabase.rpc('save_strategy_deep_profile', {
-        user_id_param: user.id,
-        data_param: data
+      // Then insert data directly
+      const { error } = await supabase.from('strategy_deep_profile').insert({
+        user_id: user.id,
+        data: data
       });
         
       if (error) throw error;
       
       setDeepProfile(data);
+      toast({
+        title: "Profile saved",
+        description: "Your strategy profile has been updated."
+      });
     } catch (err: any) {
       console.error("Error saving deep profile:", err);
+      toast({
+        title: "Error saving profile",
+        description: err.message,
+        variant: "destructive"
+      });
       throw err;
     }
   };
@@ -129,17 +146,26 @@ export function StrategyProvider({ children }: { children: ReactNode }) {
         body: { createMissionMap: true }
       });
       
-      // Then insert data using RPC
-      const { error } = await supabase.rpc('save_mission_map_plan', {
-        user_id_param: user.id,
-        data_param: data
+      // Then insert data directly
+      const { error } = await supabase.from('mission_map_plans').insert({
+        user_id: user.id,
+        data: data
       });
         
       if (error) throw error;
       
       setMissionMap(data);
+      toast({
+        title: "Mission map saved",
+        description: "Your mission map plan has been saved."
+      });
     } catch (err: any) {
       console.error("Error saving mission map:", err);
+      toast({
+        title: "Error saving mission map",
+        description: err.message,
+        variant: "destructive"
+      });
       throw err;
     }
   };
