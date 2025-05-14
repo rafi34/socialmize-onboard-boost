@@ -1,195 +1,146 @@
-import React, { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabaseClient";
-import { toast } from "@/components/ui/use-toast";
+
+import React from 'react';
+import { Button } from "@/components/ui/button";
+import { UserSettings } from "@/pages/Settings";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { toast } from '@/hooks/use-toast';
 
-const CreatorSettings = () => {
-  const { user } = useAuth();
-  const [missionValue, setMissionValue] = useState("");
-  const [styleValue, setStyleValue] = useState("");
-  const [formatValue, setFormatValue] = useState("");
-  const [frequencyValue, setFrequencyValue] = useState("");
-  const [shootingValue, setShootingValue] = useState("");
-  const [nicheValue, setNicheValue] = useState("");
-  const [loading, setLoading] = useState(false);
+interface CreatorSettingsProps {
+  settings: UserSettings;
+  setSettings: React.Dispatch<React.SetStateAction<UserSettings>>;
+  loading: boolean;
+  onSave: (updatedSettings: Partial<UserSettings>) => void;
+}
 
-  useEffect(() => {
-    const fetchCreatorSettings = async () => {
-      if (user) {
-        try {
-          const { data, error } = await supabase
-            .from('onboarding_answers')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
-
-          if (error) {
-            console.error("Error fetching creator settings:", error);
-            return;
-          }
-
-          if (data) {
-            setMissionValue(data.creator_mission || "");
-            setStyleValue(data.creator_style || "");
-            setFormatValue(data.content_format_preference || "");
-            setFrequencyValue(data.posting_frequency_goal || "");
-            setShootingValue(data.shooting_preference || "");
-            setNicheValue(data.niche_topic || "");
-          }
-        } catch (error) {
-          console.error("Error fetching creator settings:", error);
-        }
-      }
-    };
-
-    fetchCreatorSettings();
-  }, [user]);
-
-  // Fix the property type issue by adding existingContent
-  const handleSubmit = async (e: React.FormEvent) => {
+export const CreatorSettings = ({ 
+  settings, 
+  setSettings, 
+  loading,
+  onSave 
+}: CreatorSettingsProps) => {
+  
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     
     try {
-      const updateData = {
-        creatorMission: missionValue,
-        creatorStyle: styleValue,
-        contentPreference: formatValue,
-        postingFrequency: frequencyValue,
-        shootingMode: shootingValue,
-        existingContent: true, // Add the missing property
-        nicheTopic: nicheValue
-      };
+      onSave({
+        niche: settings.niche,
+        creator_style: settings.creator_style,
+        content_format_preference: settings.content_format_preference,
+        posting_frequency_goal: settings.posting_frequency_goal,
+        existing_content: settings.existing_content,
+      });
       
-      const { error } = await supabase
-        .from('onboarding_answers')
-        .upsert(
-          {
-            user_id: user?.id,
-            creator_mission: missionValue,
-            creator_style: styleValue,
-            content_format_preference: formatValue,
-            posting_frequency_goal: frequencyValue,
-            shooting_preference: shootingValue,
-            existing_content: true,
-            niche_topic: nicheValue,
-          },
-          { onConflict: 'user_id' }
-        );
-
-      if (error) {
-        throw error;
-      }
-
       toast({
-        title: "Settings saved",
-        description: "Your creator settings have been updated.",
+        title: "Settings Saved",
+        description: "Your creator profile has been updated successfully.",
       });
     } catch (error) {
-      console.error("Error updating creator settings:", error);
       toast({
-        title: "Error saving settings",
-        description: "There was a problem updating your creator settings. Please try again.",
-        variant: "destructive",
+        title: "Error",
+        description: "Failed to save your settings. Please try again.",
+        variant: "destructive"
       });
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <div className="container max-w-3xl mx-auto py-10">
-      <h2 className="text-2xl font-bold mb-6">Creator Settings</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <Label htmlFor="creatorMission">Creator Mission</Label>
-          <Textarea
-            id="creatorMission"
-            placeholder="What is your mission as a creator?"
-            value={missionValue}
-            onChange={(e) => setMissionValue(e.target.value)}
-            className="mt-2"
-          />
-        </div>
-        <div>
-          <Label htmlFor="creatorStyle">Creator Style</Label>
-          <Select value={styleValue} onValueChange={setStyleValue}>
-            <SelectTrigger className="w-full mt-2">
-              <SelectValue placeholder="Select a style" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Authentic">Authentic</SelectItem>
-              <SelectItem value="Educational">Educational</SelectItem>
-              <SelectItem value="Humorous">Humorous</SelectItem>
-              <SelectItem value="Inspirational">Inspirational</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="contentPreference">Content Preference</Label>
-          <Select value={formatValue} onValueChange={setFormatValue}>
-            <SelectTrigger className="w-full mt-2">
-              <SelectValue placeholder="Select a content preference" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Video">Video</SelectItem>
-              <SelectItem value="Images">Images</SelectItem>
-              <SelectItem value="Blog Posts">Blog Posts</SelectItem>
-              <SelectItem value="Podcasts">Podcasts</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="postingFrequency">Posting Frequency Goal</Label>
-          <Select value={frequencyValue} onValueChange={setFrequencyValue}>
-            <SelectTrigger className="w-full mt-2">
-              <SelectValue placeholder="Select a frequency" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Daily">Daily</SelectItem>
-              <SelectItem value="3-5 times a week">3-5 times a week</SelectItem>
-              <SelectItem value="Weekly">Weekly</SelectItem>
-              <SelectItem value="Monthly">Monthly</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="shootingMode">Shooting Mode Preference</Label>
-          <Select value={shootingValue} onValueChange={setShootingValue}>
-            <SelectTrigger className="w-full mt-2">
-              <SelectValue placeholder="Select a shooting mode" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Solo">Solo</SelectItem>
-              <SelectItem value="With Friends">With Friends</SelectItem>
-              <SelectItem value="Both">Both</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="nicheTopic">Niche Topic</Label>
+    <form onSubmit={handleSubmit}>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="niche">Content Niche/Topic</Label>
           <Input
-            type="text"
-            id="nicheTopic"
-            placeholder="Enter your niche topic"
-            value={nicheValue}
-            onChange={(e) => setNicheValue(e.target.value)}
-            className="mt-2"
+            id="niche"
+            placeholder="e.g. Fitness, Tech, Finance, etc."
+            value={settings.niche || ''}
+            onChange={(e) => setSettings({...settings, niche: e.target.value})}
           />
+          <p className="text-sm text-muted-foreground">What topics do you create content about?</p>
         </div>
-        <div>
-          <Button type="submit" disabled={loading}>
-            {loading ? "Saving..." : "Save Settings"}
-          </Button>
+
+        <div className="space-y-2">
+          <Label htmlFor="creator_style">Creator Style</Label>
+          <Select
+            value={settings.creator_style || ''}
+            onValueChange={(value) => setSettings({...settings, creator_style: value})}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select your creator style" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="educational">Educational</SelectItem>
+              <SelectItem value="entertaining">Entertaining</SelectItem>
+              <SelectItem value="inspirational">Inspirational</SelectItem>
+              <SelectItem value="informational">Informational</SelectItem>
+              <SelectItem value="hybrid">Hybrid (Mix of styles)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground">How would you describe your content style?</p>
         </div>
-      </form>
-    </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="content_format">Preferred Content Format</Label>
+          <Select
+            value={settings.content_format_preference || ''}
+            onValueChange={(value) => setSettings({...settings, content_format_preference: value})}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select preferred content format" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="short_form">Short Form Videos</SelectItem>
+              <SelectItem value="long_form">Long Form Videos</SelectItem>
+              <SelectItem value="reels">Reels/TikToks</SelectItem>
+              <SelectItem value="carousels">Image Carousels</SelectItem>
+              <SelectItem value="mixed">Mixed (Multiple formats)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground">What type of content do you prefer to create?</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="posting_frequency">Target Posting Frequency</Label>
+          <Select
+            value={settings.posting_frequency_goal || ''}
+            onValueChange={(value) => setSettings({...settings, posting_frequency_goal: value})}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select your posting goal" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Daily (7 posts per week)</SelectItem>
+              <SelectItem value="frequently">Frequently (3-5 posts per week)</SelectItem>
+              <SelectItem value="occasionally">Occasionally (1-2 posts per week)</SelectItem>
+              <SelectItem value="monthly">Monthly (Few posts per month)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground">How often do you aim to post content?</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="existing_content">Existing Content</Label>
+          <Select
+            value={settings.existing_content || ''}
+            onValueChange={(value) => setSettings({...settings, existing_content: value})}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Do you have existing content?" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="yes">Yes, I have existing content</SelectItem>
+              <SelectItem value="no">No, I'm just starting out</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground">Have you already created content in this niche?</p>
+        </div>
+
+        <Button type="submit" disabled={loading}>
+          {loading ? "Saving..." : "Save Changes"}
+        </Button>
+      </div>
+    </form>
   );
 };
-
-export default CreatorSettings;

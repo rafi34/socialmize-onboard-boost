@@ -1,343 +1,322 @@
-import { useState, useEffect } from "react";
-import { useIsMobile } from "@/hooks/use-mobile";
+
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card } from "@/components/ui/card";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { ProfileSettings } from "@/components/settings/ProfileSettings";
+import { NotificationSettings } from "@/components/settings/NotificationSettings";
+import { BillingSettings } from "@/components/settings/BillingSettings";
+import { SecuritySettings } from "@/components/settings/SecuritySettings";
+import { IntegrationSettings } from "@/components/settings/IntegrationSettings";
+import { CreatorSettings } from "@/components/settings/CreatorSettings";
+import { ReminderSettings } from "@/components/settings/ReminderSettings";
+import { ExpandedProfileSettings } from "@/components/settings/ExpandedProfileSettings";
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { PageHeader } from '@/components/PageHeader';
+import { Card } from '@/components/ui/card';
+import { toast } from '@/hooks/use-toast';
 
-// Import Settings components
-import ExpandedProfileSettings from "@/components/settings/ExpandedProfileSettings";
-import CreatorSettings from "@/components/settings/CreatorSettings";
-import NotificationSettings from "@/components/settings/NotificationSettings";
-import IntegrationSettings from "@/components/settings/IntegrationSettings";
-import SecuritySettings from "@/components/settings/SecuritySettings";
-import BillingSettings from "@/components/settings/BillingSettings";
-import ReminderSettings from "@/components/settings/ReminderSettings";
+// Define type for user settings
+export interface UserSettings {
+  id?: string;
+  email?: string;
+  level?: number;
+  xp?: number;
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  bio?: string;
+  avatar?: string;
+  website?: string;
+  tiktokHandle?: string;
+  instagramHandle?: string;
+  youtubeHandle?: string;
+  niche?: string;
+  creator_style?: string;
+  content_format_preference?: string;
+  posting_frequency_goal?: string;
+  experience_level?: string;
+  google_calendar_sync?: boolean;
+  preferred_recording_days?: string[];
+  preferred_reminder_time?: string;
+  reminder_enabled?: boolean;
+  notificationEmail?: boolean;
+  notificationPush?: boolean;
+  existing_content?: string;
+}
 
-export type UserSettings = {
-  profile: {
-    name: string;
-    email: string;
-    avatarUrl: string | null;
-    bio?: string;
-    location?: string;
-    website?: string;
-    socialLinks?: {
-      twitter?: string;
-      instagram?: string;
-      youtube?: string;
-      facebook?: string;
-      linkedin?: string;
-      github?: string;
-    };
-  };
-  creatorSettings: {
-    creatorMission: string | null;
-    creatorStyle: string | null;
-    contentPreference: string | null;
-    postingFrequency: string | null;
-    shootingMode: string | null;
-    existingContent: boolean | null;
-    nicheTopic: string | null;
-  };
-  notifications: {
-    emailReminders: boolean;
-    pushNotifications: boolean;
-    weeklySummary: boolean;
-    creatorReports: boolean;
-  };
-  integrations: {
-    googleConnected: boolean;
-    googleEmail: string | null;
-    calendarSync: boolean;
-  };
-  billing: {
-    plan: string;
-    hasPaymentMethod: boolean;
-  };
-};
-
-const initialSettings: UserSettings = {
-  profile: {
-    name: "",
-    email: "",
-    avatarUrl: null,
-    bio: "",
-    location: "",
-    website: "",
-    socialLinks: {
-      twitter: "",
-      instagram: "",
-      youtube: "",
-      facebook: "",
-      linkedin: "",
-      github: "",
-    }
-  },
-  creatorSettings: {
-    creatorMission: null,
-    creatorStyle: null,
-    contentPreference: null,
-    postingFrequency: null,
-    shootingMode: null,
-    existingContent: null,
-    nicheTopic: null,
-  },
-  notifications: {
-    emailReminders: true,
-    pushNotifications: false,
-    weeklySummary: true,
-    creatorReports: true,
-  },
-  integrations: {
-    googleConnected: false,
-    googleEmail: null,
-    calendarSync: false,
-  },
-  billing: {
-    plan: "Free",
-    hasPaymentMethod: false,
-  },
-};
-
-const Settings = () => {
-  const [activeTab, setActiveTab] = useState("profile");
-  const [settings, setSettings] = useState<UserSettings>(initialSettings);
-  const [loading, setLoading] = useState(true);
-  const isMobile = useIsMobile();
+export const Settings = () => {
   const { user } = useAuth();
-
+  const [activeTab, setActiveTab] = useState("profile");
+  const [settings, setSettings] = useState<UserSettings>({});
+  const [loading, setLoading] = useState(false);
+  
+  // Fetch user settings on component mount
   useEffect(() => {
-    if (user) {
-      fetchUserSettings();
-    }
+    if (!user) return;
+    
+    const fetchSettings = async () => {
+      setLoading(true);
+      try {
+        // Get profile data
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+          
+        if (profileError) throw profileError;
+        
+        // Get onboarding data
+        const { data: onboardingData, error: onboardingError } = await supabase
+          .from('onboarding_answers')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+          
+        // Combine the data
+        const combinedSettings: UserSettings = {
+          ...profileData,
+          ...onboardingData
+        };
+        
+        setSettings(combinedSettings);
+      } catch (error) {
+        console.error("Error fetching settings:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load your settings. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchSettings();
   }, [user]);
-
-  const fetchUserSettings = async () => {
+  
+  // Handle settings save
+  const handleSaveSettings = async (updatedSettings: Partial<UserSettings>, settingType: string) => {
     if (!user) return;
     
     setLoading(true);
     try {
-      // Fetch profile data
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      // Fetch onboarding answers
-      const { data: onboardingData } = await supabase
-        .from("onboarding_answers")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      // Fetch strategy profile
-      const { data: strategyData } = await supabase
-        .from("strategy_profiles")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      // Update settings state with fetched data
-      setSettings({
-        ...settings,
-        profile: {
-          name: user.user_metadata?.full_name || "",
-          email: user.email || "",
-          avatarUrl: user.user_metadata?.avatar_url || null,
-          bio: user.user_metadata?.bio || "",
-          location: user.user_metadata?.location || "",
-          website: user.user_metadata?.website || "",
-          socialLinks: user.user_metadata?.social_links || {
-            twitter: "",
-            instagram: "",
-            youtube: "",
-            facebook: "",
-            linkedin: "",
-            github: "",
-          }
-        },
-        creatorSettings: {
-          creatorMission: onboardingData?.creator_mission || null,
-          creatorStyle: onboardingData?.creator_style || strategyData?.creator_style || null,
-          contentPreference: onboardingData?.content_format_preference || null,
-          postingFrequency: onboardingData?.posting_frequency_goal || strategyData?.posting_frequency || null,
-          shootingMode: onboardingData?.shooting_preference || null,
-          existingContent: onboardingData?.existing_content === "true" ? true : 
-                         onboardingData?.existing_content === "false" ? false : null,
-          nicheTopic: onboardingData?.niche_topic || strategyData?.niche_topic || null,
-        }
+      // Split data between tables based on settingType
+      if (settingType === 'profile' || settingType === 'account') {
+        // Update profile data
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            firstName: updatedSettings.firstName,
+            lastName: updatedSettings.lastName,
+            username: updatedSettings.username,
+            bio: updatedSettings.bio,
+            avatar: updatedSettings.avatar,
+            website: updatedSettings.website,
+          })
+          .eq('id', user.id);
+          
+        if (error) throw error;
+      }
+      
+      if (settingType === 'creator') {
+        // Update onboarding answers
+        const { error } = await supabase
+          .from('onboarding_answers')
+          .update({
+            niche_topic: updatedSettings.niche,
+            creator_style: updatedSettings.creator_style,
+            content_format_preference: updatedSettings.content_format_preference,
+            posting_frequency_goal: updatedSettings.posting_frequency_goal,
+            existing_content: updatedSettings.existing_content,
+          })
+          .eq('user_id', user.id);
+          
+        if (error) throw error;
+      }
+      
+      // Update settings state
+      setSettings(prev => ({ ...prev, ...updatedSettings }));
+      
+      toast({
+        title: "Settings Saved",
+        description: "Your settings have been updated successfully.",
       });
+      
     } catch (error) {
-      console.error("Error fetching user settings:", error);
+      console.error("Error saving settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save your settings. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Render mobile view (accordion)
-  if (isMobile) {
-    return (
-      <div className="container py-6 space-y-6">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold">Your Settings</h1>
-          <p className="text-muted-foreground">Manage your preferences, integrations, and account.</p>
-        </div>
-
-        <div className="space-y-4">
-          <SettingsAccordion 
-            title="Profile" 
-            value={activeTab === "profile"} 
-            onToggle={() => setActiveTab(activeTab === "profile" ? "" : "profile")}
-          >
-            <ExpandedProfileSettings settings={settings} setSettings={setSettings} loading={loading} />
-          </SettingsAccordion>
-          
-          <SettingsAccordion 
-            title="Creator Settings" 
-            value={activeTab === "creator"} 
-            onToggle={() => setActiveTab(activeTab === "creator" ? "" : "creator")}
-          >
-            <CreatorSettings settings={settings} setSettings={setSettings} loading={loading} />
-          </SettingsAccordion>
-          
-          <SettingsAccordion 
-            title="Reminders" 
-            value={activeTab === "reminders"} 
-            onToggle={() => setActiveTab(activeTab === "reminders" ? "" : "reminders")}
-          >
-            <ReminderSettings settings={settings} setSettings={setSettings} loading={loading} />
-          </SettingsAccordion>
-          
-          <SettingsAccordion 
-            title="Notifications" 
-            value={activeTab === "notifications"} 
-            onToggle={() => setActiveTab(activeTab === "notifications" ? "" : "notifications")}
-          >
-            <NotificationSettings settings={settings} setSettings={setSettings} loading={loading} />
-          </SettingsAccordion>
-          
-          <SettingsAccordion 
-            title="Integrations" 
-            value={activeTab === "integrations"} 
-            onToggle={() => setActiveTab(activeTab === "integrations" ? "" : "integrations")}
-          >
-            <IntegrationSettings settings={settings} setSettings={setSettings} loading={loading} />
-          </SettingsAccordion>
-          
-          <SettingsAccordion 
-            title="Security & Login" 
-            value={activeTab === "security"} 
-            onToggle={() => setActiveTab(activeTab === "security" ? "" : "security")}
-          >
-            <SecuritySettings settings={settings} setSettings={setSettings} loading={loading} />
-          </SettingsAccordion>
-          
-          <SettingsAccordion 
-            title="Billing & Payment" 
-            value={activeTab === "billing"} 
-            onToggle={() => setActiveTab(activeTab === "billing" ? "" : "billing")}
-          >
-            <BillingSettings settings={settings} setSettings={setSettings} loading={loading} />
-          </SettingsAccordion>
-        </div>
-      </div>
-    );
-  }
-
-  // Desktop view (tabs)
   return (
-    <div className="container py-8">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold">Your Settings</h1>
-        <p className="text-muted-foreground">Manage your preferences, integrations, and account.</p>
+    <div className="container mx-auto py-6">
+      <PageHeader
+        title="Settings"
+        description="Manage your account settings and preferences."
+      />
+      
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
+        {/* Sidebar */}
+        <Card className="p-4 h-fit">
+          <div className="space-y-1">
+            <Button 
+              variant={activeTab === "profile" ? "default" : "ghost"} 
+              className="w-full justify-start"
+              onClick={() => setActiveTab("profile")}
+            >
+              Profile
+            </Button>
+            <Button 
+              variant={activeTab === "creator" ? "default" : "ghost"} 
+              className="w-full justify-start"
+              onClick={() => setActiveTab("creator")}
+            >
+              Creator Profile
+            </Button>
+            <Button 
+              variant={activeTab === "reminders" ? "default" : "ghost"} 
+              className="w-full justify-start"
+              onClick={() => setActiveTab("reminders")}
+            >
+              Reminders
+            </Button>
+            <Button 
+              variant={activeTab === "notifications" ? "default" : "ghost"} 
+              className="w-full justify-start"
+              onClick={() => setActiveTab("notifications")}
+            >
+              Notifications
+            </Button>
+            <Button 
+              variant={activeTab === "integrations" ? "default" : "ghost"} 
+              className="w-full justify-start"
+              onClick={() => setActiveTab("integrations")}
+            >
+              Integrations
+            </Button>
+            <Button 
+              variant={activeTab === "billing" ? "default" : "ghost"} 
+              className="w-full justify-start"
+              onClick={() => setActiveTab("billing")}
+            >
+              Billing
+            </Button>
+            <Button 
+              variant={activeTab === "security" ? "default" : "ghost"} 
+              className="w-full justify-start"
+              onClick={() => setActiveTab("security")}
+            >
+              Security
+            </Button>
+          </div>
+        </Card>
+        
+        {/* Content */}
+        <div className="md:col-span-3">
+          {activeTab === "profile" && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-6">Profile Settings</h2>
+              <ProfileSettings
+                settings={settings}
+                setSettings={setSettings}
+                loading={loading}
+                onSave={(updatedSettings) => handleSaveSettings(updatedSettings, 'profile')}
+              />
+              
+              <Separator className="my-6" />
+              
+              <h2 className="text-xl font-semibold mb-6">Expanded Profile</h2>
+              <ExpandedProfileSettings 
+                settings={settings}
+                setSettings={setSettings}
+                loading={loading}
+                onSave={(updatedSettings) => handleSaveSettings(updatedSettings, 'expanded')}
+              />
+            </Card>
+          )}
+          
+          {activeTab === "creator" && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-6">Creator Settings</h2>
+              <CreatorSettings 
+                settings={settings}
+                setSettings={setSettings}
+                loading={loading}
+                onSave={(updatedSettings) => handleSaveSettings(updatedSettings, 'creator')}
+              />
+            </Card>
+          )}
+          
+          {activeTab === "reminders" && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-6">Reminder Settings</h2>
+              <ReminderSettings 
+                settings={settings}
+                setSettings={setSettings}
+                loading={loading}
+                onSave={(updatedSettings) => handleSaveSettings(updatedSettings, 'reminders')}
+              />
+            </Card>
+          )}
+          
+          {activeTab === "notifications" && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-6">Notification Settings</h2>
+              <NotificationSettings 
+                settings={settings}
+                setSettings={setSettings}
+                loading={loading}
+                onSave={(updatedSettings) => handleSaveSettings(updatedSettings, 'notifications')}
+              />
+            </Card>
+          )}
+          
+          {activeTab === "integrations" && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-6">Integration Settings</h2>
+              <IntegrationSettings 
+                settings={settings}
+                setSettings={setSettings}
+                loading={loading}
+                onSave={(updatedSettings) => handleSaveSettings(updatedSettings, 'integrations')}
+              />
+            </Card>
+          )}
+          
+          {activeTab === "billing" && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-6">Billing Settings</h2>
+              <BillingSettings 
+                settings={settings}
+                setSettings={setSettings}
+                loading={loading}
+                onSave={(updatedSettings) => handleSaveSettings(updatedSettings, 'billing')}
+              />
+            </Card>
+          )}
+          
+          {activeTab === "security" && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-6">Security Settings</h2>
+              <SecuritySettings 
+                settings={settings}
+                setSettings={setSettings}
+                loading={loading}
+                onSave={(updatedSettings) => handleSaveSettings(updatedSettings, 'security')}
+              />
+            </Card>
+          )}
+        </div>
       </div>
-
-      <Tabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab} orientation="vertical" className="flex flex-col md:flex-row gap-6">
-        <div className="md:w-1/4">
-          <TabsList className="flex flex-col h-auto bg-muted p-2 space-y-2">
-            <TabsTrigger value="profile" className="justify-start py-3">Profile</TabsTrigger>
-            <TabsTrigger value="creator" className="justify-start py-3">Creator Settings</TabsTrigger>
-            <TabsTrigger value="reminders" className="justify-start py-3">Reminders</TabsTrigger>
-            <TabsTrigger value="notifications" className="justify-start py-3">Notifications</TabsTrigger>
-            <TabsTrigger value="integrations" className="justify-start py-3">Integrations</TabsTrigger>
-            <TabsTrigger value="security" className="justify-start py-3">Security & Login</TabsTrigger>
-            <TabsTrigger value="billing" className="justify-start py-3">Billing & Payment</TabsTrigger>
-          </TabsList>
-        </div>
-
-        <div className="md:w-3/4">
-          <TabsContent value="profile" className="mt-0">
-            <Card className="p-6">
-              <ExpandedProfileSettings settings={settings} setSettings={setSettings} loading={loading} />
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="creator" className="mt-0">
-            <Card className="p-6">
-              <CreatorSettings settings={settings} setSettings={setSettings} loading={loading} />
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="reminders" className="mt-0">
-            <Card className="p-6">
-              <ReminderSettings settings={settings} setSettings={setSettings} loading={loading} />
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="notifications" className="mt-0">
-            <Card className="p-6">
-              <NotificationSettings settings={settings} setSettings={setSettings} loading={loading} />
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="integrations" className="mt-0">
-            <Card className="p-6">
-              <IntegrationSettings settings={settings} setSettings={setSettings} loading={loading} />
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="security" className="mt-0">
-            <Card className="p-6">
-              <SecuritySettings settings={settings} setSettings={setSettings} loading={loading} />
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="billing" className="mt-0">
-            <Card className="p-6">
-              <BillingSettings settings={settings} setSettings={setSettings} loading={loading} />
-            </Card>
-          </TabsContent>
-        </div>
-      </Tabs>
     </div>
   );
 };
-
-interface SettingsAccordionProps {
-  title: string;
-  value: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}
-
-const SettingsAccordion = ({ title, value, onToggle, children }: SettingsAccordionProps) => {
-  return (
-    <Card>
-      <Collapsible open={value} onOpenChange={onToggle}>
-        <CollapsibleTrigger className="flex items-center justify-between w-full p-4">
-          <h2 className="text-lg font-medium">{title}</h2>
-          <ChevronDown className={`h-5 w-5 transition-transform ${value ? 'transform rotate-180' : ''}`} />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="p-4 pt-0">
-          {children}
-        </CollapsibleContent>
-      </Collapsible>
-    </Card>
-  );
-};
-
-export default Settings;

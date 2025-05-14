@@ -1,264 +1,58 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { AdminRoute } from "@/components/AdminRoute";
-import { OnboardingRoute } from "@/components/OnboardingRoute";
-import { Navbar } from "@/components/Navbar";
-import { Shield } from "lucide-react";
-import Index from "./pages/Index";
+import { Routes, Route } from "react-router-dom";
+import { AuthPage } from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
-import Settings from "./pages/Settings";
-import AuthPage from "./pages/AuthPage";
-import NotFound from "./pages/NotFound";
+import { Index } from "./pages/Index";
+import { NotFound } from "./pages/NotFound";
+import { Settings } from "./pages/Settings";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { OnboardingRoute } from "./components/OnboardingRoute";
+import { AdminRoute } from "./components/AdminRoute";
+import { AdminDashboard } from "./pages/AdminDashboard";
+import { Reminders } from "./pages/Reminders";
+import { BadgesPage } from "./pages/BadgesPage";
+import { ScriptsLibrary } from "./pages/ScriptsLibrary";
+import { GenerateScripts } from "./pages/GenerateScripts";
+import { ContentPlanner } from "./pages/ContentPlanner";
+import { WeeklyCalendar } from "./pages/WeeklyCalendar";
+import { InboxCenterPage } from "./pages/InboxCenterPage";
+import { TopicSuggestions } from "./pages/TopicSuggestions";
 import StrategyChat from "./pages/StrategyChat";
-import ReviewIdeas from "./pages/ReviewIdeas";
-import GenerateScripts from "./pages/GenerateScripts";
-import WeeklyCalendar from "./pages/WeeklyCalendar";
-import TopicSuggestions from "./pages/TopicSuggestions";
-import StrategyOverview from "./pages/StrategyOverview";
-import Reminders from "./pages/Reminders";
-import ScriptsLibrary from "./pages/ScriptsLibrary";
-import InboxCenterPage from "./pages/InboxCenterPage";
-import BadgesPage from "./pages/BadgesPage";
-import AdminDashboard from "./pages/AdminDashboard";
-import ContentPlanner from "./pages/ContentPlanner";
 
-const queryClient = new QueryClient();
-
-const AppLayout = ({ children, className }: { children: React.ReactNode, className?: string }) => (
-  <div className={`flex flex-col min-h-screen ${className || ''}`}>
-    <Navbar />
-    <div className="flex-1">
-      {children}
-    </div>
-  </div>
-);
-
-// Admin app layout with SocialMize brand colors
-const AdminAppLayout = ({ children }: { children: React.ReactNode }) => (
-  <AppLayout className="bg-brand-gradient">
-    <div className="fixed bottom-4 right-4 bg-socialmize-brand-green/20 border border-socialmize-brand-green/40 rounded-full py-1 px-3 flex items-center text-xs text-socialmize-brand-light shadow-sm">
-      <Shield className="h-3 w-3 mr-1 text-socialmize-brand-green" /> Admin Mode
-    </div>
-    {children}
-  </AppLayout>
-);
-
-const PremiumAppLayout = ({ children }: { children: React.ReactNode }) => (
-  <AppLayout className="bg-gradient-to-br from-white to-gray-50">
-    {children}
-  </AppLayout>
-);
-
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-
-    <TooltipProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            {/* Auth page - accessible when not logged in */}
-            <Route path="/auth" element={<AuthPage />} />
-            
-            {/* Onboarding route - for users who need to complete onboarding */}
-            <Route 
-              path="/" 
-              element={
-                <OnboardingRoute>
-                  <AppLayout>
-                    <Index />
-                  </AppLayout>
-                </OnboardingRoute>
-              } 
-            />
-            
-            {/* Dashboard - only for authenticated and onboarded users */}
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <PremiumAppLayout>
-                    <Dashboard />
-                  </PremiumAppLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Admin Dashboard - only for authenticated and admin users */}
-            <Route 
-              path="/admin" 
-              element={
-                <AdminRoute>
-                  <AdminAppLayout>
-                    <AdminDashboard />
-                  </AdminAppLayout>
-                </AdminRoute>
-              } 
-            />
-            
-            {/* Weekly Calendar - only for authenticated and onboarded users */}
-            <Route 
-              path="/weekly-calendar" 
-              element={
-                <ProtectedRoute>
-                  <PremiumAppLayout>
-                    <WeeklyCalendar />
-                  </PremiumAppLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Topic Suggestions - only for authenticated and onboarded users */}
-            <Route 
-              path="/topic-suggestions" 
-              element={
-                <ProtectedRoute>
-                  <PremiumAppLayout>
-                    <TopicSuggestions />
-                  </PremiumAppLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Strategy Overview - only for authenticated and onboarded users */}
-            <Route 
-              path="/strategy-overview" 
-              element={
-                <ProtectedRoute>
-                  <PremiumAppLayout>
-                    <StrategyOverview />
-                  </PremiumAppLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Reminders - only for authenticated and onboarded users */}
-            <Route 
-              path="/reminders" 
-              element={
-                <ProtectedRoute>
-                  <PremiumAppLayout>
-                    <Reminders />
-                  </PremiumAppLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Content Planner - only for authenticated and onboarded users */}
-            <Route 
-              path="/content-planner" 
-              element={
-                <ProtectedRoute>
-                  <PremiumAppLayout>
-                    <ContentPlanner />
-                  </PremiumAppLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Scripts Library - only for authenticated and onboarded users */}
-            <Route 
-              path="/scripts-library" 
-              element={
-                <ProtectedRoute>
-                  <PremiumAppLayout>
-                    <ScriptsLibrary />
-                  </PremiumAppLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Inbox Center - only for authenticated and onboarded users */}
-            <Route 
-              path="/inbox" 
-              element={
-                <ProtectedRoute>
-                  <PremiumAppLayout>
-                    <InboxCenterPage />
-                  </PremiumAppLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Badges Page - only for authenticated and onboarded users */}
-            <Route 
-              path="/badges" 
-              element={
-                <ProtectedRoute>
-                  <PremiumAppLayout>
-                    <BadgesPage />
-                  </PremiumAppLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Settings - only for authenticated and onboarded users */}
-            <Route 
-              path="/settings" 
-              element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Settings />
-                  </AppLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Strategy Chat - only for authenticated users */}
-            <Route 
-              path="/strategy-chat" 
-              element={
-                <ProtectedRoute>
-                  <PremiumAppLayout>
-                    <StrategyChat />
-                  </PremiumAppLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Review Content Ideas - only for authenticated users */}
-            <Route 
-              path="/review-ideas" 
-              element={
-                <ProtectedRoute>
-                  <PremiumAppLayout>
-                    <ReviewIdeas />
-                  </PremiumAppLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Generate Scripts - only for authenticated users */}
-            <Route 
-              path="/generate-scripts" 
-              element={
-                <ProtectedRoute>
-                  <PremiumAppLayout>
-                    <GenerateScripts />
-                  </PremiumAppLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Catch-all not found route */}
-            <Route path="*" element={
-              <AppLayout>
-                <NotFound />
-              </AppLayout>
-            } />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/auth" element={<AuthPage />} />
+      
+      {/* Protected Routes */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/reminders" element={<Reminders />} />
+        <Route path="/badges" element={<BadgesPage />} />
+        <Route path="/scripts" element={<ScriptsLibrary />} />
+        <Route path="/generate-scripts" element={<GenerateScripts />} />
+        <Route path="/content-planner" element={<ContentPlanner />} />
+        <Route path="/calendar" element={<WeeklyCalendar />} />
+        <Route path="/inbox" element={<InboxCenterPage />} />
+        <Route path="/topic-suggestions" element={<TopicSuggestions />} />
+        <Route path="/strategy-chat" element={<StrategyChat />} />
+      </Route>
+      
+      {/* Admin Routes */}
+      <Route element={<AdminRoute />}>
+        <Route path="/admin" element={<AdminDashboard />} />
+      </Route>
+      
+      {/* Onboarding Routes */}
+      <Route element={<OnboardingRoute />}>
+        {/* Any onboarding specific routes go here */}
+      </Route>
+      
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
 
 export default App;
