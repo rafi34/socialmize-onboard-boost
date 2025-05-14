@@ -1,12 +1,13 @@
 
 import { useState, useCallback } from "react";
-import { showNotification } from "@/components/ui/notification-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 
 export function useNotifications() {
   const [errorShown, setErrorShown] = useState(false);
   const [hasAttemptedRetry, setHasAttemptedRetry] = useState(false);
+  const { toast } = useToast();
 
   const showErrorNotification = useCallback((
     title: string,
@@ -15,11 +16,12 @@ export function useNotifications() {
   ) => {
     if (errorShown) return;
     
-    showNotification({
+    toast({
       title,
       description,
-      type: "error",
+      variant: "destructive",
       duration: 8000,
+      icon: <RefreshCw className="h-4 w-4 text-red-500" />,
       action: (
         <Button 
           variant="outline" 
@@ -36,7 +38,7 @@ export function useNotifications() {
     });
     
     setErrorShown(true);
-  }, [errorShown]);
+  }, [errorShown, toast]);
 
   const resetErrorState = useCallback(() => {
     setErrorShown(false);

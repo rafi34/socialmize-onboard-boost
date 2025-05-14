@@ -14,41 +14,39 @@ interface NotificationOptions {
   action?: ToastActionElement;
 }
 
-export const showNotification = ({
-  title,
-  description,
-  type = "info",
-  duration = 5000,
-  action
-}: NotificationOptions) => {
-  // Create the icon based on notification type
-  const iconComponent = type === "success" ? <Check className="h-4 w-4" /> :
-                       type === "error" ? <AlertTriangle className="h-4 w-4" /> :
-                       type === "warning" ? <AlertTriangle className="h-4 w-4" /> :
-                       <Info className="h-4 w-4" />;
-  
-  const iconClassName = `
-    ${type === "success" ? "text-green-500" : 
-      type === "error" ? "text-red-500" : 
-      type === "warning" ? "text-yellow-500" : 
-      "text-blue-500"}
-  `;
-  
-  const { toast } = useToast();
-  
-  return toast({
-    title: title,
-    description: description,
-    duration: duration,
-    variant: type === "error" ? "destructive" : "default",
-    action: action,
-    icon: <span className={iconClassName}>{iconComponent}</span>
-  });
-};
-
 // Utility hooks for displaying notifications
 export const useNotification = () => {
   const { toast } = useToast();
+  
+  const showNotification = ({
+    title,
+    description,
+    type = "info",
+    duration = 5000,
+    action
+  }: NotificationOptions) => {
+    // Create the icon based on notification type
+    const iconComponent = type === "success" ? <Check className="h-4 w-4" /> :
+                         type === "error" ? <AlertTriangle className="h-4 w-4" /> :
+                         type === "warning" ? <AlertTriangle className="h-4 w-4" /> :
+                         <Info className="h-4 w-4" />;
+    
+    const iconClassName = `
+      ${type === "success" ? "text-green-500" : 
+        type === "error" ? "text-red-500" : 
+        type === "warning" ? "text-yellow-500" : 
+        "text-blue-500"}
+    `;
+    
+    return toast({
+      title: title,
+      description: description,
+      duration: duration,
+      variant: type === "error" ? "destructive" : "default",
+      action: action,
+      icon: <span className={iconClassName}>{iconComponent}</span>
+    });
+  };
   
   return {
     success: (options: Omit<NotificationOptions, "type">) => 
