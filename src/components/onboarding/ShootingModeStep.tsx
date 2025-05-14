@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/onboarding/ProgressBar";
@@ -42,6 +41,7 @@ export const ShootingModeStep = () => {
   };
 
   return (
+    
     <div className="onboarding-card">
       <div className="flex justify-between items-center">
         <div className="text-xl font-semibold">{currentStepData.title}</div>

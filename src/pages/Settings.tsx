@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { ProfileSettings } from "@/components/settings/ProfileSettings";
+import ProfileSettings from "@/components/settings/ProfileSettings";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
 import { BillingSettings } from "@/components/settings/BillingSettings";
 import { SecuritySettings } from "@/components/settings/SecuritySettings";
@@ -44,6 +43,29 @@ export interface UserSettings {
   notificationEmail?: boolean;
   notificationPush?: boolean;
   existing_content?: string;
+  // Add missing properties for profile and billing
+  profile: {
+    name: string;
+    email: string;
+    avatarUrl?: string;
+  };
+  notifications: {
+    emailReminders: boolean;
+    pushNotifications: boolean;
+    weeklySummary: boolean;
+    creatorReports: boolean;
+  };
+  billing: {
+    plan: string;
+    hasPaymentMethod: boolean;
+    googleConnected: boolean;
+    googleEmail?: string;
+  };
+  integrations: {
+    googleConnected: boolean;
+    googleEmail?: string;
+    calendarSync: boolean;
+  };
 }
 
 export const Settings = () => {

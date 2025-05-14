@@ -2,7 +2,7 @@
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 
 // Define the types for our onboarding data
 export type CreatorMission = string;
@@ -18,21 +18,33 @@ export interface OnboardingData {
   content_format_preference?: ContentFormat;
   posting_frequency_goal?: PostingFrequency;
   shooting_preference?: ShootingPreference;
-  shooting_schedule?: Date;
+  shooting_schedule?: Date | null;
+  shooting_reminder?: boolean;
   existing_content?: boolean;
   niche_topic?: NicheTopic;
+  profile_progress?: number;
+}
+
+interface UserProgress {
+  xp: number;
+  level: number;
+  streak: number;
 }
 
 // Define the context type
 export interface OnboardingContextType {
   data: OnboardingData;
+  onboardingAnswers: OnboardingData; // Alias for data
   currentStep: number;
   totalSteps: number;
   xpEarned: number;
   isLoading: boolean;
+  userProgress: UserProgress;
   updateAnswer: <K extends keyof OnboardingData>(key: K, value: OnboardingData[K] | ((prevValue: OnboardingData[K]) => OnboardingData[K])) => void;
   goToNextStep: () => void;
   goToPreviousStep: () => void;
+  nextStep: () => void; // Alias for goToNextStep
+  previousStep: () => void; // Alias for goToPreviousStep
   completeOnboarding: () => Promise<void>;
   setCurrentStep: (step: number) => void;
 }
@@ -40,23 +52,28 @@ export interface OnboardingContextType {
 // Create the context with a default value
 const OnboardingContext = createContext<OnboardingContextType>({
   data: {},
+  onboardingAnswers: {},
   currentStep: 1,
   totalSteps: 7,
   xpEarned: 0,
   isLoading: false,
+  userProgress: { xp: 0, level: 1, streak: 0 },
   updateAnswer: () => {},
   goToNextStep: () => {},
   goToPreviousStep: () => {},
+  nextStep: () => {},
+  previousStep: () => {},
   completeOnboarding: async () => {},
   setCurrentStep: () => {}
 });
 
 // Create the provider component
 export const OnboardingProvider: React.FC<{children: ReactNode}> = ({ children }) => {
-  const [data, setData] = useState<OnboardingData>({});
+  const [data, setData] = useState<OnboardingData>({ profile_progress: 0 });
   const [currentStep, setCurrentStep] = useState(1);
   const [xpEarned, setXpEarned] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [userProgress, setUserProgress] = useState<UserProgress>({ xp: 0, level: 1, streak: 0 });
   const totalSteps = 7;
   const { user } = useAuth();
 
@@ -70,7 +87,10 @@ export const OnboardingProvider: React.FC<{children: ReactNode}> = ({ children }
         ? (value as Function)(prevData[key]) 
         : value;
       
-      return { ...prevData, [key]: newValue };
+      // Update the progress when an answer is provided
+      const updatedProgress = Math.min(100, (Object.keys(prevData).length / 7) * 100);
+      
+      return { ...prevData, [key]: newValue, profile_progress: updatedProgress };
     });
   };
 
@@ -160,13 +180,17 @@ export const OnboardingProvider: React.FC<{children: ReactNode}> = ({ children }
   // Provide the context value
   const value: OnboardingContextType = {
     data,
+    onboardingAnswers: data, // Alias for backwards compatibility
     currentStep,
     totalSteps,
     xpEarned,
     isLoading,
+    userProgress,
     updateAnswer,
     goToNextStep,
     goToPreviousStep,
+    nextStep: goToNextStep, // Alias for backwards compatibility
+    previousStep: goToPreviousStep, // Alias for backwards compatibility
     completeOnboarding,
     setCurrentStep
   };
