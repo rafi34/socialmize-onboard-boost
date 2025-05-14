@@ -2,6 +2,7 @@
 import { useState, useRef } from "react";
 import { toast } from "@/hooks/use-toast";
 import { Info } from "lucide-react";
+import { ToastAction } from "@/components/ui/toast";
 
 export function useNotifications() {
   const [errorShown, setErrorShown] = useState(false);
@@ -19,13 +20,14 @@ export function useNotifications() {
       title: title,
       description: message,
       variant: "destructive",
-      action: onRetry ? {
-        label: "Retry",
-        onClick: () => {
+      action: onRetry ? (
+        <ToastAction altText="Retry" onClick={() => {
           setHasAttemptedRetry(true);
           if (onRetry) onRetry();
-        }
-      } : undefined
+        }}>
+          Retry
+        </ToastAction>
+      ) : undefined
     });
     
     setErrorShown(true);
