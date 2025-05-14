@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from '@/components/ui/toaster'
 
@@ -35,124 +36,122 @@ function App() {
       <AuthProvider>
         <OnboardingProvider>
           <StrategyProvider>
-            <Router>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<AuthPage />} />
-                
-                <Route path="/dashboard" element={
-                  <ProtectedRoute>
-                    <OnboardingRoute>
-                      <Dashboard />
-                    </OnboardingRoute>
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/strategy" element={
-                  <ProtectedRoute>
-                    <OnboardingRoute>
-                      <StrategyOverview />
-                    </OnboardingRoute>
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/strategy-detail" element={
-                  <ProtectedRoute>
-                    <OnboardingRoute>
-                      <StrategyDetail />
-                    </OnboardingRoute>
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/strategy-chat" element={
-                  <ProtectedRoute>
-                    <OnboardingRoute>
-                      <StrategyChat />
-                    </OnboardingRoute>
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/scripts" element={
-                  <ProtectedRoute>
-                    <OnboardingRoute>
-                      <ScriptsLibrary />
-                    </OnboardingRoute>
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/generate" element={
-                  <ProtectedRoute>
-                    <OnboardingRoute>
-                      <GenerateScripts />
-                    </OnboardingRoute>
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/settings" element={
-                  <ProtectedRoute>
-                    <OnboardingRoute>
-                      <Settings />
-                    </OnboardingRoute>
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/badges" element={
-                  <ProtectedRoute>
-                    <OnboardingRoute>
-                      <BadgesPage />
-                    </OnboardingRoute>
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/reminders" element={
-                  <ProtectedRoute>
-                    <OnboardingRoute>
-                      <Reminders />
-                    </OnboardingRoute>
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/calendar" element={
-                  <ProtectedRoute>
-                    <OnboardingRoute>
-                      <WeeklyCalendar />
-                    </OnboardingRoute>
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/topics" element={
-                  <ProtectedRoute>
-                    <OnboardingRoute>
-                      <TopicSuggestions />
-                    </OnboardingRoute>
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/review-ideas" element={
-                  <ProtectedRoute>
-                    <OnboardingRoute>
-                      <ReviewIdeas />
-                    </OnboardingRoute>
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/inbox" element={
-                  <ProtectedRoute>
-                    <OnboardingRoute>
-                      <InboxCenterPage />
-                    </OnboardingRoute>
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/admin" element={
-                  <AdminRoute>
-                    <AdminDashboard />
-                  </AdminRoute>
-                } />
-                
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Router>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<AuthPage />} />
+              
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <OnboardingRoute>
+                    <Dashboard />
+                  </OnboardingRoute>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/strategy" element={
+                <ProtectedRoute>
+                  <OnboardingRoute>
+                    <StrategyOverview />
+                  </OnboardingRoute>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/strategy-detail" element={
+                <ProtectedRoute>
+                  <OnboardingRoute>
+                    <StrategyDetail />
+                  </OnboardingRoute>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/strategy-chat" element={
+                <ProtectedRoute>
+                  <OnboardingRoute>
+                    <StrategyChat />
+                  </OnboardingRoute>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/scripts" element={
+                <ProtectedRoute>
+                  <OnboardingRoute>
+                    <ScriptsLibrary />
+                  </OnboardingRoute>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/generate" element={
+                <ProtectedRoute>
+                  <OnboardingRoute>
+                    <GenerateScripts />
+                  </OnboardingRoute>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <OnboardingRoute>
+                    <Settings />
+                  </OnboardingRoute>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/badges" element={
+                <ProtectedRoute>
+                  <OnboardingRoute>
+                    <BadgesPage />
+                  </OnboardingRoute>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/reminders" element={
+                <ProtectedRoute>
+                  <OnboardingRoute>
+                    <Reminders />
+                  </OnboardingRoute>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/calendar" element={
+                <ProtectedRoute>
+                  <OnboardingRoute>
+                    <WeeklyCalendar />
+                  </OnboardingRoute>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/topics" element={
+                <ProtectedRoute>
+                  <OnboardingRoute>
+                    <TopicSuggestions />
+                  </OnboardingRoute>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/review-ideas" element={
+                <ProtectedRoute>
+                  <OnboardingRoute>
+                    <ReviewIdeas />
+                  </OnboardingRoute>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/inbox" element={
+                <ProtectedRoute>
+                  <OnboardingRoute>
+                    <InboxCenterPage />
+                  </OnboardingRoute>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/admin" element={
+                <AdminRoute>
+                  <AdminDashboard />
+                </AdminRoute>
+              } />
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
             <Toaster />
           </StrategyProvider>
         </OnboardingProvider>

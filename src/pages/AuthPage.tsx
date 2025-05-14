@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Icons } from "@/components/Icons";
-import { toast } from "@/components/ui/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -17,6 +17,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState<string>("");
   const { user, signInWithEmail, signUpWithEmail, signInWithGoogle, loading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     const checkUserStatus = async () => {
