@@ -1,11 +1,10 @@
-
 // pages/Dashboard.tsx
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart2, Calendar, Sparkles, AlertTriangle, RefreshCw } from "lucide-react";
+import { BarChart2, Calendar, Sparkles, AlertTriangle, RefreshCw, MessageCircle } from "lucide-react";
 import { CreatorSummaryHeader, StrategyPlanSection } from "@/components/dashboard";
 import { DashboardContent } from "@/components/dashboard/DashboardContent";
 import { DashboardPlanner } from "@/components/dashboard/DashboardPlanner";
@@ -245,7 +244,8 @@ export default function Dashboard() {
                   <p className="text-muted-foreground mb-4">Confirm your content strategy plan to access the dashboard features</p>
                   <div className="flex flex-col gap-3 items-center justify-center sm:flex-row">
                     <Button onClick={() => fetchUserData()}>Refresh Status</Button>
-                    <Button variant="outline" onClick={handleGoToStrategyChat}>
+                    <Button variant="outline" onClick={handleGoToStrategyChat} className="flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4" />
                       Go to Strategy Chat
                     </Button>
                   </div>

@@ -7,6 +7,7 @@ import { ArrowLeft, Sparkles } from "lucide-react";
 import { AIAssistant } from "@/components/strategy-chat/AIAssistant";
 import { ConfettiExplosion } from "@/components/strategy-chat/ConfettiExplosion";
 import { CompletionModal } from "@/components/strategy-chat/CompletionModal";
+import { useStrategyData } from "@/hooks/useStrategyData"; // Added import
 
 const StrategyChat = () => {
   const [showConfetti, setShowConfetti] = useState(false);
@@ -15,6 +16,7 @@ const StrategyChat = () => {
   const [progress, setProgress] = useState(0);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { strategy } = useStrategyData(); // Get strategy data to check status
   
   const handleStrategyComplete = (ideas: string[]) => {
     setContentIdeas(ideas);

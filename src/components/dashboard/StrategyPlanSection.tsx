@@ -6,7 +6,7 @@ import { FullStrategyModal } from "./FullStrategyModal";
 import { RegeneratePlanModal } from "./RegeneratePlanModal";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { CalendarDays, AlertTriangle, CheckCircle } from "lucide-react";
+import { CalendarDays, AlertTriangle, CheckCircle, MessageCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
@@ -101,16 +101,23 @@ export const StrategyPlanSection = () => {
         />
       </div>
       
-      {hasWeeklyCalendar && (
-        <div className="flex-shrink-0 w-full md:w-auto mt-2 md:mt-0">
+      <div className="flex-shrink-0 w-full md:w-auto mt-2 md:mt-0 flex gap-2 flex-col sm:flex-row">
+        {hasWeeklyCalendar && (
           <Button asChild variant="outline" className="w-full md:w-auto flex items-center gap-2">
             <Link to="/weekly-calendar">
               <CalendarDays className="h-4 w-4" />
-              View Full Calendar
+              View Calendar
             </Link>
           </Button>
-        </div>
-      )}
+        )}
+        
+        <Button asChild variant="outline" className="w-full md:w-auto flex items-center gap-2">
+          <Link to="/strategy-chat">
+            <MessageCircle className="h-4 w-4" />
+            Strategy Chat
+          </Link>
+        </Button>
+      </div>
       
       <FullStrategyModal 
         isOpen={isFullPlanOpen} 
