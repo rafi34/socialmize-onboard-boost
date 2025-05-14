@@ -63,90 +63,6 @@ export type Database = {
         }
         Relationships: []
       }
-      app_config: {
-        Row: {
-          config_key: string
-          config_value: string
-          created_at: string | null
-          description: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          config_key: string
-          config_value: string
-          created_at?: string | null
-          description?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          config_key?: string
-          config_value?: string
-          created_at?: string | null
-          description?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      assistant_messages: {
-        Row: {
-          content: string
-          created_at: string
-          id: string
-          message_id: string
-          role: string
-          thread_id: string
-          user_id: string
-        }
-        Insert: {
-          content: string
-          created_at: string
-          id?: string
-          message_id: string
-          role: string
-          thread_id: string
-          user_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          id?: string
-          message_id?: string
-          role?: string
-          thread_id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      assistant_threads: {
-        Row: {
-          assistant_id: string
-          created_at: string
-          id: string
-          purpose: string
-          thread_id: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          assistant_id: string
-          created_at?: string
-          id?: string
-          purpose?: string
-          thread_id: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          assistant_id?: string
-          created_at?: string
-          id?: string
-          purpose?: string
-          thread_id?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       branding_configs: {
         Row: {
           app_name: string | null
@@ -305,51 +221,6 @@ export type Database = {
           status?: string | null
           user_id?: string
           xp_reward?: number | null
-        }
-        Relationships: []
-      }
-      content_plans: {
-        Row: {
-          content_ideas: Json | null
-          content_schedule: Json | null
-          created_at: string
-          id: string
-          is_active: boolean
-          mission: string | null
-          month: string
-          summary: string | null
-          thread_id: string | null
-          updated_at: string | null
-          user_id: string
-          weekly_objective: string | null
-        }
-        Insert: {
-          content_ideas?: Json | null
-          content_schedule?: Json | null
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          mission?: string | null
-          month: string
-          summary?: string | null
-          thread_id?: string | null
-          updated_at?: string | null
-          user_id: string
-          weekly_objective?: string | null
-        }
-        Update: {
-          content_ideas?: Json | null
-          content_schedule?: Json | null
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          mission?: string | null
-          month?: string
-          summary?: string | null
-          thread_id?: string | null
-          updated_at?: string | null
-          user_id?: string
-          weekly_objective?: string | null
         }
         Relationships: []
       }
@@ -702,42 +573,6 @@ export type Database = {
           },
         ]
       }
-      strategy_generation_jobs: {
-        Row: {
-          completed_at: string | null
-          created_at: string
-          error_message: string | null
-          id: string
-          is_regen: boolean
-          job_id: string
-          status: string
-          strategy_type: string
-          user_id: string
-        }
-        Insert: {
-          completed_at?: string | null
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          is_regen?: boolean
-          job_id: string
-          status?: string
-          strategy_type?: string
-          user_id: string
-        }
-        Update: {
-          completed_at?: string | null
-          created_at?: string
-          error_message?: string | null
-          id?: string
-          is_regen?: boolean
-          job_id?: string
-          status?: string
-          strategy_type?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       strategy_onboarding_answers: {
         Row: {
           created_at: string | null
@@ -797,7 +632,6 @@ export type Database = {
           full_plan_text: string | null
           id: string
           is_active: boolean | null
-          job_id: string | null
           niche_topic: string | null
           phases: Json | null
           posting_frequency: string | null
@@ -818,7 +652,6 @@ export type Database = {
           full_plan_text?: string | null
           id?: string
           is_active?: boolean | null
-          job_id?: string | null
           niche_topic?: string | null
           phases?: Json | null
           posting_frequency?: string | null
@@ -839,7 +672,6 @@ export type Database = {
           full_plan_text?: string | null
           id?: string
           is_active?: boolean | null
-          job_id?: string | null
           niche_topic?: string | null
           phases?: Json | null
           posting_frequency?: string | null
@@ -849,36 +681,6 @@ export type Database = {
           updated_at?: string
           user_id?: string
           weekly_calendar?: Json | null
-        }
-        Relationships: []
-      }
-      thread_metadata: {
-        Row: {
-          completed_at: string | null
-          created_at: string
-          id: string
-          metadata: Json | null
-          status: string
-          thread_id: string
-          user_id: string
-        }
-        Insert: {
-          completed_at?: string | null
-          created_at?: string
-          id?: string
-          metadata?: Json | null
-          status?: string
-          thread_id: string
-          user_id: string
-        }
-        Update: {
-          completed_at?: string | null
-          created_at?: string
-          id?: string
-          metadata?: Json | null
-          status?: string
-          thread_id?: string
-          user_id?: string
         }
         Relationships: []
       }

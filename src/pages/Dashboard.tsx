@@ -16,8 +16,7 @@ import { useDashboardData } from "@/hooks/useDashboardData";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/lib/supabaseClient";
-import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
 console.log('VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY);
@@ -30,7 +29,6 @@ export default function Dashboard() {
   const [queryClient] = useState(() => new QueryClient());
   const [showContent, setShowContent] = useState(false);
   const [activeTab, setActiveTab] = useState<'content' | 'analytics' | 'planner'>('content');
-  const [dataRefreshTrigger, setDataRefreshTrigger] = useState(0);
   
   const {
     strategy,
@@ -52,56 +50,33 @@ export default function Dashboard() {
     hasAttemptedRetry
   } = useDashboardData();
 
-  // Check if strategy is confirmed based on confirmed_at (not the weekly_calendar)
-  const isStrategyConfirmed = !!(strategy?.confirmed_at);
-  const isStarterStrategy = strategy?.strategy_type === 'starter';
-
-  // Force refresh data when component mounts and when refreshTrigger changes
   useEffect(() => {
-    if (user && user.id) {
-      console.log("Dashboard initializing - fetching user data");
-      fetchUserData();
-      checkUserOnboardingAnswers();
-    }
-  }, [user, fetchUserData, dataRefreshTrigger]);
-
-  // Updated useEffect to refresh data more frequently when strategy is confirmed
-  useEffect(() => {
-    if (user && user.id && isStrategyConfirmed) {
-      console.log("Setting up refresh interval for confirmed strategy");
-      
-      // Set up an interval to refresh data on dashboard when strategy is confirmed
-      const refreshInterval = setInterval(() => {
-        console.log("Auto-refreshing dashboard data");
-        fetchUserData();
-      }, 30000); // Refresh every 30 seconds if strategy is confirmed
-      
-      return () => clearInterval(refreshInterval);
-    }
-  }, [user, isStrategyConfirmed, fetchUserData]);
-
-  // Function to check if user has onboarding answers
-  const checkUserOnboardingAnswers = async () => {
-    if (!user) return;
-    try {
+    const checkOnboardingAnswers = async () => {
+      if (!user) return;
       const { data, error } = await supabase
         .from('onboarding_answers')
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle();
-      
       if (error) {
         console.error('Error checking onboarding answers:', error);
+        setHasOnboardingAnswers(false);
+        setOnboardingChecked(true);
         return;
       }
-      
-      setHasOnboardingAnswers(!!data);
+      if (!data) {
+        setHasOnboardingAnswers(false);
+        setOnboardingChecked(true);
+        navigate('/onboarding');
+        return;
+      }
+      setHasOnboardingAnswers(true);
       setOnboardingChecked(true);
-    } catch (err) {
-      console.error("Error checking onboarding status:", err);
-      setOnboardingChecked(true);
+    };
+    if (user && user.id) {
+      checkOnboardingAnswers();
     }
-  };
+  }, [user, navigate]);
 
   // Debug logging
   console.log('Dashboard debug:', {
@@ -119,48 +94,8 @@ export default function Dashboard() {
     generationError,
     retryCount,
     errorShown,
-    hasAttemptedRetry,
-    isStrategyConfirmed,
-    isStarterStrategy
+    hasAttemptedRetry
   });
-
-  // Refresh data whenever the strategy confirmed status changes
-  useEffect(() => {
-    if (strategy?.confirmed_at) {
-      console.log("Strategy confirmed, refreshing data");
-      fetchUserData();
-      
-      // Show success toast with button to create content plan
-      toast({
-        title: "Strategy Confirmed",
-        description: (
-          <div className="flex flex-col gap-3">
-            <p>Your content strategy has been confirmed and XP has been awarded!</p>
-            <button 
-              onClick={() => navigate('/content-planner')} 
-              className="px-4 py-2 bg-socialmize-purple hover:bg-socialmize-purple/90 text-white rounded-md text-sm font-medium"
-            >
-              Create 30-Day Content Plan
-            </button>
-          </div>
-        ),
-        variant: "default",
-        duration: 10000, // Keep it visible longer (10 seconds)
-      });
-    }
-  }, [strategy?.confirmed_at, fetchUserData, navigate]);
-
-  // Function to manually refresh dashboard data
-  const refreshDashboard = () => {
-    console.log("Manual refresh triggered");
-    setDataRefreshTrigger(prev => prev + 1);
-    fetchUserData();
-    
-    toast({
-      title: "Refreshing Data",
-      description: "Dashboard data is being updated...",
-    });
-  };
 
   // Display error toast on generation error, but only once
   useEffect(() => {
@@ -210,19 +145,6 @@ export default function Dashboard() {
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
       <main className="flex-grow container py-6 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Your Dashboard</h1>
-            <Button 
-              onClick={refreshDashboard} 
-              variant="outline" 
-              size="sm" 
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </Button>
-          </div>
-          
           {loading ? (
             <div className="space-y-4">
               <Skeleton className="h-20 w-full" />
@@ -230,12 +152,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <>
-              <CreatorSummaryHeader 
-                user={user} 
-                progress={progress} 
-                loading={loading} 
-                refreshData={refreshDashboard}
-              />
+              <CreatorSummaryHeader user={user} progress={progress} loading={loading} />
               
               {/* Only show error alert if there's a persistent error after multiple attempts */}
               {generationStatus === 'error' && generationError && retryCount >= 3 && (
@@ -260,20 +177,9 @@ export default function Dashboard() {
                 </Alert>
               )}
               
-              {/* Updated Strategy Confirmed Alert */}
-              {strategy && isStrategyConfirmed && (
-                <Alert variant="default" className="mb-4 bg-green-50 border-green-200">
-                  <Sparkles className="h-5 w-5 text-green-500" />
-                  <AlertTitle>{isStarterStrategy ? "Starter Strategy Confirmed" : "Strategy Confirmed"}</AlertTitle>
-                  <AlertDescription className="text-gray-600">
-                    🎉 You unlocked the {isStarterStrategy ? "Starter Strategy" : "Monthly Strategy"} and earned <strong>+100 XP</strong>.
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              <StrategyPlanSection refreshData={refreshDashboard} />
+              <StrategyPlanSection />
 
-              {isStrategyConfirmed ? (
+              {planConfirmed ? (
                 <>
                   <Tabs 
                     value={activeTab} 
@@ -320,19 +226,6 @@ export default function Dashboard() {
                       />
                     </TabsContent>
                   </Tabs>
-                  
-                  {/* Advanced Strategy Upgrade Banner */}
-                  {isStrategyConfirmed && isStarterStrategy && (
-                    <div className="bg-primary/5 p-4 rounded-md mt-6 text-center">
-                      <h4 className="text-lg font-semibold mb-2">Ready to go deeper?</h4>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        You can now unlock your next-level plan with advanced strategy questions.
-                      </p>
-                      <Button onClick={() => navigate('/strategy-onboarding')}>
-                        Unlock Advanced Strategy
-                      </Button>
-                    </div>
-                  )}
                 </>
               ) : (
                 <div className="text-center py-12 bg-muted rounded-lg">

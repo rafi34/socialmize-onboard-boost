@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,7 +9,7 @@ import { FileText, Star, PlusCircle, MessageSquare, FilePen } from "lucide-react
 import { ScriptCard } from "@/components/scripts/ScriptCard";
 import { ScriptFilters } from "@/components/scripts/ScriptFilters";
 import { GeneratedScript } from "@/types/dashboard";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 
 type ScriptCategory = 'all' | 'favorites' | 'cta' | 'funny' | 'raw';
 
@@ -19,6 +20,7 @@ const ScriptsLibrary = () => {
   const [activeTab, setActiveTab] = useState<ScriptCategory>('all');
   const [favorites, setFavorites] = useState<string[]>([]);
   const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user && user.id) {

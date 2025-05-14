@@ -44,17 +44,6 @@ export function useStrategy() {
     await generateWaitingMessage();
 
     try {
-      // First, deactivate all existing strategies for this user
-      const { error: deactivateError } = await supabase
-        .from("strategy_profiles")
-        .update({ is_active: false })
-        .eq("user_id", user.id);
-        
-      if (deactivateError) {
-        console.error("Error deactivating existing strategies:", deactivateError);
-        // Continue anyway - we'll create a new active one
-      }
-      
       const res = await fetch("/functions/generate-strategy-plan", {
         method: "POST",
         body: JSON.stringify({ userId: user.id, onboardingData }),
@@ -68,13 +57,9 @@ export function useStrategy() {
       const data = await res.json();
       if (data.mock) console.log("Using mock strategy");
 
-      // Update toast message to include strategy type
-      const strategyType = onboardingData?.strategy_type || "starter";
-      const strategyTypeDisplay = strategyType.charAt(0).toUpperCase() + strategyType.slice(1);
-
       toast({
-        title: `${strategyTypeDisplay} Strategy Generated`,
-        description: `Your personalized ${strategyType} content strategy is ready!`,
+        title: "Strategy Generated",
+        description: "Your personalized content strategy is ready!",
       });
 
       setGenerationStatus("success");
@@ -106,17 +91,12 @@ export function useStrategy() {
         .from("strategy_profiles")
         .select("*")
         .eq("user_id", user.id)
-        .eq("is_active", true) // Only fetch active strategies
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (strategyData) {
-        console.log("Strategy data retrieved in useStrategy:", strategyData);
-        console.log("Strategy confirmed_at:", strategyData.confirmed_at);
-        
-        // IMPORTANT: Use confirmed_at to determine if strategy is confirmed
-        const confirmed = !!strategyData.confirmed_at;
+      if (strategyData && strategyData.weekly_calendar) {
+        const confirmed = typeof strategyData.weekly_calendar === "object";
         setPlanConfirmed(confirmed);
 
         const contentTypes = Array.isArray(strategyData.content_types)
@@ -141,11 +121,7 @@ export function useStrategy() {
           full_plan_text: strategyData.full_plan_text,
           niche_topic: strategyData.niche_topic,
           topic_ideas: topicIdeas,
-          summary: strategyData.summary,
-          confirmed_at: strategyData.confirmed_at,
-          is_active: strategyData.is_active !== false,
-          id: strategyData.id,
-          strategy_type: strategyData.strategy_type || "starter"
+          summary: strategyData.summary
         });
 
         setGenerationStatus("success");
@@ -153,7 +129,7 @@ export function useStrategy() {
         return;
       }
     } catch (err) {
-      console.error("Error fetching strategy data in useStrategy:", err);
+      console.error("Error fetching strategy data:", err);
     }
   }, [user]);
 

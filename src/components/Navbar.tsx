@@ -131,12 +131,6 @@ export function Navbar() {
                       >
                         View and manage your overall content strategy
                       </ListItem>
-                      <ListItem
-                        href="/content-planner"
-                        title="30-Day Content Planner"
-                      >
-                        Create and manage your detailed 30-day content plan
-                      </ListItem>
                     </ul>
                   </NavigationMenuContent>
                 </NavigationMenuItem>

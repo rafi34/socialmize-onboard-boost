@@ -8,16 +8,12 @@ export function useProgressTracking() {
   const { user } = useAuth();
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
 
   const fetchProgressData = useCallback(async () => {
     if (!user) return;
 
     try {
       setLoading(true);
-      console.log("Fetching progress data for user:", user.id);
-      
-      // Get the most recent progress_tracking entry
       const { data, error } = await supabase
         .from("progress_tracking")
         .select("*")
@@ -28,7 +24,6 @@ export function useProgressTracking() {
 
       if (error) throw error;
 
-      // If we have progress data, calculate next level values
       if (data) {
         const nextLevelXP = (data.current_level + 1) * 100;
         
@@ -40,24 +35,14 @@ export function useProgressTracking() {
           xp_next_level: nextLevelXP,
           level_tag: getLevelTag(data.current_level || 1)
         });
-        
-        console.log("Progress data loaded:", {
-          xp: data.current_xp,
-          level: data.current_level,
-          nextLevelXP
-        });
-      } else {
-        console.log("No progress data found for user");
       }
     } catch (err) {
       console.error("Error fetching progress data:", err);
     } finally {
       setLoading(false);
-      setLastFetchTime(Date.now());
     }
   }, [user]);
 
-  // Fetch on component mount and when user changes
   useEffect(() => {
     fetchProgressData();
   }, [user, fetchProgressData]);
@@ -79,7 +64,6 @@ export function useProgressTracking() {
   return {
     progress,
     loading,
-    fetchProgressData,
-    lastFetchTime
+    fetchProgressData
   };
 }

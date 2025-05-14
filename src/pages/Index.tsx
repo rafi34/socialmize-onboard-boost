@@ -1,12 +1,13 @@
 
-import React from 'react';
-import { OnboardingProvider, useOnboarding } from "@/contexts/OnboardingContext";
+import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import { Onboarding } from "@/components/onboarding/Onboarding";
 
-export const Index = () => {
+const Index = () => {
   return (
     <OnboardingProvider>
       <Onboarding />
     </OnboardingProvider>
   );
 };
+
+export default Index;

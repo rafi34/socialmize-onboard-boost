@@ -11,7 +11,6 @@ import { ReminderConfetti } from "./ReminderConfetti";
 interface LevelProgressCardProps {
   loading?: boolean;
   progress?: any;
-  refreshData?: () => void;
 }
 
 interface ProfileData {
@@ -20,36 +19,34 @@ interface ProfileData {
   strategist_persona?: string;
 }
 
-export const LevelProgressCard = ({ loading: initialLoading, progress: progressProp, refreshData }: LevelProgressCardProps) => {
+export const LevelProgressCard = ({ loading: initialLoading, progress: progressProp }: LevelProgressCardProps) => {
   const { user } = useAuth();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(initialLoading || true);
-  const [showCelebration, setShowCelebration] = useState<boolean>(false);
+  const [showCelebration, setShowCelebration] = useState<boolean>(false); // Fixed: Changed to boolean
 
-  // Check for level up when profile data changes
   useEffect(() => {
     if (user && !progressProp) {
       fetchProfileData();
     } else if (progressProp) {
-      console.log("Progress data received:", progressProp);
       setProfileData({
         level: progressProp.current_level || 1,
         xp: progressProp.current_xp || 0,
         strategist_persona: progressProp.level_tag
       });
       setIsLoading(false);
-      
-      // Check for level up
-      const lastSeenLevel = parseInt(localStorage.getItem("socialmize_last_seen_level") || "1");
-      console.log("Checking level progress: current level:", progressProp.current_level, "last seen:", lastSeenLevel);
-      
-      if (progressProp.current_level > lastSeenLevel) {
-        console.log("Level up detected! Showing celebration");
-        setShowCelebration(true);
-        localStorage.setItem("socialmize_last_seen_level", progressProp.current_level.toString());
-      }
     }
   }, [user, progressProp]);
+
+  useEffect(() => {
+    if (profileData?.level) {
+      const lastSeen = parseInt(localStorage.getItem("socialmize_last_seen_level") || "1");
+      if (profileData.level > lastSeen) {
+        setShowCelebration(true);
+        localStorage.setItem("socialmize_last_seen_level", profileData.level.toString());
+      }
+    }
+  }, [profileData?.level]);
 
   const fetchProfileData = async () => {
     try {
@@ -60,30 +57,11 @@ export const LevelProgressCard = ({ loading: initialLoading, progress: progressP
         .single();
 
       if (error) throw error;
-      
-      console.log("Fetched profile data:", data);
       setProfileData(data);
-      
-      // Check for level up
-      const lastSeenLevel = parseInt(localStorage.getItem("socialmize_last_seen_level") || "1");
-      if (data.level > lastSeenLevel) {
-        console.log("Level up detected from profile data! Showing celebration");
-        setShowCelebration(true);
-        localStorage.setItem("socialmize_last_seen_level", data.level.toString());
-      }
     } catch (error) {
       console.error("Error fetching profile data:", error);
     } finally {
       setIsLoading(false);
-    }
-  };
-  
-  // Manual refresh function
-  const handleRefresh = () => {
-    if (refreshData) {
-      refreshData();
-    } else {
-      fetchProfileData();
     }
   };
 
@@ -113,7 +91,7 @@ export const LevelProgressCard = ({ loading: initialLoading, progress: progressP
   const getNextLevelReward = (level: number): string => {
     switch (level) {
       case 1: return "Unlock Custom Design Templates";
-      case 2: return "Unlock Advanced Strategy Planning";
+      case 2: return "Unlock Skit Templates";
       case 3: return "Unlock Advanced Analytics";
       case 4: return "Unlock AI Content Remixer";
       case 5: return "Unlock Calendar Integration";
@@ -126,13 +104,13 @@ export const LevelProgressCard = ({ loading: initialLoading, progress: progressP
   return (
     <Card className="mb-6">
       {showCelebration && (
-        <div className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 px-6 rounded-t-xl flex items-center justify-between animate-in fade-in slide-in-from-top-4">
+        <div className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 px-6 rounded-xl shadow-xl flex items-center justify-between mb-4 animate-in fade-in slide-in-from-top-4">
           <div>
             <p className="text-xl font-bold">🎉 You reached Level {currentLevel}!</p>
-            <p className="text-sm mt-1">Unlocked: {getNextLevelReward(currentLevel - 1)}</p>
+            <p className="text-sm mt-1">Unlocked: {getNextLevelReward(currentLevel)}</p>
           </div>
           <button
-            onClick={() => setShowCelebration(false)}
+            onClick={() => setShowCelebration(false)} // Now correctly passing boolean
             className="bg-white text-black rounded px-3 py-1 text-xs"
           >
             Dismiss

@@ -3,7 +3,7 @@ import { useOnboarding } from "@/contexts/OnboardingContext";
 
 export const ProgressBar = () => {
   const { onboardingAnswers } = useOnboarding();
-  const progress = onboardingAnswers.profile_progress || 0;
+  const progress = onboardingAnswers.profile_progress;
 
   return (
     <div className="mt-8 w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">

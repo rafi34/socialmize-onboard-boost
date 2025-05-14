@@ -1,8 +1,9 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { UserSettings } from "@/pages/Settings";
 
 interface IntegrationSettingsProps {
@@ -13,6 +14,7 @@ interface IntegrationSettingsProps {
 
 const IntegrationSettings = ({ settings, setSettings, loading }: IntegrationSettingsProps) => {
   const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
   
   const [integrations, setIntegrations] = useState({
     googleConnected: settings.integrations.googleConnected,

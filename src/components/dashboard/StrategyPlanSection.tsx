@@ -10,12 +10,8 @@ import { CalendarDays, AlertTriangle, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
-import { trackUserAction } from "@/utils/xpUtils";
-import { supabase } from "@/lib/supabaseClient";
-import { useProgressTracking } from "@/hooks/dashboard/useProgressTracking"; 
-import { toast } from "@/hooks/use-toast";
 
-export const StrategyPlanSection = ({ refreshData }: { refreshData?: () => void }) => {
+export const StrategyPlanSection = () => {
   const [isFullPlanOpen, setIsFullPlanOpen] = useState(false);
   const [isRegeneratePlanOpen, setIsRegeneratePlanOpen] = useState(false);
   const { 
@@ -27,7 +23,6 @@ export const StrategyPlanSection = ({ refreshData }: { refreshData?: () => void 
     confirmStrategyPlan 
   } = useStrategyData();
   const { user } = useAuth();
-  const { fetchProgressData } = useProgressTracking();
 
   // Add effect to refresh strategy data when component mounts
   useEffect(() => {
@@ -49,88 +44,12 @@ export const StrategyPlanSection = ({ refreshData }: { refreshData?: () => void 
     // Add a longer delay before fetching to ensure the database has updated
     setTimeout(() => {
       fetchStrategyData();
-      if (refreshData) refreshData();
     }, 2500);
   };
   
   const handleConfirmStrategy = async () => {
     const success = await confirmStrategyPlan();
-    if (success && user) {
-      // Add XP reward for confirming strategy
-      await trackUserAction(user.id, 'strategy_confirmed', {
-        strategy_id: strategy?.id,
-        strategy_type: strategy?.strategy_type || 'starter'
-      });
-      
-      // Award +100 XP directly to xp_progress
-      if (user.id) {
-        try {
-          await supabase.from('xp_progress').insert({
-            user_id: user.id,
-            event: 'strategy_confirmed',
-            xp_earned: 100
-          });
-          
-          // Also update progress_tracking table to reflect XP increase immediately
-          const { data: currentProgress, error: progressError } = await supabase
-            .from('progress_tracking')
-            .select('current_xp, current_level, streak_days')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-            
-          if (!progressError && currentProgress) {
-            const newXP = (currentProgress.current_xp || 0) + 100;
-            const currentLevel = currentProgress.current_level || 1;
-            // Check if user should level up (100 XP per level)
-            const newLevel = newXP >= currentLevel * 100 ? currentLevel + 1 : currentLevel;
-            
-            await supabase
-              .from('progress_tracking')
-              .update({
-                current_xp: newXP,
-                current_level: newLevel,
-                updated_at: new Date().toISOString()
-              })
-              .eq('user_id', user.id);
-              
-            console.log(`XP updated: ${currentProgress.current_xp} -> ${newXP}, Level: ${currentProgress.current_level} -> ${newLevel}`);
-          }
-          
-          // Directly update the profiles table XP as well
-          await supabase
-            .from('profiles')
-            .update({ 
-              xp: supabase.rpc('get_weekly_xp', { 
-                user_id_param: user.id, 
-                start_date_param: new Date(0).toISOString() 
-              })
-            })
-            .eq('id', user.id);
-            
-          // Force refresh progress data to show updated XP and level
-          fetchProgressData();
-          
-          // Call parent refresh function if available
-          if (refreshData) {
-            setTimeout(() => {
-              refreshData();
-            }, 1000);
-          }
-          
-          console.log("XP rewarded and progress updated for strategy confirmation");
-          
-          // Show toast notification
-          toast({
-            title: "Strategy Confirmed!",
-            description: `You earned +100 XP for confirming your strategy. Great work!`,
-          });
-        } catch (err) {
-          console.error("Error awarding strategy confirmation XP:", err);
-        }
-      }
-      
+    if (success) {
       fetchStrategyData();
     }
   };
@@ -139,7 +58,6 @@ export const StrategyPlanSection = ({ refreshData }: { refreshData?: () => void 
   const hasWeeklyCalendar = !!(strategy?.weekly_calendar && 
     Object.keys(strategy.weekly_calendar).length > 0);
   const isConfirmed = !!strategy?.confirmed_at;
-  const isStarterStrategy = strategy?.strategy_type === 'starter';
 
   return (
     <div className="mb-6 flex flex-col md:flex-row items-start gap-4">
@@ -162,12 +80,15 @@ export const StrategyPlanSection = ({ refreshData }: { refreshData?: () => void 
           </Alert>
         )}
         
-        {/* Title adjusted based on strategy type */}
-        {strategy && (
-          <h2 className="text-xl font-semibold mb-4">
-            {isStarterStrategy ? "Your Starter Strategy" : "Your Monthly Strategy"}
-            {isConfirmed && <span className="ml-2 text-green-500">✅</span>}
-          </h2>
+        {strategy && isConfirmed && (
+          <Alert variant="default" className="mb-4 bg-green-50 border-green-200">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <AlertTitle>Strategy Confirmed</AlertTitle>
+            <AlertDescription className="text-gray-600">
+              {strategy.confirmed_at && 
+                `You confirmed this ${strategy.strategy_type || 'starter'} strategy plan ${formatDistanceToNow(new Date(strategy.confirmed_at))} ago.`}
+            </AlertDescription>
+          </Alert>
         )}
         
         <StrategyOverviewCard 

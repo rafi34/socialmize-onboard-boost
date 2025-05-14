@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Badge } from "@/types/inbox";
 import { PageHeader } from "@/components/PageHeader";
@@ -6,7 +7,7 @@ import { BadgeFilters } from "@/components/badges/BadgeFilters";
 import { BadgeSummary } from "@/components/badges/BadgeSummary";
 import { NextBadge } from "@/components/badges/NextBadge";
 import { Badge as BadgeIcon, Trophy } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { ReminderConfetti } from "@/components/dashboard/ReminderConfetti";
 import { useNavigate } from "react-router-dom";
@@ -111,6 +112,7 @@ const MOCK_BADGES: Badge[] = [
 
 export default function BadgesPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [badges, setBadges] = useState<Badge[]>(MOCK_BADGES);
   const [activeFilter, setActiveFilter] = useState<"all" | "unlocked" | "locked" | "upcoming">("all");
