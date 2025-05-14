@@ -1,10 +1,11 @@
+
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CalendarPlus, CheckCircle, Loader2, Repeat } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -40,7 +41,6 @@ export function ContentIdeaModal({
   onComplete 
 }: ContentIdeaModalProps) {
   const { user } = useAuth();
-  const { toast } = useToast();
   const isMobile = useIsMobile();
   const [isCompleting, setIsCompleting] = useState(false);
   const [isSelected, setIsSelected] = useState(idea?.selected || false);

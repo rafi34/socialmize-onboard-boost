@@ -1,8 +1,7 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { UserSettings } from "@/pages/Settings";
 
 interface BillingSettingsProps {
@@ -13,7 +12,6 @@ interface BillingSettingsProps {
 
 const BillingSettings = ({ settings, setSettings, loading }: BillingSettingsProps) => {
   const [upgrading, setUpgrading] = useState(false);
-  const { toast } = useToast();
   
   const handleUpgradePlan = () => {
     // Placeholder for upgrading plan functionality

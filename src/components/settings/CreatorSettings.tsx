@@ -1,15 +1,14 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
-import { UserSettings } from "@/pages/Settings";
-import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { CreatorMission, CreatorStyle, ContentFormat, PostingFrequency, ShootingPreference } from "@/types/onboarding";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { UserSettings } from "@/pages/Settings";
 
 interface CreatorSettingsProps {
   settings: UserSettings;
@@ -17,424 +16,235 @@ interface CreatorSettingsProps {
   loading: boolean;
 }
 
+// Content frequency options
+const frequencyOptions = [
+  { value: "daily", label: "Daily" },
+  { value: "multiple_weekly", label: "Multiple Times Per Week" },
+  { value: "weekly", label: "Weekly" },
+  { value: "biweekly", label: "Bi-Weekly" },
+  { value: "monthly", label: "Monthly" }
+];
+
+// Creator style options
+const styleOptions = [
+  { value: "educational", label: "Educational" },
+  { value: "entertaining", label: "Entertaining" },
+  { value: "inspirational", label: "Inspirational" },
+  { value: "informative", label: "Informative" },
+  { value: "storytelling", label: "Storytelling" },
+  { value: "tutorial", label: "Tutorial" }
+];
+
+// Content format options
+const formatOptions = [
+  { value: "talking_head", label: "Talking Head Video" },
+  { value: "carousel", label: "Carousel Posts" },
+  { value: "meme", label: "Memes" },
+  { value: "duet", label: "Duets/Collaborations" },
+  { value: "voiceover", label: "Voiceover Content" }
+];
+
+// Shooting mode options
+const shootingOptions = [
+  { value: "batch", label: "Batch Recording" },
+  { value: "daily", label: "Daily Recording" },
+  { value: "as_needed", label: "As Needed" }
+];
+
 const CreatorSettings = ({ settings, setSettings, loading }: CreatorSettingsProps) => {
-  const { toast } = useToast();
-  const navigate = useNavigate();
+  const [saving, setSaving] = useState(false);
   const { user } = useAuth();
   
-  const [isEditing, setIsEditing] = useState(false);
-  const [updatedSettings, setUpdatedSettings] = useState({...settings.creatorSettings});
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [creatorSettings, setCreatorSettings] = useState({
+    creatorMission: settings.creatorSettings.creatorMission || "",
+    creatorStyle: settings.creatorSettings.creatorStyle || "",
+    contentPreference: settings.creatorSettings.contentPreference || "",
+    postingFrequency: settings.creatorSettings.postingFrequency || "",
+    shootingMode: settings.creatorSettings.shootingMode || "",
+    nicheTopic: settings.creatorSettings.nicheTopic || ""
+  });
 
-  // Mission options
-  const missionOptions: { value: CreatorMission | null; label: string }[] = [
-    { value: "gain_followers", label: "Gain followers" },
-    { value: "get_leads", label: "Get leads" },
-    { value: "grow_personal_brand", label: "Grow personal brand" },
-    { value: "go_viral", label: "Go viral" },
-    { value: "build_community", label: "Build community" },
-  ];
-
-  // Style options
-  const styleOptions: { value: CreatorStyle | null; label: string }[] = [
-    { value: "bold_energetic", label: "Bold and energetic" },
-    { value: "calm_motivational", label: "Calm and motivational" },
-    { value: "funny_relatable", label: "Funny and relatable" },
-    { value: "inspirational_wise", label: "Inspirational and wise" },
-    { value: "raw_authentic", label: "Raw and authentic" },
-  ];
-
-  // Content format options
-  const formatOptions: { value: ContentFormat | null; label: string }[] = [
-    { value: "talking_to_camera", label: "Talking to camera" },
-    { value: "voiceovers", label: "Voiceovers" },
-    { value: "skits_storytelling", label: "Skits and storytelling" },
-    { value: "tutorials_howto", label: "Tutorials and how-to" },
-    { value: "lifestyle_documentary", label: "Lifestyle documentary" },
-  ];
-
-  // Posting frequency options
-  const frequencyOptions: { value: PostingFrequency | null; label: string }[] = [
-    { value: "multiple_daily", label: "Multiple posts per day" },
-    { value: "daily", label: "Daily" },
-    { value: "three_to_five_weekly", label: "3-5 times per week" },
-    { value: "one_to_two_weekly", label: "1-2 times per week" },
-    { value: "warming_up", label: "Just warming up" },
-  ];
-
-  // Shooting mode options
-  const shootingOptions: { value: ShootingPreference | null; label: string }[] = [
-    { value: "bulk_shooting", label: "Bulk shooting" },
-    { value: "single_video", label: "Single video" },
-  ];
-
-  // Function to restart onboarding
-  const handleRestartOnboarding = () => {
-    toast({
-      title: "Restarting onboarding",
-      description: "You'll be redirected to update your creator profile."
+  const handleInputChange = (field: string, value: string) => {
+    setCreatorSettings({
+      ...creatorSettings,
+      [field]: value
     });
-    navigate("/");
   };
 
-  // Function to regenerate content strategy
-  const handleRegenerateStrategy = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!user) return;
     
-    setIsSyncing(true);
+    setSaving(true);
     try {
-      // First sync the settings
-      await syncCreatorSettings();
+      // Update onboarding answers
+      const { error: onboardingError } = await supabase
+        .from("onboarding_answers")
+        .upsert({
+          user_id: user.id,
+          creator_mission: creatorSettings.creatorMission,
+          creator_style: creatorSettings.creatorStyle,
+          content_format_preference: creatorSettings.contentPreference,
+          posting_frequency_goal: creatorSettings.postingFrequency,
+          shooting_preference: creatorSettings.shootingMode,
+          niche_topic: creatorSettings.nicheTopic
+        });
       
-      // Then notify the user about strategy regeneration
-      toast({
-        title: "Strategy Refresh",
-        description: "Your content strategy will be regenerated based on your preferences."
+      if (onboardingError) throw onboardingError;
+      
+      // Update strategy profile
+      const { error: strategyError } = await supabase
+        .from("strategy_profiles")
+        .update({
+          creator_style: creatorSettings.creatorStyle,
+          posting_frequency: creatorSettings.postingFrequency,
+          niche_topic: creatorSettings.nicheTopic,
+          updated_at: new Date().toISOString()
+        })
+        .eq("user_id", user.id);
+      
+      if (strategyError) throw strategyError;
+      
+      // Update local state
+      setSettings({
+        ...settings,
+        creatorSettings: {
+          ...creatorSettings
+        }
       });
-    } catch (error) {
-      console.error("Error regenerating strategy:", error);
+      
       toast({
-        title: "Refresh Failed",
-        description: "There was a problem refreshing your strategy. Please try again.",
-        variant: "destructive"
+        title: "Creator settings updated",
+        description: "Your content strategy settings have been saved."
       });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // Function to sync creator settings with strategy profile
-  const syncCreatorSettings = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('sync-creator-settings', {
+      
+      // Regenerate content strategy with new settings
+      await supabase.functions.invoke('refresh-content-strategy', {
         body: { userId: user.id }
       });
       
-      if (error) throw error;
-      
-      console.log("Settings synced:", data);
-      return data;
-    } catch (error) {
-      console.error("Error syncing settings:", error);
-      throw error;
-    }
-  };
-
-  // Function to toggle edit mode
-  const toggleEditMode = () => {
-    setIsEditing(!isEditing);
-    if (!isEditing) {
-      setUpdatedSettings({...settings.creatorSettings});
-    }
-  };
-
-  // Function to update a specific field
-  const updateField = <K extends keyof typeof updatedSettings>(key: K, value: any) => {
-    setUpdatedSettings(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
-
-  // Function to save changes
-  const saveChanges = async () => {
-    if (!user) return;
-    
-    setIsSaving(true);
-    try {
-      // Convert boolean to string for existing_content
-      const existingContent = updatedSettings.existingContent !== null 
-        ? String(updatedSettings.existingContent) 
-        : null;
-
-      const { error } = await supabase
-        .from('onboarding_answers')
-        .update({
-          creator_mission: updatedSettings.creatorMission,
-          creator_style: updatedSettings.creatorStyle,
-          content_format_preference: updatedSettings.contentPreference,
-          posting_frequency_goal: updatedSettings.postingFrequency,
-          shooting_preference: updatedSettings.shootingMode,
-          existing_content: existingContent,
-          niche_topic: updatedSettings.nicheTopic,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
-
-      if (error) {
-        throw error;
-      }
-
-      // Update local state
-      setSettings(prev => ({
-        ...prev,
-        creatorSettings: updatedSettings
-      }));
-      
-      // Sync the settings with the strategy profile
-      await syncCreatorSettings();
-      
-      // Exit edit mode
-      setIsEditing(false);
-      
+    } catch (error: any) {
+      console.error("Error updating creator settings:", error);
       toast({
-        title: "Settings Updated",
-        description: "Your creator preferences have been saved and synced successfully."
-      });
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      toast({
-        title: "Update Failed",
-        description: "There was a problem saving your settings. Please try again.",
+        title: "Update failed",
+        description: error.message,
         variant: "destructive"
       });
     } finally {
-      setIsSaving(false);
+      setSaving(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-medium">Onboarding Summary</h3>
-        <Button 
-          variant="outline" 
-          onClick={toggleEditMode}
-          disabled={loading || isSaving}
-        >
-          {isEditing ? "Cancel" : "Edit"}
-        </Button>
-      </div>
+      <h3 className="text-xl font-medium">Creator Strategy</h3>
       
-      <div className="space-y-4">
-        {/* Creator Mission */}
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="creator-mission">Creator Mission</Label>
-          {isEditing ? (
-            <Select 
-              disabled={isSaving}
-              value={updatedSettings.creatorMission || undefined} 
-              onValueChange={(value) => updateField("creatorMission", value)}
-            >
-              <SelectTrigger id="creator-mission">
-                <SelectValue placeholder="Select your creator mission" />
-              </SelectTrigger>
-              <SelectContent>
-                {missionOptions.map(option => (
-                  <SelectItem key={option.value || 'none'} value={option.value || ''}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input 
-              id="creator-mission" 
-              value={updatedSettings.creatorMission || "Not set"}
-              readOnly
-              className="bg-muted"
-            />
-          )}
+          <Textarea 
+            id="creator-mission"
+            placeholder="What's your goal as a content creator?"
+            value={creatorSettings.creatorMission}
+            onChange={(e) => handleInputChange("creatorMission", e.target.value)}
+            disabled={loading || saving}
+            className="min-h-[100px]"
+          />
+          <p className="text-xs text-muted-foreground">Describe what you want to achieve with your content</p>
         </div>
         
-        {/* Creator Style */}
         <div className="space-y-2">
-          <Label htmlFor="creator-style">Creator Style</Label>
-          {isEditing ? (
-            <Select 
-              disabled={isSaving}
-              value={updatedSettings.creatorStyle || undefined} 
-              onValueChange={(value) => updateField("creatorStyle", value)}
+          <Label htmlFor="niche-topic">Content Niche</Label>
+          <Input 
+            id="niche-topic"
+            placeholder="Your primary content topic"
+            value={creatorSettings.nicheTopic}
+            onChange={(e) => handleInputChange("nicheTopic", e.target.value)}
+            disabled={loading || saving}
+          />
+          <p className="text-xs text-muted-foreground">E.g., fitness, productivity, cooking, tech reviews</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="creator-style">Creator Style</Label>
+            <Select
+              value={creatorSettings.creatorStyle || undefined}
+              onValueChange={(value) => handleInputChange("creatorStyle", value)}
+              disabled={loading || saving}
             >
               <SelectTrigger id="creator-style">
-                <SelectValue placeholder="Select your creator style" />
+                <SelectValue placeholder="Select your style" />
               </SelectTrigger>
               <SelectContent>
                 {styleOptions.map(option => (
-                  <SelectItem key={option.value || 'none'} value={option.value || ''}>
-                    {option.label}
-                  </SelectItem>
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          ) : (
-            <Input 
-              id="creator-style" 
-              value={updatedSettings.creatorStyle || "Not set"}
-              readOnly
-              className="bg-muted"
-            />
-          )}
-        </div>
-        
-        {/* Content Format Preference */}
-        <div className="space-y-2">
-          <Label htmlFor="content-preference">Content Format Preference</Label>
-          {isEditing ? (
-            <Select 
-              disabled={isSaving}
-              value={updatedSettings.contentPreference || undefined} 
-              onValueChange={(value) => updateField("contentPreference", value)}
-            >
-              <SelectTrigger id="content-preference">
-                <SelectValue placeholder="Select your content format" />
-              </SelectTrigger>
-              <SelectContent>
-                {formatOptions.map(option => (
-                  <SelectItem key={option.value || 'none'} value={option.value || ''}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input 
-              id="content-preference" 
-              value={updatedSettings.contentPreference || "Not set"}
-              readOnly
-              className="bg-muted"
-            />
-          )}
-        </div>
-        
-        {/* Posting Frequency */}
-        <div className="space-y-2">
-          <Label htmlFor="posting-frequency">Posting Frequency</Label>
-          {isEditing ? (
-            <Select 
-              disabled={isSaving}
-              value={updatedSettings.postingFrequency || undefined} 
-              onValueChange={(value) => updateField("postingFrequency", value)}
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="posting-frequency">Posting Frequency</Label>
+            <Select
+              value={creatorSettings.postingFrequency || undefined}
+              onValueChange={(value) => handleInputChange("postingFrequency", value)}
+              disabled={loading || saving}
             >
               <SelectTrigger id="posting-frequency">
-                <SelectValue placeholder="Select your posting frequency" />
+                <SelectValue placeholder="How often do you post?" />
               </SelectTrigger>
               <SelectContent>
                 {frequencyOptions.map(option => (
-                  <SelectItem key={option.value || 'none'} value={option.value || ''}>
-                    {option.label}
-                  </SelectItem>
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          ) : (
-            <Input 
-              id="posting-frequency" 
-              value={updatedSettings.postingFrequency || "Not set"}
-              readOnly
-              className="bg-muted"
-            />
-          )}
-        </div>
-        
-        {/* Shooting Mode */}
-        <div className="space-y-2">
-          <Label htmlFor="shooting-mode">Shooting Mode</Label>
-          {isEditing ? (
-            <Select 
-              disabled={isSaving}
-              value={updatedSettings.shootingMode || undefined} 
-              onValueChange={(value) => updateField("shootingMode", value)}
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="content-preference">Preferred Content Type</Label>
+            <Select
+              value={creatorSettings.contentPreference || undefined}
+              onValueChange={(value) => handleInputChange("contentPreference", value)}
+              disabled={loading || saving}
+            >
+              <SelectTrigger id="content-preference">
+                <SelectValue placeholder="Select content format" />
+              </SelectTrigger>
+              <SelectContent>
+                {formatOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="shooting-mode">Preferred Shooting Style</Label>
+            <Select
+              value={creatorSettings.shootingMode || undefined}
+              onValueChange={(value) => handleInputChange("shootingMode", value)}
+              disabled={loading || saving}
             >
               <SelectTrigger id="shooting-mode">
-                <SelectValue placeholder="Select your shooting mode" />
+                <SelectValue placeholder="How do you record?" />
               </SelectTrigger>
               <SelectContent>
                 {shootingOptions.map(option => (
-                  <SelectItem key={option.value || 'none'} value={option.value || ''}>
-                    {option.label}
-                  </SelectItem>
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          ) : (
-            <Input 
-              id="shooting-mode" 
-              value={updatedSettings.shootingMode || "Not set"}
-              readOnly
-              className="bg-muted"
-            />
-          )}
+          </div>
         </div>
         
-        {/* Existing Content */}
-        <div className="space-y-2">
-          <Label htmlFor="existing-content">Existing Content</Label>
-          {isEditing ? (
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id="existing-content"
-                checked={updatedSettings.existingContent === true}
-                onCheckedChange={(checked) => updateField("existingContent", checked)}
-                disabled={isSaving}
-              />
-              <span>
-                {updatedSettings.existingContent === true ? "Yes" : 
-                 updatedSettings.existingContent === false ? "No" : "Not set"}
-              </span>
-            </div>
-          ) : (
-            <Input 
-              id="existing-content" 
-              value={updatedSettings.existingContent === true ? "Yes" : 
-                    updatedSettings.existingContent === false ? "No" : "Not set"}
-              readOnly
-              className="bg-muted"
-            />
-          )}
-        </div>
-        
-        {/* Niche/Topic */}
-        <div className="space-y-2">
-          <Label htmlFor="niche-topic">Niche/Topic Focus</Label>
-          {isEditing ? (
-            <Input 
-              id="niche-topic" 
-              value={updatedSettings.nicheTopic || ""} 
-              onChange={(e) => updateField("nicheTopic", e.target.value)}
-              placeholder="Enter your niche or topic"
-              disabled={isSaving}
-            />
-          ) : (
-            <Input 
-              id="niche-topic" 
-              value={updatedSettings.nicheTopic || "Not set"}
-              readOnly
-              className="bg-muted"
-            />
-          )}
-        </div>
-      </div>
-      
-      {isEditing ? (
-        <div className="flex flex-col sm:flex-row gap-4 pt-4">
-          <Button 
-            onClick={saveChanges} 
-            disabled={isSaving}
-          >
-            {isSaving ? "Saving..." : "Save Changes"}
-          </Button>
-          <Button 
-            onClick={toggleEditMode} 
-            variant="outline" 
-            disabled={isSaving}
-          >
-            Cancel
+        <div className="pt-4">
+          <Button type="submit" disabled={loading || saving}>
+            {saving ? "Saving..." : "Save Changes"}
           </Button>
         </div>
-      ) : (
-        <div className="flex flex-col sm:flex-row gap-4 pt-4">
-          <Button onClick={handleRestartOnboarding} disabled={loading}>
-            Update My Preferences
-          </Button>
-          <Button onClick={handleRegenerateStrategy} variant="outline" disabled={loading || isSyncing}>
-            {isSyncing ? "Syncing..." : "Regenerate Strategy"}
-          </Button>
-        </div>
-      )}
+      </form>
     </div>
   );
 };

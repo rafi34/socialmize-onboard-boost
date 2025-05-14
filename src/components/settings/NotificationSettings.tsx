@@ -1,9 +1,8 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { UserSettings } from "@/pages/Settings";
@@ -16,7 +15,6 @@ interface NotificationSettingsProps {
 
 const NotificationSettings = ({ settings, setSettings, loading }: NotificationSettingsProps) => {
   const [saving, setSaving] = useState(false);
-  const { toast } = useToast();
   const { user } = useAuth();
   
   const [notifications, setNotifications] = useState({

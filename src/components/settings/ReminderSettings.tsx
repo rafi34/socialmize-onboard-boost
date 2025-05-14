@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { UserSettings } from "@/pages/Settings";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -38,7 +37,6 @@ interface ExtendedProfileData {
 
 const ReminderSettings = ({ settings, setSettings, loading }: ReminderSettingsProps) => {
   const [saving, setSaving] = useState(false);
-  const { toast } = useToast();
   const { user } = useAuth();
   
   const [preferences, setPreferences] = useState<ReminderPreferences>({
