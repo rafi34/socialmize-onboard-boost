@@ -1,8 +1,8 @@
 
-// supabase/functions/generate-strategy-chat/index.ts
 import { serve } from "https://deno.land/std@0.195.0/http/server.ts";
 import OpenAI from "https://esm.sh/openai@4.28.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { extractMissionMap, extractContentIdeas } from "../utils.ts";
 
 // Get environment variables
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -74,6 +74,19 @@ serve(async (req) => {
       
       console.log("Strategy profile data retrieved:", strategyProfileData ? "yes" : "no");
       
+      // Fetch deep profile if it exists
+      const { data: deepProfileData, error: deepProfileError } = await supabase
+        .from('strategy_deep_profile')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+        
+      if (deepProfileError) {
+        console.error("Error fetching deep profile:", deepProfileError);
+      }
+      
       // Create or retrieve a thread
       let currentThreadId = threadId;
       
@@ -87,7 +100,8 @@ serve(async (req) => {
           // If this is a new thread, add context info about the user's profile
           const contextData = {
             ...onboardingData,
-            ...(strategyProfileData || {})
+            ...(strategyProfileData || {}),
+            ...(deepProfileData?.data || {})
           };
           
           // Create a context message with combined data
@@ -103,6 +117,20 @@ ${Object.entries(contextData)
     return `- ${key.replace(/_/g, ' ')}: ${formattedValue}`;
   })
   .join('\n')}
+
+Strategy Instructions:
+1. You are a Content Strategy AI Assistant helping this creator build their personalized content plan.
+2. For first-time users, guide them through 5-8 questions about their brand, goals, and content preferences.
+3. Store these answers in your memory as their "deep profile".
+4. After gathering enough information, create a 3-phase "Mission Map" strategy with these components:
+   - Phase 1: Grow phase
+   - Phase 2: Build Trust phase
+   - Phase 3: Monetize phase
+   - Each phase should include: weekly focus, content formats, platforms, and tone guidance
+5. Generate 30-50 content ideas based on their profile, with ideas tagged by format (e.g., Duet, Carousel, Talking Head)
+6. When providing content ideas, mark the end of your conversation with [CONTENT_IDEAS_READY] so the system knows to process them.
+7. For returning users, remind them of previous discussions and offer to evolve their strategy or generate fresh content ideas.
+8. Be conversational, encouraging, and focus on practical, actionable advice.
 `;
 
           // Add initial context message to the thread
@@ -185,50 +213,57 @@ ${Object.entries(contextData)
         const isCompleted = messageContent.includes("[content_ideas_ready]") || 
                             messageContent.includes("[CONTENT_IDEAS]") ||
                             messageContent.includes("[STRATEGY_COMPLETE]") ||
-                            messageContent.includes("[COMPLETED]");
+                            messageContent.includes("[COMPLETED]") ||
+                            messageContent.includes("[CONTENT_IDEAS_READY]");
+
+        // Extract mission map if present
+        let missionMap = null;
+        if (isCompleted) {
+          missionMap = extractMissionMap(messageContent);
+          
+          if (missionMap) {
+            console.log("Extracted mission map:", JSON.stringify(missionMap).substring(0, 100) + "...");
+            
+            // Save mission map to database
+            try {
+              await supabase.from('mission_map_plans').insert({
+                user_id: userId,
+                data: missionMap
+              });
+              console.log("Saved mission map to database");
+            } catch (mapError) {
+              console.error("Error saving mission map:", mapError);
+            }
+          }
+        }
 
         // Extract content ideas if present
-        let contentIdeas = [];
-        let jsonMatch = null;
-        
+        let contentIdeas: string[] = [];
         if (isCompleted) {
-          try {
-            // First look for JSON structure in the message
-            jsonMatch = messageContent.match(/```json([\s\S]*?)```/);
+          contentIdeas = extractContentIdeas(messageContent);
+          console.log(`Extracted ${contentIdeas.length} content ideas`);
+          
+          // Save content ideas to the database if we have them
+          if (contentIdeas.length > 0) {
+            const ideaObjects = contentIdeas.map(idea => ({
+              user_id: userId,
+              idea: idea,
+              selected: false,
+              format_type: getRandomFormat(),
+              difficulty: getRandomDifficulty(),
+              xp_reward: getRandomXp(),
+              generated_at: new Date().toISOString()
+            }));
             
-            if (jsonMatch && jsonMatch[1]) {
-              try {
-                const jsonData = JSON.parse(jsonMatch[1].trim());
-                if (jsonData.content_ideas && Array.isArray(jsonData.content_ideas)) {
-                  contentIdeas = jsonData.content_ideas;
-                  console.log("Content ideas extracted from JSON:", contentIdeas.length);
-                }
-              } catch (jsonError) {
-                console.error("Error parsing JSON content ideas:", jsonError);
-              }
-            }
-            
-            // If no JSON was found or parsing failed, try alternative formats
-            if (contentIdeas.length === 0) {
-              // Look for content ideas in various formats
-              const ideasMatch = messageContent.match(/\[CONTENT_IDEAS\]([\s\S]*?)(?:\[|$)/);
-              if (ideasMatch && ideasMatch[1]) {
-                contentIdeas = ideasMatch[1]
-                  .split('\n')
-                  .filter(line => line.trim().length > 0)
-                  .map(line => line.replace(/^-\s*/, '').trim());
-                console.log("Content ideas extracted from markup:", contentIdeas.length);
-              }
-            }
-            
-            // Save content ideas to the database if we have them
-            if (contentIdeas.length > 0) {
-              const ideaObjects = contentIdeas.map(idea => ({
-                user_id: userId,
-                idea: idea,
-                selected: false
-              }));
-              
+            try {
+              // Delete existing unselected content ideas first
+              await supabase
+                .from('content_ideas')
+                .delete()
+                .eq('user_id', userId)
+                .eq('selected', false);
+                
+              // Insert new content ideas
               const { error: saveError } = await supabase
                 .from('content_ideas')
                 .insert(ideaObjects);
@@ -238,9 +273,9 @@ ${Object.entries(contextData)
               } else {
                 console.log("Successfully saved content ideas to database");
               }
+            } catch (error) {
+              console.error("Error processing content ideas:", error);
             }
-          } catch (error) {
-            console.error("Error processing content ideas:", error);
           }
         }
         
@@ -249,7 +284,7 @@ ${Object.entries(contextData)
           user_id: userId,
           thread_id: currentThreadId,
           role: "user",
-          message: userMessage
+          content: userMessage
         });
         
         // Save the assistant message to Supabase
@@ -257,16 +292,18 @@ ${Object.entries(contextData)
           user_id: userId,
           thread_id: currentThreadId,
           role: "assistant",
-          message: messageContent
+          content: messageContent
         });
         
         return new Response(
           JSON.stringify({ 
             success: true, 
             threadId: currentThreadId,
+            assistantId: assistantId,
             message: messageContent,
             completed: isCompleted,
-            contentIdeas: contentIdeas
+            contentIdeas: contentIdeas,
+            missionMap: missionMap
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -308,3 +345,18 @@ ${Object.entries(contextData)
     );
   }
 });
+
+// Helper functions for random attributes
+function getRandomFormat() {
+  const formats = ["Video", "Carousel", "Talking Head", "Meme", "Duet"];
+  return formats[Math.floor(Math.random() * formats.length)];
+}
+
+function getRandomDifficulty() {
+  const difficulties = ["Easy", "Medium", "Hard"];
+  return difficulties[Math.floor(Math.random() * difficulties.length)];
+}
+
+function getRandomXp() {
+  return [25, 50, 75, 100][Math.floor(Math.random() * 4)];
+}
