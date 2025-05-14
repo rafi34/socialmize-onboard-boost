@@ -1,5 +1,4 @@
 
-import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from '@/components/ui/toaster'
@@ -42,105 +41,79 @@ function App() {
               
               <Route path="/dashboard" element={
                 <ProtectedRoute>
-                  <OnboardingRoute>
-                    <Dashboard />
-                  </OnboardingRoute>
+                  <Dashboard />
                 </ProtectedRoute>
               } />
               
               <Route path="/strategy" element={
                 <ProtectedRoute>
-                  <OnboardingRoute>
-                    <StrategyOverview />
-                  </OnboardingRoute>
+                  <StrategyOverview />
                 </ProtectedRoute>
               } />
               
               <Route path="/strategy-detail" element={
                 <ProtectedRoute>
-                  <OnboardingRoute>
-                    <StrategyDetail />
-                  </OnboardingRoute>
+                  <StrategyDetail />
                 </ProtectedRoute>
               } />
               
               <Route path="/strategy-chat" element={
                 <ProtectedRoute>
-                  <OnboardingRoute>
-                    <StrategyChat />
-                  </OnboardingRoute>
+                  <StrategyChat />
                 </ProtectedRoute>
               } />
               
               <Route path="/scripts" element={
                 <ProtectedRoute>
-                  <OnboardingRoute>
-                    <ScriptsLibrary />
-                  </OnboardingRoute>
+                  <ScriptsLibrary />
                 </ProtectedRoute>
               } />
               
               <Route path="/generate" element={
                 <ProtectedRoute>
-                  <OnboardingRoute>
-                    <GenerateScripts />
-                  </OnboardingRoute>
+                  <GenerateScripts />
                 </ProtectedRoute>
               } />
               
               <Route path="/settings" element={
                 <ProtectedRoute>
-                  <OnboardingRoute>
-                    <Settings />
-                  </OnboardingRoute>
+                  <Settings />
                 </ProtectedRoute>
               } />
               
               <Route path="/badges" element={
                 <ProtectedRoute>
-                  <OnboardingRoute>
-                    <BadgesPage />
-                  </OnboardingRoute>
+                  <BadgesPage />
                 </ProtectedRoute>
               } />
               
               <Route path="/reminders" element={
                 <ProtectedRoute>
-                  <OnboardingRoute>
-                    <Reminders />
-                  </OnboardingRoute>
+                  <Reminders />
                 </ProtectedRoute>
               } />
               
               <Route path="/calendar" element={
                 <ProtectedRoute>
-                  <OnboardingRoute>
-                    <WeeklyCalendar />
-                  </OnboardingRoute>
+                  <WeeklyCalendar />
                 </ProtectedRoute>
               } />
               
               <Route path="/topics" element={
                 <ProtectedRoute>
-                  <OnboardingRoute>
-                    <TopicSuggestions />
-                  </OnboardingRoute>
+                  <TopicSuggestions />
                 </ProtectedRoute>
               } />
               
               <Route path="/review-ideas" element={
                 <ProtectedRoute>
-                  <OnboardingRoute>
-                    <ReviewIdeas />
-                  </OnboardingRoute>
+                  <ReviewIdeas />
                 </ProtectedRoute>
               } />
               
               <Route path="/inbox" element={
                 <ProtectedRoute>
-                  <OnboardingRoute>
-                    <InboxCenterPage />
-                  </OnboardingRoute>
+                  <InboxCenterPage />
                 </ProtectedRoute>
               } />
               
