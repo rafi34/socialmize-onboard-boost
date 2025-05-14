@@ -179,24 +179,6 @@ ${Object.entries(contextData)
           content: userMessage,
         });
         
-        // Save user message to assistant_messages
-        const userMessageId = crypto.randomUUID();
-        const { error: userMsgError } = await supabase
-          .from('assistant_messages')
-          .insert({
-            thread_id: currentThreadId,
-            message_id: userMessageId,
-            user_id: userId,
-            role: 'user',
-            content: userMessage,
-            created_at: new Date().toISOString(),
-          });
-        if (userMsgError) {
-          console.error("Error saving user message to assistant_messages:", userMsgError);
-          // Add more detailed logging
-          console.error("Full Supabase error object:", JSON.stringify(userMsgError, null, 2));
-        }
-        
         console.log("Added user message to thread");
         
         // Run the assistant
@@ -254,21 +236,6 @@ ${Object.entries(contextData)
         } else {
           console.warn("Unexpected message format:", JSON.stringify(latestMessage.content));
           messageContent = "I'm having trouble generating a response right now. Please try again.";
-        }
-        // Save assistant message to assistant_messages
-        const assistantMessageId = crypto.randomUUID();
-        const { error: assistantMsgError } = await supabase
-          .from('assistant_messages')
-          .insert({
-            thread_id: currentThreadId,
-            message_id: assistantMessageId,
-            user_id: userId,
-            role: 'assistant',
-            content: messageContent,
-            created_at: new Date().toISOString(),
-          });
-        if (assistantMsgError) {
-          console.error("Error saving assistant message to assistant_messages:", assistantMsgError);
         }
         
         // Check for completion markers in the message
