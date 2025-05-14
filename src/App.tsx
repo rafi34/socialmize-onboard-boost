@@ -2,6 +2,7 @@
 import { Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from '@/components/ui/toaster'
+import { Navbar } from '@/components/Navbar'
 
 import Index from '@/pages/Index'
 import Dashboard from '@/pages/Dashboard'
@@ -35,6 +36,7 @@ function App() {
       <AuthProvider>
         <OnboardingProvider>
           <StrategyProvider>
+            <Navbar />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
@@ -45,7 +47,7 @@ function App() {
                 </ProtectedRoute>
               } />
               
-              <Route path="/strategy" element={
+              <Route path="/strategy-overview" element={
                 <ProtectedRoute>
                   <StrategyOverview />
                 </ProtectedRoute>
@@ -63,13 +65,13 @@ function App() {
                 </ProtectedRoute>
               } />
               
-              <Route path="/scripts" element={
+              <Route path="/scripts-library" element={
                 <ProtectedRoute>
                   <ScriptsLibrary />
                 </ProtectedRoute>
               } />
               
-              <Route path="/generate" element={
+              <Route path="/generate-scripts" element={
                 <ProtectedRoute>
                   <GenerateScripts />
                 </ProtectedRoute>
@@ -93,13 +95,13 @@ function App() {
                 </ProtectedRoute>
               } />
               
-              <Route path="/calendar" element={
+              <Route path="/weekly-calendar" element={
                 <ProtectedRoute>
                   <WeeklyCalendar />
                 </ProtectedRoute>
               } />
               
-              <Route path="/topics" element={
+              <Route path="/topic-suggestions" element={
                 <ProtectedRoute>
                   <TopicSuggestions />
                 </ProtectedRoute>
