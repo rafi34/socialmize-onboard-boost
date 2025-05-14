@@ -12,12 +12,15 @@ export type IconType = ReactNode; // Define IconType as React node for any icon 
 
 const DEFAULT_TOAST_DURATION = 5000;
 
-export type ToasterToast = Toast & {
+export type ToasterToast = {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
   icon?: IconType;
+  duration?: number;
+  variant?: ToastProps["variant"];
+  onOpenChange?: (open: boolean) => void;
 };
 
 type State = {
