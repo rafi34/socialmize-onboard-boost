@@ -129,6 +129,10 @@ export default function Dashboard() {
     }
   }, [showContent]);
 
+  const handleGoToStrategyChat = () => {
+    navigate('/strategy-chat');
+  };
+
   if (!onboardingChecked) return null;
   if (hasOnboardingAnswers === false) return null;
   if (profileComplete === false) return <Navigate to="/" replace />;
@@ -239,7 +243,12 @@ export default function Dashboard() {
                 <div className="text-center py-12 bg-muted rounded-lg">
                   <h3 className="text-lg font-medium mb-2">Complete Your Strategy Plan</h3>
                   <p className="text-muted-foreground mb-4">Confirm your content strategy plan to access the dashboard features</p>
-                  <Button onClick={() => fetchUserData()}>Refresh Status</Button>
+                  <div className="flex flex-col gap-3 items-center justify-center sm:flex-row">
+                    <Button onClick={() => fetchUserData()}>Refresh Status</Button>
+                    <Button variant="outline" onClick={handleGoToStrategyChat}>
+                      Go to Strategy Chat
+                    </Button>
+                  </div>
                 </div>
               )}
             </>
