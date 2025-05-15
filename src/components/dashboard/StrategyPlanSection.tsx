@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const StrategyPlanSection = () => {
   const [isFullPlanOpen, setIsFullPlanOpen] = useState(false);
@@ -33,7 +34,9 @@ export const StrategyPlanSection = () => {
   useEffect(() => {
     if (user?.id) {
       console.log("StrategyPlanSection - Fetching strategy data");
-      fetchStrategyData();
+      fetchStrategyData().catch(err => {
+        console.error("Error fetching strategy data:", err);
+      });
     }
   }, [user?.id, fetchStrategyData]);
 
@@ -105,6 +108,10 @@ export const StrategyPlanSection = () => {
     isActive: strategy?.is_active
   });
 
+  if (loading) {
+    return <Skeleton className="h-40 w-full" />;
+  }
+
   return (
     <div className="mb-6 flex flex-col md:flex-row items-start gap-4">
       <div className="flex-grow w-full md:w-auto">
@@ -148,14 +155,49 @@ export const StrategyPlanSection = () => {
           </Alert>
         )}
         
-        <StrategyOverviewCard 
-          onRegenerateClick={handleOpenRegenerate}
-          fullPlanText={strategy?.full_plan_text}
-          onViewFullPlan={handleOpenFullPlan}
-          isConfirmed={isConfirmed}
-          onConfirmClick={handleConfirmStrategy}
-          strategyType={strategy?.strategy_type || "starter"}
-        />
+        {!strategy && !loading && !error && (
+          <Alert variant="default" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>No Strategy Found</AlertTitle>
+            <AlertDescription className="flex flex-col gap-2">
+              <p>We couldn't find your content strategy. This could be because you haven't completed onboarding yet.</p>
+              <div className="flex gap-2 mt-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleRetryFetch}
+                  disabled={isRetrying}
+                >
+                  {isRetrying ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                      Retrying...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry
+                    </>
+                  )}
+                </Button>
+                <Button size="sm" asChild>
+                  <Link to="/onboarding">Go to Onboarding</Link>
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {strategy && (
+          <StrategyOverviewCard 
+            onRegenerateClick={handleOpenRegenerate}
+            fullPlanText={strategy?.full_plan_text}
+            onViewFullPlan={handleOpenFullPlan}
+            isConfirmed={isConfirmed}
+            onConfirmClick={handleConfirmStrategy}
+            strategyType={strategy?.strategy_type || "starter"}
+          />
+        )}
       </div>
       
       <div className="flex-shrink-0 w-full md:w-auto mt-2 md:mt-0 flex gap-2 flex-col sm:flex-row">

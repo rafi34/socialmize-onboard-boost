@@ -41,11 +41,26 @@ serve(async (req) => {
       .eq('user_id', userId)
       .maybeSingle();
     
-    if (onboardingError && onboardingError.code !== 'PGRST116') {
+    if (onboardingError) {
       console.error("Error fetching onboarding data:", onboardingError);
-      // If table doesn't exist yet, we just continue with profile data
-      if (onboardingError.code !== '42P01') { // 42P01 is "relation does not exist"
+      if (onboardingError.code !== 'PGRST116') { // If table doesn't exist yet, we just continue with profile data
         throw onboardingError;
+      }
+    }
+    
+    if (!onboardingData) {
+      console.log("No onboarding data found, checking if we need to create an empty record");
+      
+      // Create an empty onboarding record if it doesn't exist
+      const { error: insertError } = await supabase
+        .from('onboarding_answers')
+        .insert({ user_id: userId })
+        .select()
+        .maybeSingle();
+      
+      if (insertError && insertError.code !== '23505') { // Not a uniqueness violation
+        console.error("Error creating onboarding record:", insertError);
+        throw insertError;
       }
     }
     
@@ -59,14 +74,6 @@ serve(async (req) => {
     if (profileError) {
       console.error("Error fetching profile data:", profileError);
       throw profileError;
-    }
-    
-    if (!onboardingData && !profileData) {
-      console.log("No user data found");
-      return new Response(
-        JSON.stringify({ success: false, error: "No user data found" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
-      );
     }
     
     // Prepare update data with fields from onboarding answers
@@ -119,7 +126,8 @@ serve(async (req) => {
           ...updateData,
           user_id: userId,
           is_active: true,
-          strategy_type: 'starter'
+          strategy_type: 'starter',
+          weekly_calendar: {} // Initialize with empty object to prevent null issues
         })
         .select();
         
