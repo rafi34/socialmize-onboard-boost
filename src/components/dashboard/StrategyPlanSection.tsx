@@ -59,16 +59,13 @@ export const StrategyPlanSection = () => {
     }
   };
 
-  // Check if we have a valid strategy with a weekly calendar and if it's confirmed
-  // A strategy is confirmed if confirmed_at is set, regardless of weekly_calendar
-  const hasWeeklyCalendar = !!(strategy?.weekly_calendar && 
-    Object.keys(strategy.weekly_calendar).length > 0);
+  // Use confirmed_at as the primary indicator of whether a strategy is confirmed
   const isConfirmed = !!strategy?.confirmed_at;
   
   console.log("Strategy plan status:", {
     hasStrategy: !!strategy,
     strategyId: strategy?.id,
-    hasWeeklyCalendar,
+    hasWeeklyCalendar: strategy?.weekly_calendar ? Object.keys(strategy.weekly_calendar).length > 0 : false,
     isConfirmed,
     confirmedAt: strategy?.confirmed_at,
     isActive: strategy?.is_active

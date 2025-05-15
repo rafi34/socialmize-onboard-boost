@@ -16,6 +16,7 @@ export function useStrategy() {
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const errorToastShown = useRef(false);
+  const isFetchingRef = useRef(false);
 
   const MAX_RETRIES = 3;
 
@@ -84,7 +85,9 @@ export function useStrategy() {
   };
 
   const fetchStrategyData = useCallback(async () => {
-    if (!user) return;
+    if (!user || isFetchingRef.current) return;
+    
+    isFetchingRef.current = true;
 
     try {
       console.log("Fetching strategy data in useStrategy hook");
@@ -109,7 +112,7 @@ export function useStrategy() {
       } : "No data found");
 
       if (strategyData) {
-        // Check if strategy is confirmed regardless of weekly_calendar
+        // Check if strategy is confirmed by looking at confirmed_at directly
         const isConfirmed = !!strategyData.confirmed_at;
         setPlanConfirmed(isConfirmed);
         
@@ -121,17 +124,17 @@ export function useStrategy() {
         // Ensure weekly_calendar is always an object, even if null in database
         const weeklyCalendar = typeof strategyData.weekly_calendar === 'object' && strategyData.weekly_calendar !== null
           ? strategyData.weekly_calendar as Record<string, string[]>
-          : {}; // Default to empty object if null
+          : {}; // Always default to empty object
 
         const topicIdeas = Array.isArray(strategyData.topic_ideas)
           ? strategyData.topic_ideas as string[]
           : [];
 
         setStrategy({
-          id: strategyData.id, // Make sure ID is included
+          id: strategyData.id,
           experience_level: strategyData.experience_level || '',
           content_types: contentTypes,
-          weekly_calendar: weeklyCalendar,
+          weekly_calendar: weeklyCalendar, // Always use an object (empty or populated)
           posting_frequency: strategyData.posting_frequency || "3-5x per week",
           creator_style: strategyData.creator_style || "Authentic",
           content_breakdown: {},
@@ -146,9 +149,15 @@ export function useStrategy() {
 
         setGenerationStatus("success");
         setRetryCount(0);
+      } else {
+        // Explicitly handle the case when no strategy data is found
+        console.log("No strategy data found for user");
       }
     } catch (err) {
       console.error("Error in fetchStrategyData:", err);
+    } finally {
+      isFetchingRef.current = false;
+      setLoading(false);
     }
   }, [user]);
 
@@ -184,6 +193,7 @@ export function useStrategy() {
     fetchStrategyData,
     generateStrategy,
     generateWaitingMessage,
-    resetRetryCount
+    resetRetryCount,
+    loading
   };
 }

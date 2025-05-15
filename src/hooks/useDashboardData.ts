@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useUserProfile } from "./dashboard/useUserProfile";
 import { useStrategy } from "./dashboard/useStrategy";
 import { useProgressTracking } from "./dashboard/useProgressTracking";
@@ -16,6 +16,7 @@ export function useDashboardData() {
   const remindersState = useReminders();
   const scriptsState = useScripts();
   const notifications = useNotifications();
+  const fetchingRef = useRef(false);
   
   // Compute loading state by combining all loading states
   const loading = 
@@ -26,27 +27,38 @@ export function useDashboardData() {
 
   // Function to fetch all dashboard data
   const fetchUserData = useCallback(async () => {
-    console.log("Fetching all dashboard data...");
+    // Prevent duplicate fetches
+    if (fetchingRef.current) return;
     
-    // Add a small delay to avoid race conditions
-    const fetchWithDelay = async (fn: Function, name: string) => {
-      try {
-        await fn();
-        console.log(`${name} fetch complete`);
-      } catch (err) {
-        console.error(`Error fetching ${name}:`, err);
-      }
-    };
-    
-    // Fetch data sequentially to avoid potential race conditions
-    await fetchWithDelay(userProfile.fetchProfileData, "Profile");
-    await fetchWithDelay(strategyState.fetchStrategyData, "Strategy");
-    await fetchWithDelay(progressState.fetchProgressData, "Progress");
-    await fetchWithDelay(remindersState.fetchReminders, "Reminders");
-    await fetchWithDelay(scriptsState.fetchScripts, "Scripts");
-    
-    notifications.resetErrorState();
-    console.log("All dashboard data fetched");
+    try {
+      fetchingRef.current = true;
+      console.log("Fetching all dashboard data...");
+      
+      // Add a small delay to avoid race conditions
+      const fetchWithDelay = async (fn: Function, name: string) => {
+        try {
+          await fn();
+          console.log(`${name} fetch complete`);
+        } catch (err) {
+          console.error(`Error fetching ${name}:`, err);
+        }
+      };
+      
+      // Fetch data sequentially to avoid potential race conditions
+      await fetchWithDelay(userProfile.fetchProfileData, "Profile");
+      await fetchWithDelay(strategyState.fetchStrategyData, "Strategy");
+      await fetchWithDelay(progressState.fetchProgressData, "Progress");
+      await fetchWithDelay(remindersState.fetchReminders, "Reminders");
+      await fetchWithDelay(scriptsState.fetchScripts, "Scripts");
+      
+      notifications.resetErrorState();
+      console.log("All dashboard data fetched");
+    } finally {
+      // Ensure we reset the fetching flag to allow future fetches
+      setTimeout(() => {
+        fetchingRef.current = false;
+      }, 2000); // Add a small cooldown period
+    }
   }, [
     userProfile.fetchProfileData,
     strategyState.fetchStrategyData, 
@@ -58,7 +70,7 @@ export function useDashboardData() {
 
   // Fetch data when the hook is initialized
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && !fetchingRef.current) {
       console.log("useDashboardData - Initial data fetch");
       fetchUserData();
     }
