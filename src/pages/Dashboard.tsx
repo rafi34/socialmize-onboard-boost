@@ -1,4 +1,6 @@
 
+// pages/Dashboard.tsx
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
