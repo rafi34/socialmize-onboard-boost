@@ -46,38 +46,38 @@ export default function Dashboard() {
   } = useDashboardData();
 
   // Check if user has completed onboarding
-  // useEffect(() => {
-  //   const checkOnboardingAnswers = async () => {
-  //     if (!user) return;
+  useEffect(() => {
+    const checkOnboardingAnswers = async () => {
+      if (!user) return;
       
-  //     try {
-  //       const { data, error } = await supabase
-  //         .from('onboarding_answers')
-  //         .select('id')
-  //         .eq('user_id', user.id)
-  //         .maybeSingle();
+      try {
+        const { data, error } = await supabase
+          .from('onboarding_answers')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
           
-  //       if (error) {
-  //         console.error('Error checking onboarding answers:', error);
-  //         setHasOnboardingAnswers(false);
-  //         setOnboardingChecked(true);
-  //         return;
-  //       }
+        if (error) {
+          console.error('Error checking onboarding answers:', error);
+          setHasOnboardingAnswers(false);
+          setOnboardingChecked(true);
+          return;
+        }
         
-  //       if (!data) {
-  //         setHasOnboardingAnswers(false);
-  //         setOnboardingChecked(true);
-  //         navigate('/onboarding');
-  //         return;
-  //       }
+        if (!data) {
+          setHasOnboardingAnswers(false);
+          setOnboardingChecked(true);
+          navigate('/onboarding');
+          return;
+        }
         
-  //       setHasOnboardingAnswers(true);
-  //       setOnboardingChecked(true);
-  //     } catch (err) {
-  //       console.error("Failed to check onboarding status:", err);
-  //       setOnboardingChecked(true);
-  //     }
-  //   };
+        setHasOnboardingAnswers(true);
+        setOnboardingChecked(true);
+      } catch (err) {
+        console.error("Failed to check onboarding status:", err);
+        setOnboardingChecked(true);
+      }
+    };
     
     if (user && user.id && !onboardingChecked) {
       checkOnboardingAnswers();
