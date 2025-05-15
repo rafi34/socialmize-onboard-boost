@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -57,6 +56,16 @@ const ReviewIdeas = () => {
     }
   };
 
+  // Add the normalizeDifficulty function to ensure correct typing
+  const normalizeDifficulty = (difficulty: string): "easy" | "medium" | "hard" => {
+    const lowerCaseDifficulty = difficulty.toLowerCase();
+    if (lowerCaseDifficulty === "easy" || lowerCaseDifficulty === "medium" || lowerCaseDifficulty === "hard") {
+      return lowerCaseDifficulty as "easy" | "medium" | "hard";
+    }
+    // Default to medium if the difficulty is not one of the expected values
+    return "medium";
+  };
+
   const loadProgressData = async () => {
     try {
       const { data, error } = await supabase
@@ -103,7 +112,8 @@ const ReviewIdeas = () => {
         const enhancedIdeas = data.map(idea => ({
           ...idea,
           format_type: idea.format_type || getRandomFormat(),
-          difficulty: idea.difficulty || getRandomDifficulty(),
+          // Normalize difficulty to ensure it's one of the allowed values
+          difficulty: normalizeDifficulty(idea.difficulty || getRandomDifficulty()),
           xp_reward: idea.xp_reward || getRandomXp()
         }));
         
@@ -133,8 +143,9 @@ const ReviewIdeas = () => {
     return formats[Math.floor(Math.random() * formats.length)];
   };
   
+  // Update this function to return only valid difficulties
   const getRandomDifficulty = () => {
-    const difficulties = ["Easy", "Medium", "Hard"];
+    const difficulties = ["easy", "medium", "hard"] as const;
     return difficulties[Math.floor(Math.random() * difficulties.length)];
   };
   
@@ -382,12 +393,12 @@ const ReviewIdeas = () => {
                 {filteredIdeas.map((idea) => (
                   <MissionCard 
                     key={idea.id}
-                    id={idea.id}
-                    idea={idea.idea}
+                    missionId={idea.id}
+                    title={idea.idea}
                     selected={idea.selected}
                     format={idea.format_type}
                     xpReward={idea.xp_reward}
-                    difficulty={idea.difficulty}
+                    difficulty={normalizeDifficulty(idea.difficulty || "medium")}
                     onToggleSelection={toggleSelection}
                   />
                 ))}
