@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { OnboardingAnswers, UserProgress, ONBOARDING_STEPS, CreatorMission, CreatorStyle, ContentFormat, PostingFrequency, ShootingPreference } from "@/types/onboarding";
@@ -63,6 +64,8 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     setIsLoading(true);
     try {
+      console.log("Fetching onboarding answers for user:", user.id);
+      
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('onboarding_complete, profile_progress')
@@ -71,6 +74,7 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       if (profileError) {
         console.error('Error fetching profile:', profileError);
+        // Don't return early, try to proceed with other data
       } else if (profile) {
         // Update onboarding status from profile
         setOnboardingAnswers(prev => ({
@@ -82,34 +86,52 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         // If onboarding is already complete, redirect to dashboard
         if (profile.onboarding_complete) {
           navigate('/dashboard');
+          return; // Stop further processing
         }
       }
 
-      const { data: answers, error: answersError } = await supabase
-        .from('onboarding_answers')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
+      // Try to fetch answers, but handle case where table might not exist yet
+      try {
+        const { data: answers, error: answersError } = await supabase
+          .from('onboarding_answers')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-      if (answersError && answersError.code !== 'PGRST116') { // PGRST116 is "no rows returned" which is fine
-        console.error('Error fetching onboarding answers:', answersError);
-      } else if (answers) {
-        // Update answers from database
-        setOnboardingAnswers(prev => ({
-          ...prev,
-          creator_mission: answers.creator_mission as CreatorMission | null,
-          creator_style: answers.creator_style as CreatorStyle | null,
-          content_format_preference: answers.content_format_preference as ContentFormat | null,
-          posting_frequency_goal: answers.posting_frequency_goal as PostingFrequency | null,
-          existing_content: answers.existing_content === 'true' ? true : 
+        if (answersError) {
+          console.log('No existing onboarding answers or error fetching:', answersError.message);
+          
+          // If the table doesn't exist or there's another error, we'll create new answers later
+          if (answersError.code !== 'PGRST116') { // PGRST116 is "no rows returned" which is fine
+            console.warn(`Error fetching onboarding answers (${answersError.code}):`, answersError.message);
+          }
+        } else if (answers) {
+          console.log("Found existing onboarding answers:", answers);
+          
+          // Update answers from database
+          setOnboardingAnswers(prev => ({
+            ...prev,
+            creator_mission: answers.creator_mission as CreatorMission | null,
+            creator_style: answers.creator_style as CreatorStyle | null,
+            content_format_preference: answers.content_format_preference as ContentFormat | null,
+            posting_frequency_goal: answers.posting_frequency_goal as PostingFrequency | null,
+            existing_content: answers.existing_content === 'true' ? true : 
                            answers.existing_content === 'false' ? false : null,
-          shooting_preference: answers.shooting_preference as ShootingPreference | null,
-          shooting_schedule: answers.shooting_schedule ? new Date(answers.shooting_schedule) : null,
-          niche_topic: answers.niche_topic || null
-        }));
+            shooting_preference: answers.shooting_preference as ShootingPreference | null,
+            shooting_schedule: answers.shooting_schedule ? new Date(answers.shooting_schedule) : null,
+            niche_topic: answers.niche_topic || null
+          }));
+        }
+      } catch (error) {
+        console.error('Unexpected error in fetchOnboardingAnswers:', error);
       }
     } catch (error) {
       console.error('Error in fetchOnboardingAnswers:', error);
+      toast({
+        title: "Error loading onboarding data",
+        description: "There was a problem loading your progress. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
@@ -224,18 +246,6 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         throw profileError;
       }
       
-      // Save or update onboarding answers
-      const { data: existingAnswers, error: checkError } = await supabase
-        .from('onboarding_answers')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-        
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "no rows returned" which is fine
-        console.error('Error checking existing answers:', checkError);
-        throw checkError;
-      }
-      
       // Convert boolean and Date to appropriate string format for Supabase
       const existingContent = onboardingAnswers.existing_content !== null 
         ? String(onboardingAnswers.existing_content) 
@@ -245,46 +255,71 @@ export const OnboardingProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         ? onboardingAnswers.shooting_schedule.toISOString() 
         : null;
       
-      // Either update or insert based on whether answers already exist
-      let error;
-      if (existingAnswers) {
-        const { error: updateError } = await supabase
+      // Check if onboarding_answers table exists and try to save the answers
+      try {
+        // Try to save answers to the onboarding_answers table
+        const { data: existingAnswers, error: checkError } = await supabase
           .from('onboarding_answers')
-          .update({
-            creator_mission: onboardingAnswers.creator_mission,
-            creator_style: onboardingAnswers.creator_style,
-            content_format_preference: onboardingAnswers.content_format_preference,
-            posting_frequency_goal: onboardingAnswers.posting_frequency_goal,
-            existing_content: existingContent,
-            shooting_preference: onboardingAnswers.shooting_preference,
-            shooting_schedule: shootingSchedule,
-            niche_topic: onboardingAnswers.niche_topic,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingAnswers.id);
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.error('Error checking existing answers:', checkError);
+          // Continue anyway, we'll use the data in-memory for strategy generation
+        }
+
+        const answerData = {
+          creator_mission: onboardingAnswers.creator_mission,
+          creator_style: onboardingAnswers.creator_style,
+          content_format_preference: onboardingAnswers.content_format_preference,
+          posting_frequency_goal: onboardingAnswers.posting_frequency_goal,
+          existing_content: existingContent,
+          shooting_preference: onboardingAnswers.shooting_preference,
+          shooting_schedule: shootingSchedule,
+          niche_topic: onboardingAnswers.niche_topic,
+        };
           
-        error = updateError;
-      } else {
-        const { error: insertError } = await supabase
-          .from('onboarding_answers')
-          .insert({
-            user_id: user.id,
-            creator_mission: onboardingAnswers.creator_mission,
-            creator_style: onboardingAnswers.creator_style,
-            content_format_preference: onboardingAnswers.content_format_preference,
-            posting_frequency_goal: onboardingAnswers.posting_frequency_goal,
-            existing_content: existingContent,
-            shooting_preference: onboardingAnswers.shooting_preference,
-            shooting_schedule: shootingSchedule,
-            niche_topic: onboardingAnswers.niche_topic
-          });
-          
-        error = insertError;
+        // Either update or insert based on whether answers already exist
+        if (existingAnswers) {
+          const { error: updateError } = await supabase
+            .from('onboarding_answers')
+            .update({
+              ...answerData,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingAnswers.id);
+            
+          if (updateError) {
+            console.error('Error updating onboarding answers:', updateError);
+            // Continue anyway, we'll use the data in-memory for strategy generation
+          }
+        } else {
+          const { error: insertError } = await supabase
+            .from('onboarding_answers')
+            .insert({
+              user_id: user.id,
+              ...answerData
+            });
+            
+          if (insertError) {
+            console.error('Error saving onboarding answers:', insertError);
+            // Continue anyway, we'll use the data in-memory for strategy generation
+          }
+        }
+      } catch (error) {
+        console.error('Error saving to onboarding_answers:', error);
+        // Continue anyway, we'll use the data in-memory for strategy generation
       }
-      
-      if (error) {
-        console.error('Error saving onboarding answers:', error);
-        throw error;
+
+      // When onboarding completes, always sync settings to strategy_profile
+      try {
+        await supabase.functions.invoke('sync-creator-settings', {
+          body: { userId: user.id }
+        });
+      } catch (error) {
+        console.error('Error syncing creator settings:', error);
+        // Not critical, continue
       }
 
       // Update local state

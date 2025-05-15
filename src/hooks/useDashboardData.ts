@@ -28,7 +28,10 @@ export function useDashboardData() {
   // Function to fetch all dashboard data
   const fetchUserData = useCallback(async () => {
     // Prevent duplicate fetches
-    if (fetchingRef.current) return;
+    if (fetchingRef.current || !user?.id) {
+      console.log("Skipping fetch - already fetching or no user");
+      return;
+    }
     
     try {
       fetchingRef.current = true;
@@ -41,6 +44,7 @@ export function useDashboardData() {
           console.log(`${name} fetch complete`);
         } catch (err) {
           console.error(`Error fetching ${name}:`, err);
+          // Continue with other fetches even if one fails
         }
       };
       
@@ -53,6 +57,8 @@ export function useDashboardData() {
       
       notifications.resetErrorState();
       console.log("All dashboard data fetched");
+    } catch (error) {
+      console.error("Error in fetchUserData:", error);
     } finally {
       // Ensure we reset the fetching flag to allow future fetches
       setTimeout(() => {
@@ -60,6 +66,7 @@ export function useDashboardData() {
       }, 2000); // Add a small cooldown period
     }
   }, [
+    user?.id,
     userProfile.fetchProfileData,
     strategyState.fetchStrategyData, 
     progressState.fetchProgressData,

@@ -41,20 +41,41 @@ serve(async (req) => {
       .eq('user_id', userId)
       .maybeSingle();
     
-    if (onboardingError) {
+    if (onboardingError && onboardingError.code !== 'PGRST116') {
       console.error("Error fetching onboarding data:", onboardingError);
-      throw onboardingError;
+      // If table doesn't exist yet, we just continue with profile data
+      if (onboardingError.code !== '42P01') { // 42P01 is "relation does not exist"
+        throw onboardingError;
+      }
     }
     
-    if (!onboardingData) {
-      console.log("No onboarding data found for user");
+    // Try to get data from profiles as backup
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    
+    if (profileError) {
+      console.error("Error fetching profile data:", profileError);
+      throw profileError;
+    }
+    
+    if (!onboardingData && !profileData) {
+      console.log("No user data found");
       return new Response(
-        JSON.stringify({ success: false, error: "No onboarding data found" }),
+        JSON.stringify({ success: false, error: "No user data found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
       );
     }
     
-    console.log("Fetched onboarding data:", onboardingData);
+    // Prepare update data with fields from onboarding answers
+    const updateData = {
+      creator_style: onboardingData?.creator_style || null,
+      niche_topic: onboardingData?.niche_topic || null,
+      posting_frequency: onboardingData?.posting_frequency_goal || null,
+      updated_at: new Date().toISOString()
+    };
     
     // Check if strategy profile exists
     const { data: existingProfile, error: profileCheckError } = await supabase
@@ -65,18 +86,13 @@ serve(async (req) => {
       .limit(1)
       .maybeSingle();
     
-    if (profileCheckError) {
+    if (profileCheckError && profileCheckError.code !== 'PGRST116') {
       console.error("Error checking existing profile:", profileCheckError);
-      throw profileCheckError;
+      // If table doesn't exist yet, we just create it
+      if (profileCheckError.code !== '42P01') {
+        throw profileCheckError;
+      }
     }
-    
-    // Prepare update data with fields from onboarding answers
-    const updateData = {
-      creator_style: onboardingData.creator_style,
-      niche_topic: onboardingData.niche_topic,
-      posting_frequency: onboardingData.posting_frequency_goal,
-      updated_at: new Date().toISOString()
-    };
     
     let result;
     
@@ -101,7 +117,9 @@ serve(async (req) => {
         .from('strategy_profiles')
         .insert({
           ...updateData,
-          user_id: userId
+          user_id: userId,
+          is_active: true,
+          strategy_type: 'starter'
         })
         .select();
         
@@ -126,7 +144,10 @@ serve(async (req) => {
     console.error("Error in sync-creator-settings:", error);
     
     return new Response(
-      JSON.stringify({ success: false, error: error.message || "An unexpected error occurred" }),
+      JSON.stringify({ 
+        success: false, 
+        error: error.message || "An unexpected error occurred"
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
