@@ -43,7 +43,12 @@ export function useStrategyData() {
       if (fetchError) throw fetchError;
       
       if (data) {
-        console.log("Strategy data retrieved:", data);
+        console.log("Strategy data retrieved:", {
+          id: data.id,
+          confirmed_at: data.confirmed_at,
+          is_active: data.is_active,
+          strategy_type: data.strategy_type
+        });
         
         // Process the strategy data
         const hasWeeklyCalendar = !!(data.weekly_calendar && 
@@ -70,6 +75,14 @@ export function useStrategyData() {
           strategy_type: data.strategy_type || "starter",
           is_active: data.is_active !== false,
           confirmed_at: data.confirmed_at
+        });
+        
+        console.log("Strategy state updated:", {
+          hasWeeklyCalendar,
+          isConfirmed,
+          id: data.id,
+          confirmed_at: data.confirmed_at,
+          strategy_type: data.strategy_type
         });
         
         // Reset retry counter on success
@@ -178,6 +191,19 @@ export function useStrategyData() {
       
       const now = new Date().toISOString();
       
+      // Make sure we have the latest data
+      const { data: latestStrategy, error: fetchError } = await supabase
+        .from("strategy_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("id", strategy.id)
+        .maybeSingle();
+        
+      if (fetchError) throw fetchError;
+      if (!latestStrategy) throw new Error("Strategy not found");
+      
+      console.log(`Confirming strategy plan (ID: ${strategy.id})...`);
+      
       const { error } = await supabase
         .from("strategy_profiles")
         .update({ 
@@ -195,6 +221,12 @@ export function useStrategyData() {
       await trackUserAction(user.id, 'strategy_confirmed', {
         strategy_id: strategy.id,
         strategy_type: strategy.strategy_type
+      });
+      
+      // Update local state
+      setStrategy({
+        ...strategy,
+        confirmed_at: now
       });
       
       // Refresh strategy data

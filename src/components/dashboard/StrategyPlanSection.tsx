@@ -27,6 +27,7 @@ export const StrategyPlanSection = () => {
   // Add effect to refresh strategy data when component mounts
   useEffect(() => {
     if (user?.id) {
+      console.log("StrategyPlanSection - Fetching strategy data");
       fetchStrategyData();
     }
   }, [user?.id, fetchStrategyData]);
@@ -48,10 +49,13 @@ export const StrategyPlanSection = () => {
   };
   
   const handleConfirmStrategy = async () => {
+    console.log("Confirming strategy plan...");
     const success = await confirmStrategyPlan();
     if (success) {
+      console.log("Strategy confirmed successfully, fetching updated data");
       fetchStrategyData();
-      console.log("Strategy confirmed successfully");
+    } else {
+      console.error("Failed to confirm strategy");
     }
   };
 
@@ -62,9 +66,11 @@ export const StrategyPlanSection = () => {
   
   console.log("Strategy plan status:", {
     hasStrategy: !!strategy,
+    strategyId: strategy?.id,
     hasWeeklyCalendar,
     isConfirmed,
-    confirmedAt: strategy?.confirmed_at
+    confirmedAt: strategy?.confirmed_at,
+    isActive: strategy?.is_active
   });
 
   return (

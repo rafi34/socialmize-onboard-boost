@@ -101,7 +101,18 @@ export default function Dashboard() {
       errorShown,
       hasAttemptedRetry
     });
-  }, [loading, generationStatus]); // Only re-run when essential states change
+    
+    // Add detailed strategy confirmation logging
+    if (strategy) {
+      console.log('Strategy confirmation details:', {
+        strategyId: strategy.id,
+        confirmedAt: strategy.confirmed_at,
+        isActive: strategy.is_active,
+        strategyType: strategy.strategy_type,
+        hasWeeklyCalendar: !!strategy.weekly_calendar && Object.keys(strategy.weekly_calendar).length > 0
+      });
+    }
+  }, [loading, generationStatus, strategy]); // Added strategy to the dependency array
 
   // Display error toast on generation error, but only once
   useEffect(() => {
@@ -130,6 +141,14 @@ export default function Dashboard() {
   const handleGoToStrategyChat = () => {
     navigate('/strategy-chat');
   };
+  
+  // Immediately fetch data when the component mounts
+  useEffect(() => {
+    if (user && user.id) {
+      console.log('Fetching user data on Dashboard mount');
+      fetchUserData();
+    }
+  }, [user, fetchUserData]);
 
   if (!onboardingChecked) return null;
   if (hasOnboardingAnswers === false) return null;
@@ -153,6 +172,14 @@ export default function Dashboard() {
 
   // Check if strategy is confirmed by looking at the strategy object directly
   const isStrategyConfirmed = !!(strategy && strategy.confirmed_at);
+  
+  // Log the confirmation status for debugging
+  console.log('Strategy confirmation status check:', {
+    hasStrategy: !!strategy,
+    isStrategyConfirmed,
+    confirmedAt: strategy?.confirmed_at,
+    planConfirmed
+  });
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
