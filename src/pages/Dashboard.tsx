@@ -79,10 +79,10 @@ export default function Dashboard() {
   //     }
   //   };
     
-  //   if (user && user.id && !onboardingChecked) {
-  //     checkOnboardingAnswers();
-  //   }
-  // }, [user, navigate, onboardingChecked]);
+    if (user && user.id && !onboardingChecked) {
+      checkOnboardingAnswers();
+    }
+  }, [user, navigate, onboardingChecked]);
 
   // Debug logging - using a stable reference to avoid re-renders
   useEffect(() => {
