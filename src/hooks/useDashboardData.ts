@@ -27,12 +27,26 @@ export function useDashboardData() {
   // Function to fetch all dashboard data
   const fetchUserData = useCallback(async () => {
     console.log("Fetching all dashboard data...");
-    await userProfile.fetchProfileData();
-    await strategyState.fetchStrategyData();
-    await progressState.fetchProgressData();
-    await remindersState.fetchReminders();
-    await scriptsState.fetchScripts();
+    
+    // Add a small delay to avoid race conditions
+    const fetchWithDelay = async (fn: Function, name: string) => {
+      try {
+        await fn();
+        console.log(`${name} fetch complete`);
+      } catch (err) {
+        console.error(`Error fetching ${name}:`, err);
+      }
+    };
+    
+    // Fetch data sequentially to avoid potential race conditions
+    await fetchWithDelay(userProfile.fetchProfileData, "Profile");
+    await fetchWithDelay(strategyState.fetchStrategyData, "Strategy");
+    await fetchWithDelay(progressState.fetchProgressData, "Progress");
+    await fetchWithDelay(remindersState.fetchReminders, "Reminders");
+    await fetchWithDelay(scriptsState.fetchScripts, "Scripts");
+    
     notifications.resetErrorState();
+    console.log("All dashboard data fetched");
   }, [
     userProfile.fetchProfileData,
     strategyState.fetchStrategyData, 

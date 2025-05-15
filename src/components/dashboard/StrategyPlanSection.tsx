@@ -60,6 +60,7 @@ export const StrategyPlanSection = () => {
   };
 
   // Check if we have a valid strategy with a weekly calendar and if it's confirmed
+  // A strategy is confirmed if confirmed_at is set, regardless of weekly_calendar
   const hasWeeklyCalendar = !!(strategy?.weekly_calendar && 
     Object.keys(strategy.weekly_calendar).length > 0);
   const isConfirmed = !!strategy?.confirmed_at;
@@ -116,7 +117,7 @@ export const StrategyPlanSection = () => {
       </div>
       
       <div className="flex-shrink-0 w-full md:w-auto mt-2 md:mt-0 flex gap-2 flex-col sm:flex-row">
-        {hasWeeklyCalendar && (
+        {isConfirmed && (
           <Button asChild variant="outline" className="w-full md:w-auto flex items-center gap-2">
             <Link to="/weekly-calendar">
               <CalendarDays className="h-4 w-4" />
@@ -149,4 +150,4 @@ export const StrategyPlanSection = () => {
       />
     </div>
   );
-};
+}

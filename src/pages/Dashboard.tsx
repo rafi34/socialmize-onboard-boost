@@ -112,7 +112,7 @@ export default function Dashboard() {
         hasWeeklyCalendar: !!strategy.weekly_calendar && Object.keys(strategy.weekly_calendar).length > 0
       });
     }
-  }, [loading, generationStatus, strategy]); // Added strategy to the dependency array
+  }, [loading, generationStatus, strategy]); 
 
   // Display error toast on generation error, but only once
   useEffect(() => {
@@ -170,7 +170,7 @@ export default function Dashboard() {
     );
   }
 
-  // Check if strategy is confirmed by looking at the strategy object directly
+  // Check if strategy is confirmed by looking at the confirmed_at field directly
   const isStrategyConfirmed = !!(strategy && strategy.confirmed_at);
   
   // Log the confirmation status for debugging
@@ -180,6 +180,18 @@ export default function Dashboard() {
     confirmedAt: strategy?.confirmed_at,
     planConfirmed
   });
+
+  // Function to determine if the dashboard content should be shown
+  const shouldShowDashboardContent = () => {
+    // If loading, don't make a decision yet
+    if (loading) return false;
+    
+    // If no strategy, don't show content
+    if (!strategy) return false;
+    
+    // Show content if strategy is confirmed, regardless of weekly_calendar
+    return isStrategyConfirmed;
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-background">
@@ -219,7 +231,7 @@ export default function Dashboard() {
               
               <StrategyPlanSection />
 
-              {isStrategyConfirmed ? (
+              {shouldShowDashboardContent() ? (
                 <>
                   <Tabs 
                     value={activeTab} 

@@ -87,7 +87,9 @@ export function useStrategy() {
     if (!user) return;
 
     try {
-      const { data: strategyData } = await supabase
+      console.log("Fetching strategy data in useStrategy hook");
+      
+      const { data: strategyData, error } = await supabase
         .from("strategy_profiles")
         .select("*")
         .eq("user_id", user.id)
@@ -95,23 +97,38 @@ export function useStrategy() {
         .limit(1)
         .maybeSingle();
 
-      if (strategyData && strategyData.weekly_calendar) {
-        const confirmed = typeof strategyData.weekly_calendar === "object";
-        setPlanConfirmed(confirmed);
+      if (error) {
+        console.error("Error fetching strategy data:", error);
+        return;
+      }
+      
+      console.log("Strategy data fetched:", strategyData ? {
+        id: strategyData.id,
+        confirmed_at: strategyData.confirmed_at,
+        has_weekly_calendar: !!strategyData.weekly_calendar
+      } : "No data found");
 
+      if (strategyData) {
+        // Check if strategy is confirmed regardless of weekly_calendar
+        const isConfirmed = !!strategyData.confirmed_at;
+        setPlanConfirmed(isConfirmed);
+        
+        // Set default values for missing fields
         const contentTypes = Array.isArray(strategyData.content_types)
           ? strategyData.content_types as string[]
           : [];
 
-        const weeklyCalendar = typeof strategyData.weekly_calendar === 'object'
+        // Ensure weekly_calendar is always an object, even if null in database
+        const weeklyCalendar = typeof strategyData.weekly_calendar === 'object' && strategyData.weekly_calendar !== null
           ? strategyData.weekly_calendar as Record<string, string[]>
-          : {};
+          : {}; // Default to empty object if null
 
         const topicIdeas = Array.isArray(strategyData.topic_ideas)
           ? strategyData.topic_ideas as string[]
           : [];
 
         setStrategy({
+          id: strategyData.id, // Make sure ID is included
           experience_level: strategyData.experience_level || '',
           content_types: contentTypes,
           weekly_calendar: weeklyCalendar,
@@ -121,15 +138,17 @@ export function useStrategy() {
           full_plan_text: strategyData.full_plan_text,
           niche_topic: strategyData.niche_topic,
           topic_ideas: topicIdeas,
-          summary: strategyData.summary
+          summary: strategyData.summary,
+          strategy_type: strategyData.strategy_type || "starter",
+          is_active: strategyData.is_active !== false,
+          confirmed_at: strategyData.confirmed_at
         });
 
         setGenerationStatus("success");
         setRetryCount(0);
-        return;
       }
     } catch (err) {
-      console.error("Error fetching strategy data:", err);
+      console.error("Error in fetchStrategyData:", err);
     }
   }, [user]);
 
